@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
+import './HomePage.scss'; // Import the new SCSS file
+
 const apiHost = import.meta.env.VITE_API_HOST;
 
 const HomePage: React.FC = () => {
@@ -51,26 +53,32 @@ const HomePage: React.FC = () => {
   }, [token]);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Bienvenido, {user?.nombre}</h1>
-      <button onClick={logout}>Logout</button>
-      <hr />
-      <button onClick={createGroup}>Crear Nuevo Grupo</button>
+    <div className="home-page"> {/* Main container */}
+      <div className="user-info">
+        <h1 className="welcome-message">Bienvenido, {user?.nombre}</h1>
+        <button onClick={logout} className="logout-button">Logout</button>
+      </div>
       
-      <h3>Mis Grupos</h3>
-      <ul>
-        {groups.length > 0 ? (
-          groups.map(g => (
-            <li key={g._id}>
-              <Link to={`/group/${g._id}`}>
-                <strong>{g.nombre}</strong> - {g.miembros.length} miembros
-              </Link>
-            </li>
-          ))
-        ) : (
-          <p>No perteneces a ningún grupo.</p>
-        )}
-      </ul>
+      <div className="create-group-section">
+        <button onClick={createGroup} className="create-group-button">Crear Nuevo Grupo</button>
+      </div>
+      
+      <div className="groups-list-section">
+        <h3>Mis Grupos</h3>
+        <ul>
+          {groups.length > 0 ? (
+            groups.map(g => (
+              <li key={g._id}>
+                <Link to={`/group/${g._id}`}>
+                  <strong>{g.nombre}</strong> - {g.miembros.length} miembros
+                </Link>
+              </li>
+            ))
+          ) : (
+            <p>No perteneces a ningún grupo.</p>
+          )}
+        </ul>
+      </div>
     </div>
   );
 };
