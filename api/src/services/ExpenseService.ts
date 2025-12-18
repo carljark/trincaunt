@@ -31,7 +31,8 @@ export class ExpenseService {
     const expense = await Expense.create({
       ...data,
       pagado_por: payerId,
-      participantes
+      participantes,
+      asume_gasto: data.assumeExpense || false
     });
 
     return expense;
@@ -73,6 +74,9 @@ export class ExpenseService {
 
     // Calculate balances in cents to avoid floating point issues
     for (const expense of expenses) {
+      if (expense.asume_gasto) {
+        continue;
+      }
       const payerId = expense.pagado_por.toString();
       const amountInCents = Math.round(expense.monto * 100);
       const numParticipants = expense.participantes.length;
