@@ -1,0 +1,16 @@
+{
+  "name": "trincaunt-root",
+  "version": "1.0.0",
+  "description": "Plataforma para compartir gastos - Root Project",
+  "private": true,
+  "scripts": {
+    "cy:open": "cypress open",
+    "cy:run": "cypress run",
+    "start": "concurrently \"npm run dev --prefix api\" \"npm start --prefix client\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cypress": "^13.6.0",
+    "typescript": "^5.0.0"
+  }
+}

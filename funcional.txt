@@ -1,0 +1,21 @@
+Objetivo del Sistema: Plataforma para compartir gastos.
+Alcance:
+    - Creación de usuarios con validaciones.
+    - Creación de grupos de usuarios entre los que se compartirán gastos.
+    - Gestión de gastos compartidos entre usuarios dentro de un grupo.
+Roles de Usuario
+    - Administrador
+    - Usuario
+Descripción de la persistencia de datos
+    - CRUD en mongodb
+    - Campos del Usuario, Grupo y Gasto con sus Validaciones
+Reglas de Negocio para el Usuario, Grupo y Gasto:
+    - Unicidad de Email
+    - El IDUsuario no podrá ser modificado tras su creación.
+Mensajes de Error:
+    - Se mostrarán los mensajes de error devueltos por el servidor.
+    - Se mostrarán mensajes de advertencia de validación.
+    - Se mostrarán mensajes informativos sobre usuarios no existentes o no autorizados.
+Flujos Funcionales Detallados sobre crear usuarios, grupos y la compartición de gostos.
+Definir casos de uso
+Diagrama Funcional (Texto/Mermaid)
