@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+
+import './LoginPage.scss'; // Import the new SCSS file
 
 const apiHost = import.meta.env.VITE_API_HOST;
 
@@ -35,9 +37,9 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="login-page">
       <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="login-form">
         <input
           type="email"
           name="email"
@@ -56,9 +58,9 @@ const LoginPage: React.FC = () => {
         />
         <button type="submit">Login</button>
       </form>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="error-message">{error}</p>}
       <p>
-        ¿No tienes cuenta? <a href="/register">Regístrate</a>
+        ¿No tienes cuenta? <Link to="/register" className="register-link">Regístrate</Link>
       </p>
     </div>
   );
