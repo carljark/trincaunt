@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 import './GroupDetailPage.scss';
 
+const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const GroupDetailPage: React.FC = () => {
@@ -27,9 +28,9 @@ const GroupDetailPage: React.FC = () => {
     setLoading(true);
     try {
       const [groupRes, expenseRes, balanceRes] = await Promise.all([
-        fetch(`http://localhost:3000${apiBaseUrl}/groups/${groupId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`http://localhost:3000${apiBaseUrl}/groups/${groupId}/expenses`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`http://localhost:3000${apiBaseUrl}/groups/${groupId}/balance`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/balance`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       if (!groupRes.ok) throw new Error('Failed to fetch group details');
@@ -58,7 +59,7 @@ const GroupDetailPage: React.FC = () => {
     if (!token || !groupId || !email) return;
 
     try {
-      const res = await fetch(`http://localhost:3000${apiBaseUrl}/groups/${groupId}/members`, {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email })
@@ -88,7 +89,7 @@ const GroupDetailPage: React.FC = () => {
     }
 
     try {
-      const res = await fetch(`http://localhost:3000${apiBaseUrl}/expenses`, {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(expensePayload)
@@ -107,7 +108,7 @@ const GroupDetailPage: React.FC = () => {
   const handleDeleteExpense = async (expenseId: string) => {
     if (!token || !window.confirm('¿Estás seguro de que quieres borrar este gasto?')) return;
     try {
-      const res = await fetch(`http://localhost:3000${apiBaseUrl}/expenses/${expenseId}`, {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/${expenseId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -130,7 +131,7 @@ const GroupDetailPage: React.FC = () => {
     e.preventDefault();
     if (!token || !editingExpenseId) return;
     try {
-      const res = await fetch(`http://localhost:3000${apiBaseUrl}/expenses/${editingExpenseId}`, {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/${editingExpenseId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ ...editingExpenseData, monto: parseFloat(editingExpenseData.monto) })
