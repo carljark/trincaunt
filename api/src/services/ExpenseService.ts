@@ -18,13 +18,14 @@ export class ExpenseService {
 
     let participantes;
     if (data.assumeExpense) {
-      // El que paga asume el gasto completo
+      // El que paga asume el gasto completo, es el único participante.
       participantes = [payerId];
+    } else if (data.participantes && data.participantes.length > 0) {
+      // Se han especificado participantes
+      participantes = data.participantes;
     } else {
       // Si no se especifican participantes, son todos los del grupo
-      participantes = data.participantes && data.participantes.length > 0
-        ? data.participantes
-        : group.miembros;
+      participantes = group.miembros;
     }
 
     const expense = await Expense.create({

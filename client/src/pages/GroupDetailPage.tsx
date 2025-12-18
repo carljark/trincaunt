@@ -16,6 +16,7 @@ const GroupDetailPage: React.FC = () => {
   const [editingExpenseData, setEditingExpenseData] = useState({ descripcion: '', monto: '' });
   const [paidBy, setPaidBy] = useState<string>('');
   const [assumeExpense, setAssumeExpense] = useState<boolean>(false);
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +41,9 @@ const GroupDetailPage: React.FC = () => {
       setGroup(groupData.data);
       setExpenses(expensesData.data);
       setBalance(balanceData.data.balances);
+      if (groupData.data?.miembros) {
+        setSelectedParticipants(groupData.data.miembros.map((m: any) => m._id));
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -67,21 +71,31 @@ const GroupDetailPage: React.FC = () => {
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !groupId || !expenseData.description || !expenseData.amount) return;
+
+    const expensePayload: any = {
+      descripcion: expenseData.description,
+      monto: parseFloat(expenseData.amount),
+      grupo_id: groupId,
+      pagado_por: paidBy,
+      assumeExpense: assumeExpense,
+    };
+
+    if (!assumeExpense) {
+      expensePayload.participantes = selectedParticipants;
+    }
+
     try {
       const res = await fetch(`http://localhost:3000${apiBaseUrl}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          descripcion: expenseData.description,
-          monto: parseFloat(expenseData.amount),
-          grupo_id: groupId,
-          pagado_por: paidBy,
-          assumeExpense: assumeExpense
-        })
+        body: JSON.stringify(expensePayload)
       });
       if (res.ok) {
         setExpenseData({ description: '', amount: '' });
         setAssumeExpense(false);
+        if (group?.miembros) {
+          setSelectedParticipants(group.miembros.map((m: any) => m._id));
+        }
         fetchGroupData();
       } else { const data = await res.json(); throw new Error(data.message || 'Error al añadir gasto'); }
     } catch (err: any) { setError(err.message); }
@@ -198,6 +212,21 @@ const GroupDetailPage: React.FC = () => {
             <input type="checkbox" checked={assumeExpense} onChange={e => setAssumeExpense(e.target.checked)} />
             Asumir el gasto (invita)
           </label>
+        </div>
+
+        <div>
+          <label htmlFor="participants">Participantes:</label>
+          <select
+            id="participants"
+            multiple
+            value={selectedParticipants}
+            onChange={e => setSelectedParticipants(Array.from(e.target.selectedOptions, option => option.value))}
+            disabled={assumeExpense}
+          >
+            {group?.miembros.map((m: any) => (
+              <option key={m._id} value={m._id}>{m.nombre}</option>
+            ))}
+          </select>
         </div>
 
         <button type="submit">Añadir Gasto</button>
