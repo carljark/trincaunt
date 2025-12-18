@@ -52,3 +52,13 @@ export const deleteExpense = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+export const settleGroupDebts = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const transactions = await expenseService.settleGroupDebts(groupId);
+    res.status(200).json({ status: 'success', data: transactions });
+  } catch (error) {
+    next(error);
+  }
+};

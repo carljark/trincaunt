@@ -22,28 +22,33 @@ const GroupDetailPage: React.FC = () => {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [settlementTransactions, setSettlementTransactions] = useState<any[]>([]);
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
     setLoading(true);
     try {
-      const [groupRes, expenseRes, balanceRes] = await Promise.all([
+      const [groupRes, expenseRes, balanceRes, settlementRes] = await Promise.all([
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/balance`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/balance`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/settle`, { headers: { 'Authorization': `Bearer ${token}` } }),
       ]);
 
       if (!groupRes.ok) throw new Error('Failed to fetch group details');
       if (!expenseRes.ok) throw new Error('Failed to fetch expenses');
       if (!balanceRes.ok) throw new Error('Failed to fetch balance');
+      if (!settlementRes.ok) throw new Error('Failed to fetch settlement transactions');
 
       const groupData = await groupRes.json();
       const expensesData = await expenseRes.json();
       const balanceData = await balanceRes.json();
+      const settlementData = await settlementRes.json();
       
       setGroup(groupData.data);
       setExpenses(expensesData.data);
       setBalance(balanceData.data.balances);
+      setSettlementTransactions(settlementData.data.transactions);
       if (groupData.data?.miembros) {
         setSelectedParticipants(groupData.data.miembros.map((m: any) => m._id));
       }
@@ -168,6 +173,21 @@ const GroupDetailPage: React.FC = () => {
       <h3>Balance del Grupo</h3>
       <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>${m.balance.toFixed(2)}</strong></li>)}</ul>
       
+      <hr/>
+      
+      <h3>Transacciones para Saldar Deudas</h3>
+      {settlementTransactions.length > 0 ? (
+        <ul className="settlement-list">
+          {settlementTransactions.map((tx, index) => (
+            <li key={index}>
+              {tx.from.nombre} debe ${tx.amount.toFixed(2)} a {tx.to.nombre}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No hay transacciones pendientes para saldar deudas.</p>
+      )}
+
       <hr/>
       
       <div className="form-section">

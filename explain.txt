@@ -1,0 +1,38 @@
+This repository is a full-stack expense-sharing platform named "Trincaunt." It's structured as a monorepo, separating the backend and frontend into distinct api and client directories.
+
+Architecture Overview:
+
+Backend (api directory):
+
+Built with Node.js, Express.js, TypeScript, and uses MongoDB for data storage via Mongoose.
+Provides a RESTful API for managing users, groups, and expenses.
+Authentication is handled using JWT (JSON Web Tokens).
+Key components:
+server.ts: Entry point, handles database connection and starts the Express server.
+app.ts: Configures the Express application, including middleware for CORS, JSON parsing, and error handling. It also mounts the API routes.
+db.ts: Manages the connection to the MongoDB database.
+routes/index.ts: Defines API endpoints for User, Group, and Expense controllers, many of which are protected by authentication middleware.
+controllers/: Contains logic for handling HTTP requests and interacting with services.
+services/: Holds the core business logic and interacts with the Mongoose models.
+models/: Defines the Mongoose schemas for User, Group, and Expense data.
+Frontend (client directory):
+
+A Single Page Application (SPA) developed with React, Vite, TypeScript, and styled with SASS.
+Provides the user interface and interacts with the backend API.
+Key components:
+main.tsx: The entry point for the React application.
+App.tsx: Sets up client-side routing using react-router-dom and manages global authentication state with an AuthContext.
+contexts/AuthContext.tsx: Manages user authentication state and related functionalities.
+pages/: Contains different views (e.g., HomePage, LoginPage, GroupDetailPage).
+Data Flow:
+
+The React frontend communicates with the Express backend by making HTTP requests. The backend processes these requests, applies business logic (often involving authentication and data manipulation through services), interacts with the MongoDB database, and sends JSON responses back to the frontend. The frontend then updates its UI based on these responses.
+
+getGroupBalance in ExpenseService.ts:
+
+The getGroupBalance method, located in api/src/services/ExpenseService.ts, is responsible for calculating the financial balance within a specific group. Given the project's focus on expense sharing, this method likely:
+
+Aggregates all expenses associated with a given groupId.
+Determines who paid for what and who owes whom.
+Calculates the net balance for each member of the group, providing a clear picture of individual contributions and debts.
+This method is central to the core functionality of the expense-sharing platform, ensuring that users can view and understand the financial status of their shared groups.

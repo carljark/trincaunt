@@ -1,5 +1,6 @@
 import Expense, { IExpense } from '../models/Expense';
-import Group from '../models/Group';
+import Group, { IBalance, IGroup } from '../models/Group';
+import User from '../models/User';
 import { AppError } from '../utils/AppError';
 
 export class ExpenseService {
@@ -44,8 +45,8 @@ export class ExpenseService {
       .populate('participantes', 'nombre');
   }
 
-  async getGroupBalance(groupId: string): Promise<any> {
-    const group = await Group.findById(groupId).populate('miembros', 'nombre email');
+  async getGroupBalance(groupId: string): Promise<{ balances: IBalance[]}> {
+    const group = await Group.findById(groupId);
     if (!group) {
       throw new AppError('Grupo no encontrado', 404);
     }
@@ -55,11 +56,11 @@ export class ExpenseService {
     const allUserIds = new Set<string>();
 
     // Initialize balances for all current members
-    for (const member of group.miembros) {
-      const memberId = member._id.toString();
-      balances[memberId] = 0;
-      allUserIds.add(memberId);
-    }
+    group.miembros.forEach(memberId => {
+      const id = memberId.toString();
+      balances[id] = 0;
+      allUserIds.add(id);
+    });
 
     // Collect all users involved in expenses, even if they left the group
     for (const expense of expenses) {
@@ -101,14 +102,73 @@ export class ExpenseService {
       }
     }
 
-    const memberDetails = group.miembros.map((member: any) => ({
-        id: member._id,
-        nombre: member.nombre,
-        email: member.email,
-        balance: (balances[member._id.toString()] || 0) / 100, // Convert back to dollars
+    const users = await User.find({ _id: { $in: Array.from(allUserIds) } }).select('nombre email');
+    const userMap = new Map(users.map(u => [u._id.toString(), u]));
+
+    const finalBalances = Array.from(allUserIds).map(userId => {
+      const user = userMap.get(userId);
+      return {
+        id: userId,
+        nombre: user?.nombre ?? 'Usuario Desconocido',
+        email: user?.email ?? '',
+        balance: (balances[userId] || 0) / 100,
+      };
+    });
+
+    return { balances: finalBalances };
+  }
+
+  async settleGroupDebts(
+    groupId: string
+  ): Promise<{ transactions: { from: { id: string; nombre: string; }; to: { id: string; nombre: string; }; amount: number; }[] }> {
+    const { balances: memberDetails } = await this.getGroupBalance(groupId);
+
+    // Convertir saldos a centavos para trabajar con enteros y evitar problemas de punto flotante.
+    const membersInCents = memberDetails.map(member => ({
+      id: member.id,
+      nombre: member.nombre,
+      balance: Math.round(member.balance * 100),
     }));
 
-    return { balances: memberDetails };
+    const debtors = membersInCents.filter(m => m.balance < 0);
+    const creditors = membersInCents.filter(m => m.balance > 0);
+
+    // Ordenar deudores de mayor a menor deuda y acreedores de mayor a menor crédito.
+    debtors.sort((a, b) => a.balance - b.balance);
+    creditors.sort((a, b) => b.balance - a.balance);
+
+    const transactions: { from: { id: string; nombre: string; }; to: { id: string; nombre: string; }; amount: number; }[] = [];
+    let debtorIndex = 0;
+    let creditorIndex = 0;
+
+    // Este algoritmo liquida las deudas de forma codiciosa para minimizar el número de transacciones.
+    while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+      const debtor = debtors[debtorIndex];
+      const creditor = creditors[creditorIndex];
+
+      const amountToSettle = Math.min(-debtor.balance, creditor.balance);
+
+      transactions.push({
+        from: { id: debtor.id, nombre: debtor.nombre },
+        to: { id: creditor.id, nombre: creditor.nombre },
+        amount: amountToSettle / 100,
+      });
+
+      // Actualizar saldos con el monto liquidado.
+      debtor.balance += amountToSettle;
+      creditor.balance -= amountToSettle;
+
+      // Si el saldo de un deudor se liquida, pasar al siguiente.
+      if (debtor.balance === 0) {
+        debtorIndex++;
+      }
+      // Si el saldo de un acreedor se liquida, pasar al siguiente.
+      if (creditor.balance === 0) {
+        creditorIndex++;
+      }
+    }
+
+    return { transactions };
   }
 
   async updateExpense(expenseId: string, data: Partial<IExpense>): Promise<IExpense | null> {

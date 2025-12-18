@@ -22,5 +22,6 @@ router.put('/expenses/:expenseId', protect, ExpenseController.updateExpense);
 router.delete('/expenses/:expenseId', protect, ExpenseController.deleteExpense);
 router.get('/groups/:groupId/expenses', protect, ExpenseController.getGroupExpenses);
 router.get('/groups/:groupId/balance', protect, ExpenseController.getGroupBalance);
+router.get('/groups/:groupId/settle', protect, ExpenseController.settleGroupDebts);
 
 export default router;
