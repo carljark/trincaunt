@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const apiHost = import.meta.env.VITE_API_HOST;
+
 const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState({ nombre: '', email: '', password: '' });
   const [error, setError] = useState('');
@@ -14,7 +16,7 @@ const RegisterPage: React.FC = () => {
     e.preventDefault();
     setError('');
     try {
-      const response = await fetch('http://localhost:3000/api/v1/users/register', {
+      const response = await fetch(`${apiHost}/api/v1/users/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
+const apiHost = import.meta.env.VITE_API_HOST;
+
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
@@ -16,7 +18,7 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setError('');
     try {
-      const response = await fetch('http://localhost:3000/api/v1/users/login', {
+      const response = await fetch(`${apiHost}/api/v1/users/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

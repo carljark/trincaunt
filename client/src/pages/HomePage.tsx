@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
+const apiHost = import.meta.env.VITE_API_HOST;
+
 const HomePage: React.FC = () => {
   const { user, token, logout } = useAuth();
   const [groups, setGroups] = useState<any[]>([]);
@@ -9,7 +11,7 @@ const HomePage: React.FC = () => {
   const fetchGroups = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/v1/groups`, {
+      const res = await fetch(`${apiHost}/api/v1/groups`, {
         headers: { 
           'Authorization': `Bearer ${token}`
         }
@@ -30,7 +32,7 @@ const HomePage: React.FC = () => {
     const nombre = prompt('Nombre del grupo:');
     if (!nombre || !token) return;
     try {
-      await fetch(`http://localhost:3000/api/v1/groups`, {
+      await fetch(`${apiHost}/api/v1/groups`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
