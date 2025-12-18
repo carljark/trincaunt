@@ -1,0 +1,9 @@
+@use './variables' as *;
+@use '../pages/GroupDetailPage.scss';
+
+body {
+  background-color: $light-color;
+  font-family: $font-family;
+  margin: 0;
+  padding: 0;
+}

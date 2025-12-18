@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+import './GroupDetailPage.scss';
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const GroupDetailPage: React.FC = () => {
@@ -54,6 +56,7 @@ const GroupDetailPage: React.FC = () => {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !groupId || !email) return;
+
     try {
       const res = await fetch(`http://localhost:3000${apiBaseUrl}/groups/${groupId}/members`, {
         method: 'POST',
@@ -154,83 +157,102 @@ const GroupDetailPage: React.FC = () => {
   };
 
   if (loading) return <p>Cargando...</p>;
-  if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
+  if (error) return <p className="error-message">Error: {error}</p>;
   if (!group) return <p>Grupo no encontrado.</p>;
 
   return (
-    <div>
+    <div className="group-detail-page">
       <h2>{group.nombre}</h2>
+      
       <h3>Balance del Grupo</h3>
-      <ul>{balance.map(m => <li key={m.id}>{m.nombre}: <strong style={{color: getBalanceColor(m.balance)}}>${m.balance.toFixed(2)}</strong></li>)}</ul>
+      <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>${m.balance.toFixed(2)}</strong></li>)}</ul>
+      
       <hr/>
-      <h4>Miembros:</h4>
-      <ul>{group.miembros.map((m:any) => <li key={m._id||m}>{typeof m==='object'?m.nombre:m}</li>)}</ul>
-      <hr />
-      <h4>Añadir nuevo miembro</h4>
-      <form onSubmit={handleAddMember}>
-        <input type="email" placeholder="Email del usuario" value={email} onChange={e=>setEmail(e.target.value)} required />
-        <button type="submit">Añadir Miembro</button>
-      </form>
-      <hr />
+      
+      <div className="form-section">
+        <h4>Añadir nuevo miembro</h4>
+        <form onSubmit={handleAddMember}>
+          <input type="email" placeholder="Email del usuario" value={email} onChange={e=>setEmail(e.target.value)} required />
+          <button type="submit">Añadir Miembro</button>
+        </form>
+      </div>
+
+      <hr/>
+
       <h3>Gastos del Grupo</h3>
-      <ul>
+      <ul className="expenses-list">
         {expenses.map((expense: any) => (
           <li key={expense._id}>
             {editingExpenseId === expense._id ? (
-              <form onSubmit={handleUpdateExpense}>
+              <form onSubmit={handleUpdateExpense} className="edit-form">
                 <input type="text" value={editingExpenseData.descripcion} onChange={e=>setEditingExpenseData({...editingExpenseData, descripcion: e.target.value})} required/>
                 <input type="number" value={editingExpenseData.monto} onChange={e=>setEditingExpenseData({...editingExpenseData, monto: e.target.value})} required/>
-                <button type="submit">Guardar</button>
-                <button type="button" onClick={handleCancelEdit}>Cancelar</button>
+                <div className="expense-actions">
+                  <button type="submit">Guardar</button>
+                  <button type="button" onClick={handleCancelEdit}>Cancelar</button>
+                </div>
               </form>
             ) : (
               <>
-                {expense.descripcion}: ${expense.monto} (Pagado por: {expense.pagado_por?.nombre || '...'})
-                <button onClick={() => handleEdit(expense)} style={{ marginLeft: '10px' }}>Editar</button>
-                <button onClick={() => handleDeleteExpense(expense._id)} style={{ marginLeft: '10px' }}>Borrar</button>
+                <div className="expense-info">
+                  {expense.descripcion}: ${expense.monto} <span>(Pagado por: {expense.pagado_por?.nombre || '...'})</span>
+                </div>
+                <div className="expense-actions">
+                  <button onClick={() => handleEdit(expense)} className="edit-btn">Editar</button>
+                  <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn">Borrar</button>
+                </div>
               </>
             )}
           </li>
         ))}
       </ul>
-      <h4>Añadir Nuevo Gasto</h4>
-      <form onSubmit={handleAddExpense}>
-        <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
-        <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
-        
-        <div>
-          <label htmlFor="paidBy">Pagado por:</label>
-          <select id="paidBy" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
-            {group?.miembros.map((m: any) => (
-              <option key={m._id} value={m._id}>{m.nombre}</option>
-            ))}
-          </select>
-        </div>
 
-        <div>
-          <label>
-            <input type="checkbox" checked={assumeExpense} onChange={e => setAssumeExpense(e.target.checked)} />
-            Asumir el gasto (invita)
-          </label>
-        </div>
+      <div className="form-section">
+        <h4>Añadir Nuevo Gasto</h4>
+        <form onSubmit={handleAddExpense}>
+          <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
+          <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
+          
+          <div>
+            <label htmlFor="paidBy">Pagado por:</label>
+            <select id="paidBy" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
+              {group?.miembros.map((m: any) => (
+                <option key={m._id} value={m._id}>{m.nombre}</option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label htmlFor="participants">Participantes:</label>
-          <select
-            id="participants"
-            multiple
-            value={selectedParticipants}
-            onChange={e => setSelectedParticipants(Array.from(e.target.selectedOptions, option => option.value))}
-            disabled={assumeExpense}
-          >
-            {group?.miembros.map((m: any) => (
-              <option key={m._id} value={m._id}>{m.nombre}</option>
-            ))}
-          </select>
-        </div>
+          <div className="checkbox-container">
+            <label>
+              <input type="checkbox" checked={assumeExpense} onChange={e => setAssumeExpense(e.target.checked)} />
+              Asumir el gasto (invita)
+            </label>
+          </div>
 
-        <button type="submit">Añadir Gasto</button>
-      </form>
+          <div>
+            <label htmlFor="participants">Participantes:</label>
+            <select
+              id="participants"
+              multiple
+              value={selectedParticipants}
+              onChange={e => setSelectedParticipants(Array.from(e.target.selectedOptions, option => option.value))}
+              disabled={assumeExpense}
+            >
+              {group?.miembros.map((m: any) => (
+                <option key={m._id} value={m._id}>{m.nombre}</option>
+              ))}
+            </select>
+          </div>
+
+          <button type="submit">Añadir Gasto</button>
+        </form>
+      </div>
+      
+      <hr/>
+
+      <h4>Miembros:</h4>
+      <ul className="members-list">{group.miembros.map((m:any) => <li key={m._id||m}>{typeof m==='object'?m.nombre:m}</li>)}</ul>
+
     </div>
   );
 };
