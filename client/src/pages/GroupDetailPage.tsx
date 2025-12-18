@@ -14,6 +14,8 @@ const GroupDetailPage: React.FC = () => {
   const [expenseData, setExpenseData] = useState({ description: '', amount: '' });
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [editingExpenseData, setEditingExpenseData] = useState({ descripcion: '', monto: '' });
+  const [paidBy, setPaidBy] = useState<string>('');
+  const [assumeExpense, setAssumeExpense] = useState<boolean>(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -69,10 +71,17 @@ const GroupDetailPage: React.FC = () => {
       const res = await fetch(`http://localhost:3000${apiBaseUrl}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ descripcion: expenseData.description, monto: parseFloat(expenseData.amount), grupo_id: groupId })
+        body: JSON.stringify({
+          descripcion: expenseData.description,
+          monto: parseFloat(expenseData.amount),
+          grupo_id: groupId,
+          pagado_por: paidBy,
+          assumeExpense: assumeExpense
+        })
       });
       if (res.ok) {
         setExpenseData({ description: '', amount: '' });
+        setAssumeExpense(false);
         fetchGroupData();
       } else { const data = await res.json(); throw new Error(data.message || 'Error al añadir gasto'); }
     } catch (err: any) { setError(err.message); }
@@ -118,8 +127,11 @@ const GroupDetailPage: React.FC = () => {
 
 
   useEffect(() => {
+    if (user?.id) {
+      setPaidBy(user.id);
+    }
     fetchGroupData();
-  }, [fetchGroupData]);
+  }, [fetchGroupData, user?.id]);
   
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
@@ -169,8 +181,25 @@ const GroupDetailPage: React.FC = () => {
       </ul>
       <h4>Añadir Nuevo Gasto</h4>
       <form onSubmit={handleAddExpense}>
-        <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e=>setExpenseData({...expenseData,description:e.target.value})} required />
-        <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e=>setExpenseData({...expenseData,amount:e.target.value})} required />
+        <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
+        <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
+        
+        <div>
+          <label htmlFor="paidBy">Pagado por:</label>
+          <select id="paidBy" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
+            {group?.miembros.map((m: any) => (
+              <option key={m._id} value={m._id}>{m.nombre}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label>
+            <input type="checkbox" checked={assumeExpense} onChange={e => setAssumeExpense(e.target.checked)} />
+            Asumir el gasto (invita)
+          </label>
+        </div>
+
         <button type="submit">Añadir Gasto</button>
       </form>
     </div>

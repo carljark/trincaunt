@@ -3,25 +3,33 @@ import Group from '../models/Group';
 import { AppError } from '../utils/AppError';
 
 export class ExpenseService {
-  async createExpense(data: Partial<IExpense>, userId: string): Promise<IExpense> {
+  async createExpense(data: Partial<IExpense> & { assumeExpense?: boolean }, userId: string): Promise<IExpense> {
     const group = await Group.findById(data.grupo_id);
     if (!group) throw new AppError('Grupo no encontrado', 404);
 
+    const payerId = data.pagado_por ? data.pagado_por.toString() : userId;
+
     // Regla: Usuario que paga debe ser miembro
-    const isPayerMember = group.miembros.some(m => m.toString() === userId);
+    const isPayerMember = group.miembros.some(m => m.toString() === payerId);
     if (!isPayerMember) throw new AppError('El usuario que paga no pertenece al grupo', 403);
 
-    // Regla: Monto > 0 (Validado por Mongoose, pero doble check aquí si se desea lógica extra)
+    // Regla: Monto > 0
     if (data.monto !== undefined && data.monto <= 0) throw new AppError('El monto debe ser mayor a 0', 400);
 
-    // Si no se especifican participantes, son todos los del grupo
-    const participantes = data.participantes && data.participantes.length > 0 
-      ? data.participantes 
-      : group.miembros;
+    let participantes;
+    if (data.assumeExpense) {
+      // El que paga asume el gasto completo
+      participantes = [payerId];
+    } else {
+      // Si no se especifican participantes, son todos los del grupo
+      participantes = data.participantes && data.participantes.length > 0
+        ? data.participantes
+        : group.miembros;
+    }
 
     const expense = await Expense.create({
       ...data,
-      pagado_por: userId,
+      pagado_por: payerId,
       participantes
     });
 
