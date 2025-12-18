@@ -5,6 +5,8 @@
 
 # Build artifacts
 /dist
+/api/dist
+/client/dist
 /build
 /out
 
