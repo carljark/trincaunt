@@ -332,7 +332,6 @@ const GroupDetailPage: React.FC = () => {
         />
       )}
 
-      {console.log('Rendering PaymentHistoryModal, showPaymentHistoryModal is', showPaymentHistoryModal)}
       {showPaymentHistoryModal && (
         <PaymentHistoryModal
           groupId={groupId!}
