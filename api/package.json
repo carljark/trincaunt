@@ -6,7 +6,7 @@
     "start": "ts-node src/server.ts",
     "dev": "nodemon src/server.ts",
     "build": "tsc",
-    "start:prod": "node dist/server.js",
+    "start:prod": "node dist/src/server.js",
     "test": "jest"
   },
   "dependencies": {
