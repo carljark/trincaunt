@@ -36,10 +36,17 @@ export const getGroupById = async (req: Request, res: Response, next: NextFuncti
   try {
     const { groupId } = req.params;
     const group = await groupService.getGroupById(groupId);
-    if (!group) {
-      return res.status(404).json({ status: 'fail', message: 'Grupo no encontrado' });
-    }
     res.status(200).json({ status: 'success', data: group });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteGroup = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    await groupService.deleteGroup(groupId);
+    res.status(204).json({ status: 'success', data: null });
   } catch (error) {
     next(error);
   }

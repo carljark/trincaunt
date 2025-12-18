@@ -1,6 +1,7 @@
 import Expense, { IExpense } from '../models/Expense';
-import Group, { IBalance, IGroup } from '../models/Group';
+import Group, { IBalance } from '../models/Group';
 import User from '../models/User';
+import DebtTransaction from '../models/DebtTransaction';
 import { AppError } from '../utils/AppError';
 
 export class ExpenseService {
@@ -102,6 +103,36 @@ export class ExpenseService {
       }
     }
 
+    // Incorporate DebtTransactions (payments) into the balance
+    const debtTransactions = await DebtTransaction.find({ group: groupId });
+    for (const dt of debtTransactions) {
+      const fromUser = dt.from.toString(); // The one who 'owes' in the debt transaction
+      const toUser = dt.to.toString();     // The one who is 'owed' in the debt transaction
+      const amountInCents = Math.round(dt.amount * 100);
+
+      // If A paid B, then the DebtTransaction is from B to A.
+      // So, B's balance should decrease (owes more, or is owed less effectively)
+      // and A's balance should increase (is owed more, or owes less effectively)
+      // This is because the DebtTransaction is representing the payment.
+      // So, from the perspective of overall group balance:
+      // The 'fromUser' (the one who received the payment in the actual payment scenario, but 'owes' in the DT)
+      // will see their effective balance *increase* (they are now considered to owe less / have been paid)
+      // The 'toUser' (the one who made the payment in the actual payment scenario, but is 'owed' in the DT)
+      // will see their effective balance *decrease* (they are now considered to have paid)
+      if (balances[fromUser] !== undefined) {
+          balances[fromUser] -= amountInCents;
+      } else {
+          balances[fromUser] = -amountInCents;
+      }
+      if (balances[toUser] !== undefined) {
+          balances[toUser] += amountInCents;
+      } else {
+          balances[toUser] = amountInCents;
+      }
+      allUserIds.add(fromUser);
+      allUserIds.add(toUser);
+    }
+
     const users = await User.find({ _id: { $in: Array.from(allUserIds) } }).select('nombre email');
     const userMap = new Map(users.map(u => [u._id.toString(), u]));
 
@@ -123,12 +154,12 @@ export class ExpenseService {
   ): Promise<{ transactions: { from: { id: string; nombre: string; }; to: { id: string; nombre: string; }; amount: number; }[] }> {
     const { balances: memberDetails } = await this.getGroupBalance(groupId);
 
-    // Convertir saldos a centavos para trabajar con enteros y evitar problemas de punto flotante.
+    // Filter out members who are not part of the group or have 0 balance after adjustments
     const membersInCents = memberDetails.map(member => ({
       id: member.id,
       nombre: member.nombre,
-      balance: Math.round(member.balance * 100),
-    }));
+      balance: Math.round(member.balance * 100), // Convert to cents, as getGroupBalance returns in dollars
+    })).filter(m => m.balance !== 0);
 
     const debtors = membersInCents.filter(m => m.balance < 0);
     const creditors = membersInCents.filter(m => m.balance > 0);

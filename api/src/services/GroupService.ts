@@ -1,5 +1,7 @@
 import Group, { IGroup } from '../models/Group';
 import User from '../models/User';
+import Expense from '../models/Expense'; // Import Expense model
+import DebtTransaction from '../models/DebtTransaction'; // Import DebtTransaction model
 import { AppError } from '../utils/AppError';
 import mongoose from 'mongoose';
 
@@ -35,5 +37,21 @@ export class GroupService {
 
   async getGroupById(groupId: string): Promise<IGroup | null> {
     return Group.findById(groupId).populate('miembros', 'nombre email');
+  }
+
+  async deleteGroup(groupId: string): Promise<void> {
+    const group = await Group.findById(groupId);
+    if (!group) {
+      throw new AppError('Grupo no encontrado', 404);
+    }
+
+    // Delete all expenses related to this group
+    await Expense.deleteMany({ grupo_id: groupId });
+
+    // Delete all debt transactions related to this group
+    await DebtTransaction.deleteMany({ group: groupId });
+
+    // Finally, delete the group itself
+    await Group.deleteOne({ _id: groupId });
   }
 }

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import RecordPaymentModal from '../components/RecordPaymentModal';
+import PaymentHistoryModal from '../components/PaymentHistoryModal'; // Import the new payment history modal
 
 import './GroupDetailPage.scss';
 
@@ -24,6 +26,9 @@ const GroupDetailPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [settlementTransactions, setSettlementTransactions] = useState<any[]>([]);
+  const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false); // State for modal visibility
+  const [totalExpenses, setTotalExpenses] = useState<number>(0); // New state for total expenses
+  const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
@@ -48,6 +53,8 @@ const GroupDetailPage: React.FC = () => {
       
       setGroup(groupData.data);
       setExpenses(expensesData.data);
+      const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0);
+      setTotalExpenses(calculatedTotalExpenses);
       setBalance(balanceData.data.balances);
       setSettlementTransactions(settlementData.data.transactions);
       if (groupData.data?.miembros) {
@@ -149,6 +156,30 @@ const GroupDetailPage: React.FC = () => {
     } catch (err: any) { setError(err.message); }
   };
 
+  const handleMarkDebtAsPaid = async (transactionId: string) => {
+    if (!token || !window.confirm('¿Estás seguro de que quieres marcar esta deuda como pagada?')) return;
+    try {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/debt-transactions/${transactionId}/pay`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        // Optionally refetch all data or just update the debtTransactions state
+        fetchGroupData(); // Refetch all data to update balances and debt lists
+      } else {
+        const data = await res.json();
+        throw new Error(data.message || 'Error al marcar la deuda como pagada');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleOpenRecordPaymentModal = () => setShowRecordPaymentModal(true);
+  const handleCloseRecordPaymentModal = () => setShowRecordPaymentModal(false);
+
+  const handleOpenPaymentHistoryModal = () => setShowPaymentHistoryModal(true);
+  const handleClosePaymentHistoryModal = () => setShowPaymentHistoryModal(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -174,6 +205,7 @@ const GroupDetailPage: React.FC = () => {
       
       <h3>Balance del Grupo</h3>
       <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>${m.balance.toFixed(2)}</strong></li>)}</ul>
+      <p><strong>Total Gastos del Grupo: ${totalExpenses.toFixed(2)}</strong></p>
       
       <hr/>
       
@@ -189,6 +221,14 @@ const GroupDetailPage: React.FC = () => {
       ) : (
         <p>No hay transacciones pendientes para saldar deudas.</p>
       )}
+
+      <hr/>
+
+      <h3>Registro de pagos a usuarios</h3>
+      <div className="payment-controls">
+        <button onClick={handleOpenRecordPaymentModal} className="record-payment-button">Registrar Nuevo Pago</button>
+        <button onClick={handleOpenPaymentHistoryModal} className="view-history-button">Ver Historial de Pagos</button>
+      </div>
 
       <hr/>
       
@@ -279,6 +319,24 @@ const GroupDetailPage: React.FC = () => {
       <h4>Miembros:</h4>
       <ul className="members-list">{group.miembros.map((m:any) => <li key={m._id||m}>{typeof m==='object'?m.nombre:m}</li>)}</ul>
 
+      {showRecordPaymentModal && (
+        <RecordPaymentModal
+          groupId={groupId!}
+          token={token!}
+          members={group?.miembros || []}
+          onClose={handleCloseRecordPaymentModal}
+          onPaymentRecorded={fetchGroupData}
+        />
+      )}
+
+      {showPaymentHistoryModal && (
+        <PaymentHistoryModal
+          groupId={groupId!}
+          token={token!}
+          members={group?.miembros || []}
+          onClose={handleClosePaymentHistoryModal}
+        />
+      )}
     </div>
   );
 };

@@ -48,6 +48,30 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleDeleteGroup = async (groupId: string, groupName: string) => {
+    if (!token) return;
+    if (window.confirm(`¿Estás seguro de que quieres eliminar el grupo "${groupName}"? Esta acción borrará todos los gastos y transacciones de deuda asociadas.`)) {
+      try {
+        const res = await fetch(`${apiHost}/api/v1/groups/${groupId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          alert(`Grupo "${groupName}" eliminado con éxito.`);
+          fetchGroups(); // Refresh the list of groups
+        } else {
+          const data = await res.json();
+          throw new Error(data.message || 'Failed to delete group');
+        }
+      } catch (error) {
+        console.error('Error deleting group:', error);
+        alert(`Error al eliminar el grupo: ${(error as Error).message}`);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchGroups();
   }, [token]);
@@ -72,6 +96,7 @@ const HomePage: React.FC = () => {
                 <Link to={`/group/${g._id}`}>
                   <strong>{g.nombre}</strong> - {g.miembros.length} miembros
                 </Link>
+                <button onClick={() => handleDeleteGroup(g._id, g.nombre)} className="delete-group-button">Eliminar</button>
               </li>
             ))
           ) : (
