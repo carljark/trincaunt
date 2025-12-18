@@ -4,6 +4,23 @@
 .group-detail-page {
   padding: 1rem;
   font-family: $font-family;
+  position: relative; // Needed for absolute positioning of back-button
+
+  .back-button {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background-color: $secondary-color; // Or any suitable color from your variables
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: $font-size-base;
+    &:hover {
+      background-color: color.scale($secondary-color, $lightness: -10%);
+    }
+  }
 
   h2, h3, h4 {
     color: $dark-color;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 import './GroupDetailPage.scss';
@@ -9,6 +9,7 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const GroupDetailPage: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
+  const navigate = useNavigate(); // Initialize useNavigate
   const { token, user } = useAuth();
   const [group, setGroup] = useState<any>(null);
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -168,6 +169,7 @@ const GroupDetailPage: React.FC = () => {
 
   return (
     <div className="group-detail-page">
+      <button onClick={() => navigate(-1)} className="back-button">Volver</button>
       <h2>{group.nombre}</h2>
       
       <h3>Balance del Grupo</h3>
