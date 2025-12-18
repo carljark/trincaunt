@@ -149,8 +149,8 @@
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100vw; // Ensure it covers the entire viewport width
+  height: 100vh; // Ensure it covers the entire viewport height
   background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;

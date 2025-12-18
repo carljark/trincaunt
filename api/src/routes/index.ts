@@ -30,5 +30,6 @@ router.get('/groups/:groupId/settle', protect, ExpenseController.settleGroupDebt
 router.post('/debt-transactions', protect, DebtTransactionController.createDebtTransaction);
 router.get('/groups/:groupId/debt-transactions', protect, DebtTransactionController.getGroupDebtTransactions);
 router.patch('/debt-transactions/:transactionId/pay', protect, DebtTransactionController.markDebtTransactionAsPaid);
+router.delete('/debt-transactions/:transactionId', protect, DebtTransactionController.deleteDebtTransaction); // New route for deleting a debt transaction
 
 export default router;

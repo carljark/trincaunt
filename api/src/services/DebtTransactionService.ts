@@ -35,4 +35,12 @@ export class DebtTransactionService {
     await debtTransaction.save();
     return debtTransaction;
   }
+
+  async deleteDebtTransaction(transactionId: string): Promise<void> {
+    const debtTransaction = await DebtTransaction.findById(transactionId);
+    if (!debtTransaction) {
+      throw new AppError('Transacción de deuda no encontrada', 404);
+    }
+    await debtTransaction.deleteOne();
+  }
 }

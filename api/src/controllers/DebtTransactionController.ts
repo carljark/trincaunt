@@ -33,3 +33,13 @@ export const markDebtTransactionAsPaid = async (req: Request, res: Response, nex
     next(error);
   }
 };
+
+export const deleteDebtTransaction = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { transactionId } = req.params;
+    await debtTransactionService.deleteDebtTransaction(transactionId);
+    res.status(204).json({ status: 'success', data: null });
+  } catch (error) {
+    next(error);
+  }
+};

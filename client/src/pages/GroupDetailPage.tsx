@@ -178,7 +178,10 @@ const GroupDetailPage: React.FC = () => {
   const handleOpenRecordPaymentModal = () => setShowRecordPaymentModal(true);
   const handleCloseRecordPaymentModal = () => setShowRecordPaymentModal(false);
 
-  const handleOpenPaymentHistoryModal = () => setShowPaymentHistoryModal(true);
+  const handleOpenPaymentHistoryModal = () => {
+    console.log('Opening Payment History Modal');
+    setShowPaymentHistoryModal(true);
+  };
   const handleClosePaymentHistoryModal = () => setShowPaymentHistoryModal(false);
 
   useEffect(() => {
@@ -329,12 +332,14 @@ const GroupDetailPage: React.FC = () => {
         />
       )}
 
+      {console.log('Rendering PaymentHistoryModal, showPaymentHistoryModal is', showPaymentHistoryModal)}
       {showPaymentHistoryModal && (
         <PaymentHistoryModal
           groupId={groupId!}
           token={token!}
           members={group?.miembros || []}
           onClose={handleClosePaymentHistoryModal}
+          onPaymentRecorded={fetchGroupData} // Pass this prop to refresh parent data
         />
       )}
     </div>
