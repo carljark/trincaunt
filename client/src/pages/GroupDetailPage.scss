@@ -61,6 +61,19 @@
     margin: 1.5rem 0;
   }
 
+  .expenses-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid $light-color;
+
+    p {
+      margin: 0; /* Remove default paragraph margin */
+    }
+  }
+
   .balances-tab-content {
     .payment-controls {
       display: flex;

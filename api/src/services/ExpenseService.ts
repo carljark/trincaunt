@@ -42,7 +42,7 @@ export class ExpenseService {
 
   async getExpensesByGroup(groupId: string): Promise<IExpense[]> {
     return Expense.find({ grupo_id: groupId })
-      .populate('pagado_por', 'nombre')
+      .populate('pagado_por', 'nombre _id')
       .populate('participantes', 'nombre');
   }
 

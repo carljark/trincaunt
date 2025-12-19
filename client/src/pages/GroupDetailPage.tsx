@@ -6,10 +6,41 @@ import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal'; // Import the new payment history modal
 import AddExpenseModal from '../components/AddExpenseModal'; // Import the new AddExpenseModal
 
+export const checkIfUserIsParticipant = (
+  expense: IExpensesItem,
+  userId: string,
+) => {
+  return expense.participantes.some((p) => p._id === userId);
+};
+
 export interface ISettleGroupDebtsTransactionItem {
     from: { id: string; nombre: string; };
     to: { id: string; nombre: string; };
     amount: number;
+}
+
+export interface IParticipant {
+  _id: string;
+  nombre: string;
+}
+
+export interface IExpensesItem {
+    "_id": string; // "69453777df074f9761305be9",
+    "grupo_id": string; // "69447550bb4f27e226d4fefe",
+    "descripcion": string; // "uno",
+    "monto": number; // 20,
+    "pagado_por": {
+        "_id": string; // "6943cb6f8084e9d54d53d790",
+        "nombre": string; // "jarklos"
+    },
+    "participantes":
+        {
+            "_id": string; // "6943cb6f8084e9d54d53d790",
+            "nombre": string; // "jarklos"
+        }[],
+    "asume_gasto": boolean; // false,
+    "fecha": string; // "2025-12-19T11:31:03.364Z",
+    "__v": number; // 0
 }
 
 import './GroupDetailPage.scss';
@@ -33,6 +64,7 @@ const GroupDetailPage: React.FC = () => {
   const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransactionItem[]>([]);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false); // State for modal visibility
   const [totalExpenses, setTotalExpenses] = useState<number>(0); // New state for total expenses
+  const [myTotalExpenses, setMyTotalExpenses] = useState<number>(0); // New state for user's total expenses
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses'); // New state for active tab
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false); // State for Add Expense modal visibility
@@ -54,7 +86,7 @@ const GroupDetailPage: React.FC = () => {
       if (!settlementRes.ok) throw new Error('Failed to fetch settlement transactions');
 
       const groupData = await groupRes.json();
-      const expensesData = await expenseRes.json();
+      const expensesData = await expenseRes.json() as { data: IExpensesItem[] };
       const balanceData = await balanceRes.json();
       const settlementData = await settlementRes.json();
       
@@ -62,6 +94,13 @@ const GroupDetailPage: React.FC = () => {
       setExpenses(expensesData.data);
       const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0);
       setTotalExpenses(calculatedTotalExpenses);
+
+      // Calculate my total expenses
+      const calculatedMyTotalExpenses = expensesData.data
+        .filter((expense) => checkIfUserIsParticipant(expense, user?._id))
+        .reduce((sum, expense) => sum + expense.monto / expense.participantes.length, 0);
+      setMyTotalExpenses(calculatedMyTotalExpenses);
+
       setBalance(balanceData.data.balances);
       setSettlementTransactions(settlementData.data.transactions);
       // No longer need to set selectedParticipants here as it's managed by AddExpenseModal
@@ -73,7 +112,7 @@ const GroupDetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [groupId, token]);
+  }, [groupId, token, user?.id]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,7 +235,10 @@ const GroupDetailPage: React.FC = () => {
 
       {activeTab === 'expenses' && (
         <div className="expenses-tab-content">
-          <p><strong>Total Gastos del Grupo: ${totalExpenses.toFixed(2)}</strong></p>
+          <div className="expenses-summary">
+            <p><strong>Total Gastos del Grupo: {totalExpenses.toFixed(2)}€</strong></p>
+            <p><strong>Mis gastos: {myTotalExpenses.toFixed(2)}€</strong></p>
+          </div>
           
           <hr/>
 
@@ -218,7 +260,7 @@ const GroupDetailPage: React.FC = () => {
                   <>
                     
                       <div className="expense-info">
-                        {expense.descripcion}: ${expense.monto} 
+                        {expense.descripcion}: {expense.monto}€
                         <span>
                           (Pagado por: {expense.pagado_por?.nombre || '...'} {expense.asume_gasto ? '(invita)' : ''})
                         </span>
@@ -240,7 +282,7 @@ const GroupDetailPage: React.FC = () => {
       {activeTab === 'balances' && (
         <div className="balances-tab-content">
           <h3>Balance del Grupo</h3>
-          <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>${m.balance.toFixed(2)}</strong></li>)}</ul>
+          <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>{m.balance.toFixed(2)}€</strong></li>)}</ul>
           
           <hr/>
 
@@ -249,7 +291,7 @@ const GroupDetailPage: React.FC = () => {
             <ul className="settlement-list">
               {settlementTransactions.map((tx, index) => (
                 <li key={index}>
-                  {tx.from.nombre} debe ${tx.amount.toFixed(2)} a {tx.to.nombre}
+                  {tx.from.nombre} debe {tx.amount.toFixed(2)}€ a {tx.to.nombre}
                 </li>
               ))}
             </ul>
