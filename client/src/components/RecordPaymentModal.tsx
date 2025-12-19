@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { AppError } from '../../../api/src/utils/AppError';
 
 interface RecordPaymentModalProps {
   groupId: string;

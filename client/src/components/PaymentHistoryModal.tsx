@@ -6,7 +6,7 @@ interface PaymentHistoryModalProps {
   token: string;
   members: Array<{ _id: string; nombre: string }>;
   onClose: () => void;
-  onPaymentRecorded: () => void; // New prop for refreshing parent data
+  onHistoryUpdated: () => void; // Prop for refreshing parent data
 }
 
 interface DebtTransaction {
@@ -21,7 +21,7 @@ interface DebtTransaction {
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ groupId, token, members, onClose, onPaymentRecorded }) => {
+const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ groupId, token, members, onClose, onHistoryUpdated }) => {
   const [payments, setPayments] = useState<DebtTransaction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +66,7 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ groupId, toke
       // Refresh the payment history in the modal
       fetchPaymentHistory();
       // Also notify the parent component to refresh its data (e.g., group balance)
-      onPaymentRecorded();
+      onHistoryUpdated();
     } catch (err: any) {
       console.error('Error deleting payment:', err);
       setError(err.response?.data?.message || 'Error al eliminar el registro de pago.');

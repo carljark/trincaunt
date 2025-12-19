@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal'; // Import the new payment history modal
+import AddExpenseModal from '../components/AddExpenseModal'; // Import the new AddExpenseModal
 
 export interface ISettleGroupDebtsTransactionItem {
     from: { id: string; nombre: string; };
@@ -11,6 +13,7 @@ export interface ISettleGroupDebtsTransactionItem {
 }
 
 import './GroupDetailPage.scss';
+import '../components/AddExpenseModal.scss'; // Import modal styles
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -23,18 +26,16 @@ const GroupDetailPage: React.FC = () => {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [balance, setBalance] = useState<any[]>([]);
   const [email, setEmail] = useState('');
-  const [expenseData, setExpenseData] = useState({ description: '', amount: '' });
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [editingExpenseData, setEditingExpenseData] = useState({ descripcion: '', monto: '' });
-  const [paidBy, setPaidBy] = useState<string>('');
-  const [assumeExpense, setAssumeExpense] = useState<boolean>(false);
-  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransactionItem[]>([]);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false); // State for modal visibility
   const [totalExpenses, setTotalExpenses] = useState<number>(0); // New state for total expenses
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
+  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses'); // New state for active tab
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false); // State for Add Expense modal visibility
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
@@ -63,9 +64,10 @@ const GroupDetailPage: React.FC = () => {
       setTotalExpenses(calculatedTotalExpenses);
       setBalance(balanceData.data.balances);
       setSettlementTransactions(settlementData.data.transactions);
-      if (groupData.data?.miembros) {
-        setSelectedParticipants(groupData.data.miembros.map((m: any) => m._id));
-      }
+      // No longer need to set selectedParticipants here as it's managed by AddExpenseModal
+      // if (groupData.data?.miembros) {
+      //   setSelectedParticipants(groupData.data.miembros.map((m: any) => m._id));
+      // }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -91,38 +93,8 @@ const GroupDetailPage: React.FC = () => {
     } catch (err: any) { setError(err.message); }
   };
 
-  const handleAddExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !groupId || !expenseData.description || !expenseData.amount) return;
+  // handleAddExpense function is moved to AddExpenseModal
 
-    const expensePayload: any = {
-      descripcion: expenseData.description,
-      monto: Number.parseFloat(expenseData.amount),
-      grupo_id: groupId,
-      pagado_por: paidBy,
-      assumeExpense: assumeExpense,
-    };
-
-    if (!assumeExpense) {
-      expensePayload.participantes = selectedParticipants;
-    }
-
-    try {
-      const res = await fetch(`${apiHost}${apiBaseUrl}/expenses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(expensePayload)
-      });
-      if (res.ok) {
-        setExpenseData({ description: '', amount: '' });
-        setAssumeExpense(false);
-        if (group?.miembros) {
-          setSelectedParticipants(group.miembros.map((m: any) => m._id));
-        }
-        fetchGroupData();
-      } else { const data = await res.json(); throw new Error(data.message || 'Error al añadir gasto'); }
-    } catch (err: any) { setError(err.message); }
-  };
 
   const handleDeleteExpense = async (expenseId: string) => {
     if (!token || !globalThis.confirm('¿Estás seguro de que quieres borrar este gasto?')) return;
@@ -171,10 +143,18 @@ const GroupDetailPage: React.FC = () => {
   };
   const handleClosePaymentHistoryModal = () => setShowPaymentHistoryModal(false);
 
+  // Handlers for AddExpenseModal
+  const handleOpenAddExpenseModal = () => setShowAddExpenseModal(true);
+  const handleCloseAddExpenseModal = () => {
+    setShowAddExpenseModal(false);
+    fetchGroupData(); // Refresh data after closing modal (expense might have been added)
+  };
+
   useEffect(() => {
-    if (user?.id) {
-      setPaidBy(user.id);
-    }
+    // We no longer need to set paidBy here if it's passed as initial prop to modal
+    // if (user?.id) {
+    //   setPaidBy(user.id);
+    // }
     fetchGroupData();
   }, [fetchGroupData, user?.id]);
   
@@ -192,125 +172,116 @@ const GroupDetailPage: React.FC = () => {
     <div className="group-detail-page">
       <button onClick={() => navigate(-1)} className="back-button">Volver</button>
       <h2>{group.nombre}</h2>
-      
-      <h3>Balance del Grupo</h3>
-      <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>${m.balance.toFixed(2)}</strong></li>)}</ul>
-      <p><strong>Total Gastos del Grupo: ${totalExpenses.toFixed(2)}</strong></p>
-      
-      <hr/>
 
-      <h3>Gastos del Grupo</h3>
-      <ul className="expenses-list">
-        {expenses.map((expense: any) => (
-          <li key={expense._id}>
-            {editingExpenseId === expense._id ? (
-              <form onSubmit={handleUpdateExpense} className="edit-form">
-                <input type="text" value={editingExpenseData.descripcion} onChange={e=>setEditingExpenseData({...editingExpenseData, descripcion: e.target.value})} required/>
-                <input type="number" value={editingExpenseData.monto} onChange={e=>setEditingExpenseData({...editingExpenseData, monto: e.target.value})} required/>
-                <div className="expense-actions">
-                  <button type="submit">Guardar</button>
-                  <button type="button" onClick={handleCancelEdit}>Cancelar</button>
-                </div>
-              </form>
-            ) : (
-              <>
-                <div className="expense-info">
-                  {expense.descripcion}: ${expense.monto} 
-                  <span>
-                    (Pagado por: {expense.pagado_por?.nombre || '...'} {expense.asume_gasto ? '(invita)' : ''})
-                  </span>
-                </div>
-                <div className="expense-actions">
-                  <button onClick={() => handleEdit(expense)} className="edit-btn">Editar</button>
-                  <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn">Borrar</button>
-                </div>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      <div className="form-section">
-        <h4>Añadir Nuevo Gasto</h4>
-        <form onSubmit={handleAddExpense}>
-          <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
-          <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
-          
-          <div>
-            <label htmlFor="paidBy">Pagado por:</label>
-            <select id="paidBy" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
-              {group?.miembros.map((m: any) => (
-                <option key={m._id} value={m._id}>{m.nombre}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="checkbox-container">
-            <label>
-              <input
-                type="checkbox"
-                checked={assumeExpense}
-                onChange={e => setAssumeExpense(e.target.checked)}
-              />Asumir el gasto (invita)
-            </label>
-          </div>
-
-          <div>
-            <label htmlFor="participants">Participantes:</label>
-            <select
-              id="participants"
-              multiple
-              value={selectedParticipants}
-              onChange={e => setSelectedParticipants(Array.from(e.target.selectedOptions, option => option.value))}
-              disabled={assumeExpense}
-            >
-              {group?.miembros.map((m: any) => (
-                <option key={m._id} value={m._id}>{m.nombre}</option>
-              ))}
-            </select>
-          </div>
-
-          <button type="submit">Añadir Gasto</button>
-        </form>
+      <div className="tab-navigation">
+        <button
+          className={activeTab === 'expenses' ? 'active' : ''}
+          onClick={() => setActiveTab('expenses')}
+        >
+          Gastos
+        </button>
+        <button
+          className={activeTab === 'balances' ? 'active' : ''}
+          onClick={() => setActiveTab('balances')}
+        >
+          Saldos
+        </button>
+        <button
+          className={activeTab === 'group' ? 'active' : ''}
+          onClick={() => setActiveTab('group')}
+        >
+          Grupo
+        </button>
       </div>
-      
-      <hr/>
-      
-      <h3>Transacciones para Saldar Deudas</h3>
-      {settlementTransactions.length > 0 ? (
-        <ul className="settlement-list">
-          {settlementTransactions.map((tx, index) => (
-            <li key={index}>
-              {tx.from.nombre} debe ${tx.amount.toFixed(2)} a {tx.to.nombre}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No hay transacciones pendientes para saldar deudas.</p>
+
+      {activeTab === 'expenses' && (
+        <div className="expenses-tab-content">
+          <p><strong>Total Gastos del Grupo: ${totalExpenses.toFixed(2)}</strong></p>
+          
+          <hr/>
+
+          <div className="expense-actions-header">
+            <h3>Gastos del Grupo</h3>
+            <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir Nuevo Gasto</button>
+          </div>
+          <ul className="expenses-list">
+            {expenses.map((expense: any) => (
+              <li key={expense._id}>
+                {editingExpenseId === expense._id ? (
+                  <form onSubmit={handleUpdateExpense} className="edit-form">
+                    <input type="text" value={editingExpenseData.descripcion} onChange={e=>setEditingExpenseData({...editingExpenseData, descripcion: e.target.value})} required/>
+                    <input type="number" value={editingExpenseData.monto} onChange={e=>setEditingExpenseData({...editingExpenseData, monto: e.target.value})} required/>
+                    <div className="expense-actions">
+                      <button type="submit">Guardar</button>
+                      <button type="button" onClick={handleCancelEdit}>Cancelar</button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="expense-info">
+                      {expense.descripcion}: ${expense.monto} 
+                      <span>
+                        (Pagado por: {expense.pagado_por?.nombre || '...'} {expense.asume_gasto ? '(invita)' : ''})
+                      </span>
+                    </div>
+                    <div className="expense-actions">
+                      <button onClick={() => handleEdit(expense)} className="edit-btn">Editar</button>
+                      <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn">Borrar</button>
+                    </div>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
-      <hr/>
+      {activeTab === 'balances' && (
+        <div className="balances-tab-content">
+          <h3>Balance del Grupo</h3>
+          <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>${m.balance.toFixed(2)}</strong></li>)}</ul>
+          
+          <hr/>
 
-      <h3>Registro de pagos a usuarios</h3>
-      <div className="payment-controls">
-        <button onClick={handleOpenRecordPaymentModal} className="record-payment-button">Registrar Nuevo Pago</button>
-        <button onClick={handleOpenPaymentHistoryModal} className="view-history-button">Ver Historial de Pagos</button>
-      </div>
+          <h3>Transacciones para Saldar Deudas</h3>
+          {settlementTransactions.length > 0 ? (
+            <ul className="settlement-list">
+              {settlementTransactions.map((tx, index) => (
+                <li key={index}>
+                  {tx.from.nombre} debe ${tx.amount.toFixed(2)} a {tx.to.nombre}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No hay transacciones pendientes para saldar deudas.</p>
+          )}
 
-      <hr/>
-      
-      <div className="form-section">
-        <h4>Añadir nuevo miembro</h4>
-        <form onSubmit={handleAddMember}>
-          <input type="email" placeholder="Email del usuario" value={email} onChange={e=>setEmail(e.target.value)} required />
-          <button type="submit">Añadir Miembro</button>
-        </form>
-      </div>
-      
-      <hr/>
+          <hr/>
 
-      <h4>Miembros:</h4>
-      <ul className="members-list">{group.miembros.map((m:any) => <li key={m._id||m}>{typeof m==='object'?m.nombre:m}</li>)}</ul>
+          <h3>Registro de pagos a usuarios</h3>
+          <div className="payment-controls">
+            <button onClick={handleOpenRecordPaymentModal} className="record-payment-button">Registrar Nuevo Pago</button>
+            <button onClick={handleOpenPaymentHistoryModal} className="view-history-button">Ver Historial de Pagos</button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'group' && (
+        <div className="group-tab-content">
+          <div className="form-section">
+            <h4>Añadir nuevo miembro</h4>
+            <form onSubmit={handleAddMember}>
+              <input type="email" placeholder="Email del usuario" value={email} onChange={e=>setEmail(e.target.value)} required />
+              <button type="submit">Añadir Miembro</button>
+            </form>
+          </div>
+          
+          <hr/>
+
+          <h4>Miembros:</h4>
+          <ul className="members-list">{group.miembros.map((m:any) => <li key={m._id||m}>{typeof m==='object'?m.nombre:m}</li>)}</ul>
+        </div>
+      )}
 
       {showRecordPaymentModal && (
         <RecordPaymentModal
@@ -328,7 +299,18 @@ const GroupDetailPage: React.FC = () => {
           token={token!}
           members={group?.miembros || []}
           onClose={handleClosePaymentHistoryModal}
-          onPaymentRecorded={fetchGroupData} // Pass this prop to refresh parent data
+          onHistoryUpdated={fetchGroupData} // Changed from onPaymentRecorded
+        />
+      )}
+
+      {showAddExpenseModal && (
+        <AddExpenseModal
+          groupId={groupId!}
+          token={token!}
+          members={group?.miembros || []}
+          onClose={handleCloseAddExpenseModal}
+          onExpenseAdded={fetchGroupData}
+          paidByInitial={user?.id || ''}
         />
       )}
     </div>
