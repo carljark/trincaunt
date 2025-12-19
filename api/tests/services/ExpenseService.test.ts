@@ -38,6 +38,7 @@ describe('ExpenseService', () => {
         ...expenseData,
         pagado_por: userId,
         participantes: groupMembers,
+        asume_gasto: false,
       });
       expect(result.participantes).toEqual(groupMembers);
     });
@@ -54,6 +55,7 @@ describe('ExpenseService', () => {
             ...expenseData,
             pagado_por: userId,
             participantes: specificParticipants,
+            asume_gasto: false,
         });
         expect(result.participantes).toEqual(specificParticipants);
     });

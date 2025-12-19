@@ -1,10 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { GroupService } from '../services/GroupService';
+import { AppError } from '../utils/AppError';
 
 const groupService = new GroupService();
 
 export const createGroup = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (!(req as any).user || !(req as any).user.id) {
+      throw new AppError('Usuario no autenticado', 401);
+    }
     const userId = (req as any).user.id;
     const group = await groupService.createGroup(req.body, userId);
     res.status(201).json({ status: 'success', data: group });
@@ -26,6 +30,9 @@ export const addMember = async (req: Request, res: Response, next: NextFunction)
 
 export const getMyGroups = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (!(req as any).user || !(req as any).user.id) {
+      throw new AppError('Usuario no autenticado', 401);
+    }
     const userId = (req as any).user.id;
     const groups = await groupService.getGroupsForUser(userId);
     res.status(200).json({ status: 'success', data: groups });

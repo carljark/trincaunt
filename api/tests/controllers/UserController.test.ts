@@ -1,3 +1,7 @@
+// Mock process.env *before* any imports that might use it
+const originalEnv = process.env;
+process.env = { ...originalEnv, JWT_SECRET: 'test_secret' };
+
 import { Request, Response, NextFunction } from 'express';
 import { register } from '../../src/controllers/UserController';
 import { UserService } from '../../src/services/UserService';
@@ -51,4 +55,8 @@ describe('UserController', () => {
       });
     });
   });
+});
+
+afterAll(() => {
+  process.env = originalEnv; // Restore original env after all tests are done
 });

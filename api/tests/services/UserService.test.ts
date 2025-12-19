@@ -1,3 +1,7 @@
+// Mock process.env *before* any imports that might use it
+const originalEnv = process.env;
+process.env = { ...originalEnv, JWT_SECRET: 'test_secret' };
+
 import { UserService } from '../../src/services/UserService';
 import User from '../../src/models/User';
 import bcrypt from 'bcrypt';
@@ -11,6 +15,15 @@ const bcryptMock = bcrypt as jest.Mocked<typeof bcrypt>;
 
 describe('UserService', () => {
   let userService: UserService;
+
+  beforeEach(() => {
+    userService = new UserService();
+    jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    process.env = originalEnv; // Restore original env after all tests are done
+  });
 
   beforeEach(() => {
     userService = new UserService();

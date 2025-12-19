@@ -4,6 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal'; // Import the new payment history modal
 
+export interface ISettleGroupDebtsTransactionItem {
+    from: { id: string; nombre: string; };
+    to: { id: string; nombre: string; };
+    amount: number;
+}
+
 import './GroupDetailPage.scss';
 
 const apiHost = import.meta.env.VITE_API_HOST;
@@ -25,7 +31,7 @@ const GroupDetailPage: React.FC = () => {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [settlementTransactions, setSettlementTransactions] = useState<any[]>([]);
+  const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransactionItem[]>([]);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false); // State for modal visibility
   const [totalExpenses, setTotalExpenses] = useState<number>(0); // New state for total expenses
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
@@ -91,7 +97,7 @@ const GroupDetailPage: React.FC = () => {
 
     const expensePayload: any = {
       descripcion: expenseData.description,
-      monto: parseFloat(expenseData.amount),
+      monto: Number.parseFloat(expenseData.amount),
       grupo_id: groupId,
       pagado_por: paidBy,
       assumeExpense: assumeExpense,
@@ -119,7 +125,7 @@ const GroupDetailPage: React.FC = () => {
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
-    if (!token || !window.confirm('¿Estás seguro de que quieres borrar este gasto?')) return;
+    if (!token || !globalThis.confirm('¿Estás seguro de que quieres borrar este gasto?')) return;
     try {
       const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/${expenseId}`, {
         method: 'DELETE',
@@ -147,32 +153,13 @@ const GroupDetailPage: React.FC = () => {
       const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/${editingExpenseId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ ...editingExpenseData, monto: parseFloat(editingExpenseData.monto) })
+        body: JSON.stringify({ ...editingExpenseData, monto: Number.parseFloat(editingExpenseData.monto) })
       });
       if (res.ok) {
         setEditingExpenseId(null);
         fetchGroupData();
       } else { const data = await res.json(); throw new Error(data.message || 'Error al actualizar el gasto'); }
     } catch (err: any) { setError(err.message); }
-  };
-
-  const handleMarkDebtAsPaid = async (transactionId: string) => {
-    if (!token || !window.confirm('¿Estás seguro de que quieres marcar esta deuda como pagada?')) return;
-    try {
-      const res = await fetch(`${apiHost}${apiBaseUrl}/debt-transactions/${transactionId}/pay`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        // Optionally refetch all data or just update the debtTransactions state
-        fetchGroupData(); // Refetch all data to update balances and debt lists
-      } else {
-        const data = await res.json();
-        throw new Error(data.message || 'Error al marcar la deuda como pagada');
-      }
-    } catch (err: any) {
-      setError(err.message);
-    }
   };
 
   const handleOpenRecordPaymentModal = () => setShowRecordPaymentModal(true);
@@ -210,39 +197,6 @@ const GroupDetailPage: React.FC = () => {
       <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>${m.balance.toFixed(2)}</strong></li>)}</ul>
       <p><strong>Total Gastos del Grupo: ${totalExpenses.toFixed(2)}</strong></p>
       
-      <hr/>
-      
-      <h3>Transacciones para Saldar Deudas</h3>
-      {settlementTransactions.length > 0 ? (
-        <ul className="settlement-list">
-          {settlementTransactions.map((tx, index) => (
-            <li key={index}>
-              {tx.from.nombre} debe ${tx.amount.toFixed(2)} a {tx.to.nombre}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No hay transacciones pendientes para saldar deudas.</p>
-      )}
-
-      <hr/>
-
-      <h3>Registro de pagos a usuarios</h3>
-      <div className="payment-controls">
-        <button onClick={handleOpenRecordPaymentModal} className="record-payment-button">Registrar Nuevo Pago</button>
-        <button onClick={handleOpenPaymentHistoryModal} className="view-history-button">Ver Historial de Pagos</button>
-      </div>
-
-      <hr/>
-      
-      <div className="form-section">
-        <h4>Añadir nuevo miembro</h4>
-        <form onSubmit={handleAddMember}>
-          <input type="email" placeholder="Email del usuario" value={email} onChange={e=>setEmail(e.target.value)} required />
-          <button type="submit">Añadir Miembro</button>
-        </form>
-      </div>
-
       <hr/>
 
       <h3>Gastos del Grupo</h3>
@@ -293,8 +247,11 @@ const GroupDetailPage: React.FC = () => {
 
           <div className="checkbox-container">
             <label>
-              <input type="checkbox" checked={assumeExpense} onChange={e => setAssumeExpense(e.target.checked)} />
-              Asumir el gasto (invita)
+              <input
+                type="checkbox"
+                checked={assumeExpense}
+                onChange={e => setAssumeExpense(e.target.checked)}
+              />Asumir el gasto (invita)
             </label>
           </div>
 
@@ -314,6 +271,39 @@ const GroupDetailPage: React.FC = () => {
           </div>
 
           <button type="submit">Añadir Gasto</button>
+        </form>
+      </div>
+      
+      <hr/>
+      
+      <h3>Transacciones para Saldar Deudas</h3>
+      {settlementTransactions.length > 0 ? (
+        <ul className="settlement-list">
+          {settlementTransactions.map((tx, index) => (
+            <li key={index}>
+              {tx.from.nombre} debe ${tx.amount.toFixed(2)} a {tx.to.nombre}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No hay transacciones pendientes para saldar deudas.</p>
+      )}
+
+      <hr/>
+
+      <h3>Registro de pagos a usuarios</h3>
+      <div className="payment-controls">
+        <button onClick={handleOpenRecordPaymentModal} className="record-payment-button">Registrar Nuevo Pago</button>
+        <button onClick={handleOpenPaymentHistoryModal} className="view-history-button">Ver Historial de Pagos</button>
+      </div>
+
+      <hr/>
+      
+      <div className="form-section">
+        <h4>Añadir nuevo miembro</h4>
+        <form onSubmit={handleAddMember}>
+          <input type="email" placeholder="Email del usuario" value={email} onChange={e=>setEmail(e.target.value)} required />
+          <button type="submit">Añadir Miembro</button>
         </form>
       </div>
       

@@ -3,8 +3,6 @@ import jwt from 'jsonwebtoken';
 import { AppError } from '../utils/AppError';
 import User from '../models/User';
 
-const JWT_SECRET = 'your-super-secret-key';
-
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -16,6 +14,10 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
   }
 
   try {
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      throw new AppError('JWT_SECRET no está definido en las variables de entorno', 500);
+    }
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
     
     // Attach user to the request object

@@ -3,7 +3,6 @@ import User from '../models/User';
 import Expense from '../models/Expense'; // Import Expense model
 import DebtTransaction from '../models/DebtTransaction'; // Import DebtTransaction model
 import { AppError } from '../utils/AppError';
-import mongoose from 'mongoose';
 
 export class GroupService {
   async createGroup(data: Partial<IGroup>, userId: string): Promise<IGroup> {
@@ -26,7 +25,7 @@ export class GroupService {
     const isMember = group.miembros.some(m => m.toString() === userToAdd.id);
     if (isMember) throw new AppError('El usuario ya es miembro del grupo', 400);
 
-    group.miembros.push(userToAdd._id as any);
+    group.miembros.push(userToAdd._id);
     await group.save();
     return group;
   }

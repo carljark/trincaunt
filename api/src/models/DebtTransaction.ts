@@ -1,6 +1,14 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { IUser } from './User'; // Assuming IUser exists for User model
 
+export interface ISettleGroupDebts {
+  transactions: {
+      from: { id: string; nombre: string; };
+      to: { id: string; nombre: string; };
+      amount: number;
+    }[]
+}
+
 interface IDebtTransactionBase {
   group: mongoose.Schema.Types.ObjectId;
   amount: number; // Stored in cents to avoid floating point issues, or directly in currency unit

@@ -1,7 +1,7 @@
 import Expense, { IExpense } from '../models/Expense';
 import Group, { IBalance } from '../models/Group';
 import User from '../models/User';
-import DebtTransaction from '../models/DebtTransaction';
+import DebtTransaction, { ISettleGroupDebts } from '../models/DebtTransaction';
 import { AppError } from '../utils/AppError';
 
 export class ExpenseService {
@@ -47,6 +47,15 @@ export class ExpenseService {
   }
 
   async getGroupBalance(groupId: string): Promise<{ balances: IBalance[]}> {
+    const { balances, allUserIds, expenses } = await this._getInitialBalancesAndUsers(groupId);
+    this._calculateExpenseBalances(expenses, balances);
+    await this._incorporateDebtTransactions(groupId, balances, allUserIds);
+
+    const finalBalances = await this._formatFinalBalances(allUserIds, balances);
+    return { balances: finalBalances };
+  }
+
+  private async _getInitialBalancesAndUsers(groupId: string): Promise<{ balances: { [userId: string]: number }, allUserIds: Set<string>, expenses: IExpense[], group: any }> {
     const group = await Group.findById(groupId);
     if (!group) {
       throw new AppError('Grupo no encontrado', 404);
@@ -74,7 +83,10 @@ export class ExpenseService {
       balances[id] ??= 0;
     });
 
-    // Calculate balances in cents to avoid floating point issues
+    return { balances, allUserIds, expenses, group };
+  }
+
+  private _calculateExpenseBalances(expenses: IExpense[], balances: { [userId: string]: number }): void {
     for (const expense of expenses) {
       if (expense.asume_gasto) {
         continue;
@@ -102,41 +114,35 @@ export class ExpenseService {
         balances[pid] -= cost;
       }
     }
+  }
 
-    // Incorporate DebtTransactions (payments) into the balance
+  private async _incorporateDebtTransactions(groupId: string, balances: { [userId: string]: number }, allUserIds: Set<string>): Promise<void> {
     const debtTransactions = await DebtTransaction.find({ group: groupId });
     for (const dt of debtTransactions) {
-      const fromUser = dt.from.toString(); // The one who 'owes' in the debt transaction
-      const toUser = dt.to.toString();     // The one who is 'owed' in the debt transaction
+      const fromUser = dt.from.toString();
+      const toUser = dt.to.toString();
       const amountInCents = Math.round(dt.amount * 100);
 
-      // If A paid B, then the DebtTransaction is from B to A.
-      // So, B's balance should decrease (owes more, or is owed less effectively)
-      // and A's balance should increase (is owed more, or owes less effectively)
-      // This is because the DebtTransaction is representing the payment.
-      // So, from the perspective of overall group balance:
-      // The 'fromUser' (the one who received the payment in the actual payment scenario, but 'owes' in the DT)
-      // will see their effective balance *increase* (they are now considered to owe less / have been paid)
-      // The 'toUser' (the one who made the payment in the actual payment scenario, but is 'owed' in the DT)
-      // will see their effective balance *decrease* (they are now considered to have paid)
-      if (balances[fromUser] !== undefined) {
-          balances[fromUser] -= amountInCents;
+      if (balances[fromUser] === undefined) {
+        balances[fromUser] = -amountInCents;
       } else {
-          balances[fromUser] = -amountInCents;
+        balances[fromUser] -= amountInCents;
       }
-      if (balances[toUser] !== undefined) {
-          balances[toUser] += amountInCents;
+      if (balances[toUser] === undefined) {
+        balances[toUser] = amountInCents;
       } else {
-          balances[toUser] = amountInCents;
+        balances[toUser] += amountInCents;
       }
       allUserIds.add(fromUser);
       allUserIds.add(toUser);
     }
+  }
 
+  private async _formatFinalBalances(allUserIds: Set<string>, balances: { [userId: string]: number }): Promise<IBalance[]> {
     const users = await User.find({ _id: { $in: Array.from(allUserIds) } }).select('nombre email');
     const userMap = new Map(users.map(u => [u._id.toString(), u]));
 
-    const finalBalances = Array.from(allUserIds).map(userId => {
+    return Array.from(allUserIds).map(userId => {
       const user = userMap.get(userId);
       return {
         id: userId,
@@ -145,13 +151,11 @@ export class ExpenseService {
         balance: (balances[userId] || 0) / 100,
       };
     });
-
-    return { balances: finalBalances };
   }
 
   async settleGroupDebts(
     groupId: string
-  ): Promise<{ transactions: { from: { id: string; nombre: string; }; to: { id: string; nombre: string; }; amount: number; }[] }> {
+  ): Promise<ISettleGroupDebts> {
     const { balances: memberDetails } = await this.getGroupBalance(groupId);
 
     // Filter out members who are not part of the group or have 0 balance after adjustments
