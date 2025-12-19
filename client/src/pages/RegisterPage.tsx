@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import './LoginPage.scss'; // Import the new SCSS file
+import { Link } from 'react-router-dom';
+
 const apiHost = import.meta.env.VITE_API_HOST;
 
 const RegisterPage: React.FC = () => {
@@ -33,9 +36,9 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="login-page">
       <h2>Registro</h2>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="login-form">
         <input
           type="text"
           name="nombre"
@@ -62,9 +65,9 @@ const RegisterPage: React.FC = () => {
         />
         <button type="submit">Registrarse</button>
       </form>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="error-message">{error}</p>}
       <p>
-        ¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>
+        ¿Ya tienes cuenta? <Link to="/login" className="register-link">Inicia sesión</Link>
       </p>
     </div>
   );

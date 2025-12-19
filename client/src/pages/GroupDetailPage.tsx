@@ -6,12 +6,33 @@ import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal'; // Import the new payment history modal
 import AddExpenseModal from '../components/AddExpenseModal'; // Import the new AddExpenseModal
 
+export interface ITransactionItem {
+  "from": {
+      "id": string; // "6943d7fa7230c66e22f92697",
+      "nombre": string; // "eve"
+  },
+  "to": {
+      "id": string; // "6943cb6f8084e9d54d53d790",
+      "nombre": string; // "jarklos"
+  },
+  "amount": number; // 20
+}
+
 export const checkIfUserIsParticipant = (
   expense: IExpensesItem,
   userId: string,
 ) => {
   return expense.participantes.some((p) => p._id === userId);
 };
+
+export const sumTransactionsToMe = (
+  settlementData: ITransactionItem[],
+  user: any,
+) => {
+  return settlementData
+    .filter((tx) => tx.from.id === user?._id)
+    .reduce((sum, tx) => sum + tx.amount, 0);
+}
 
 export interface ISettleGroupDebtsTransactionItem {
     from: { id: string; nombre: string; };
@@ -64,7 +85,8 @@ const GroupDetailPage: React.FC = () => {
   const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransactionItem[]>([]);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false); // State for modal visibility
   const [totalExpenses, setTotalExpenses] = useState<number>(0); // New state for total expenses
-  const [myTotalExpenses, setMyTotalExpenses] = useState<number>(0); // New state for user's total expenses
+  const [myTotalExpenses, setMyTotalExpenses] = useState<number>(0); // New state for user's total expenses participation
+  const [myTotalExpensesPay, setMyTotalExpensesPay] = useState<number>(0); // New state for user's total expenses
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses'); // New state for active tab
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false); // State for Add Expense modal visibility
@@ -95,11 +117,18 @@ const GroupDetailPage: React.FC = () => {
       const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0);
       setTotalExpenses(calculatedTotalExpenses);
 
-      // Calculate my total expenses
-      const calculatedMyTotalExpenses = expensesData.data
+      // Calculate my total expenses participation
+      const calculatedMyTotalExpensesParticipation = expensesData.data
         .filter((expense) => checkIfUserIsParticipant(expense, user?._id))
         .reduce((sum, expense) => sum + expense.monto / expense.participantes.length, 0);
-      setMyTotalExpenses(calculatedMyTotalExpenses);
+      setMyTotalExpenses(calculatedMyTotalExpensesParticipation);
+
+      // Calculate my total expenses
+      const calculatedMyTotalExpenses = expensesData.data
+        .filter((expense) => expense.pagado_por._id === user?._id)
+        .reduce((sum, expense) => sum + expense.monto, 0);
+      const myTotalMinusSettlementTransactions = calculatedMyTotalExpenses - sumTransactionsToMe(settlementData.data.transactions, user);
+      setMyTotalExpensesPay(myTotalMinusSettlementTransactions);
 
       setBalance(balanceData.data.balances);
       setSettlementTransactions(settlementData.data.transactions);
@@ -236,8 +265,13 @@ const GroupDetailPage: React.FC = () => {
       {activeTab === 'expenses' && (
         <div className="expenses-tab-content">
           <div className="expenses-summary">
-            <p><strong>Total Gastos del Grupo: {totalExpenses.toFixed(2)}€</strong></p>
-            <p><strong>Mis gastos: {myTotalExpenses.toFixed(2)}€</strong></p>
+            <div>
+              <p><strong>Total grupo: {totalExpenses.toFixed(2)}€</strong></p>
+            </div>
+            <div>
+              <p><strong>Mis gastos: {myTotalExpenses.toFixed(2)}€</strong></p>
+              <p><strong>Mis pagos: {myTotalExpensesPay.toFixed(2)}€</strong></p>
+            </div>
           </div>
           
           <hr/>

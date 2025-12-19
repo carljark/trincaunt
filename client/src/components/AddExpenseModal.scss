@@ -1,4 +1,5 @@
-@import '../styles/variables';
+@use '../styles/variables' as *;
+@use 'sass:color';
 
 .modal-overlay {
   position: fixed;
@@ -91,7 +92,7 @@
           background-color: $primary-color;
           color: white;
           &:hover:not(:disabled) {
-            background-color: darken($primary-color, 10%);
+            background-color: color.scale($primary-color, $lightness: -10%);
           }
         }
 
@@ -99,7 +100,7 @@
           background-color: $secondary-color;
           color: $dark-color;
           &:hover:not(:disabled) {
-            background-color: darken($secondary-color, 10%);
+            background-color: color.scale($secondary-color, $lightness: -10%);
           }
         }
 
