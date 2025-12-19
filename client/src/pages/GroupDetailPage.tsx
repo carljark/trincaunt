@@ -301,7 +301,7 @@ const GroupDetailPage: React.FC = () => {
                       <div className="expense-info">
                         {expense.descripcion}: {expense.monto}€
                         <span>
-                          (Pagado por: {expense.pagado_por?.nombre || '...'} {expense.asume_gasto ? '(invita)' : ''})
+                          {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
                         </span>
                       </div>
                       <div className="expense-actions">
