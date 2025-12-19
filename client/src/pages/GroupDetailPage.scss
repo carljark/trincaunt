@@ -1,6 +1,14 @@
 @use 'sass:color';
 @use '../styles/variables' as *;
 
+.positive-balance {
+  color: green;
+}
+
+.negative-balance {
+  color: red;
+}
+
 .group-detail-page {
   padding: 1rem;
   font-family: $font-family;

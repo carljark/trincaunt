@@ -87,6 +87,7 @@ const GroupDetailPage: React.FC = () => {
   const [totalExpenses, setTotalExpenses] = useState<number>(0); // New state for total expenses
   const [myTotalExpenses, setMyTotalExpenses] = useState<number>(0); // New state for user's total expenses participation
   const [myTotalExpensesPay, setMyTotalExpensesPay] = useState<number>(0); // New state for user's total expenses
+  const [myTotalDebt, setMyTotalDebt] = useState<number>(0); // New state for user's total expenses
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses'); // New state for active tab
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false); // State for Add Expense modal visibility
@@ -129,6 +130,8 @@ const GroupDetailPage: React.FC = () => {
         .reduce((sum, expense) => sum + expense.monto, 0);
       const myTotalMinusSettlementTransactions = calculatedMyTotalExpenses - sumTransactionsToMe(settlementData.data.transactions, user);
       setMyTotalExpensesPay(myTotalMinusSettlementTransactions);
+
+      setMyTotalDebt(myTotalMinusSettlementTransactions - calculatedMyTotalExpensesParticipation);
 
       setBalance(balanceData.data.balances);
       setSettlementTransactions(settlementData.data.transactions);
@@ -271,6 +274,8 @@ const GroupDetailPage: React.FC = () => {
             <div>
               <p><strong>Mis gastos: {myTotalExpenses.toFixed(2)}€</strong></p>
               <p><strong>Mis pagos: {myTotalExpensesPay.toFixed(2)}€</strong></p>
+              {myTotalDebt >= 0 && <p className="positive-balance"><strong>Mi balance: {myTotalDebt.toFixed(2)}€</strong></p>}
+              {myTotalDebt < 0 && <p className="negative-balance"><strong>Mi balance: {myTotalDebt.toFixed(2)}€</strong></p>}
             </div>
           </div>
           
