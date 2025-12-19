@@ -200,10 +200,7 @@ const GroupDetailPage: React.FC = () => {
           
           <hr/>
 
-          <div className="expense-actions-header">
-            <h3>Gastos del Grupo</h3>
-            <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir Nuevo Gasto</button>
-          </div>
+          <h3>Gastos del Grupo</h3>
           <ul className="expenses-list">
             {expenses.map((expense: any) => (
               <li key={expense._id}>
@@ -282,6 +279,10 @@ const GroupDetailPage: React.FC = () => {
           <ul className="members-list">{group.miembros.map((m:any) => <li key={m._id||m}>{typeof m==='object'?m.nombre:m}</li>)}</ul>
         </div>
       )}
+
+      <div className="fixed-add-expense-button-container">
+        <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
+      </div>
 
       {showRecordPaymentModal && (
         <RecordPaymentModal
