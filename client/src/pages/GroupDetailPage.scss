@@ -61,8 +61,29 @@
     margin: 1.5rem 0;
   }
 
+  .balances-tab-content {
+    .payment-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+  }
+
   .balance-list, .members-list, .expenses-list {
     margin-bottom: 1.5rem;
+    .expense-item {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      border-bottom: 1px solid $light-color;
+      .expense-info {
+        min-width: 300px;
+      }
+    }
     li {
       padding: 0.5rem;
       border-bottom: 1px solid $light-color;
@@ -131,6 +152,11 @@
       button {
         padding: 0.4rem 0.8rem;
         font-size: 0.9rem;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        border: none;
       }
       .edit-btn {
         background-color: $secondary-color;

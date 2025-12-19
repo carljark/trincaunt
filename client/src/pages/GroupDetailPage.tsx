@@ -204,6 +204,7 @@ const GroupDetailPage: React.FC = () => {
           <ul className="expenses-list">
             {expenses.map((expense: any) => (
               <li key={expense._id}>
+                <div className="expense-item">
                 {editingExpenseId === expense._id ? (
                   <form onSubmit={handleUpdateExpense} className="edit-form">
                     <input type="text" value={editingExpenseData.descripcion} onChange={e=>setEditingExpenseData({...editingExpenseData, descripcion: e.target.value})} required/>
@@ -215,18 +216,21 @@ const GroupDetailPage: React.FC = () => {
                   </form>
                 ) : (
                   <>
-                    <div className="expense-info">
-                      {expense.descripcion}: ${expense.monto} 
-                      <span>
-                        (Pagado por: {expense.pagado_por?.nombre || '...'} {expense.asume_gasto ? '(invita)' : ''})
-                      </span>
-                    </div>
-                    <div className="expense-actions">
-                      <button onClick={() => handleEdit(expense)} className="edit-btn">Editar</button>
-                      <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn">Borrar</button>
-                    </div>
+                    
+                      <div className="expense-info">
+                        {expense.descripcion}: ${expense.monto} 
+                        <span>
+                          (Pagado por: {expense.pagado_por?.nombre || '...'} {expense.asume_gasto ? '(invita)' : ''})
+                        </span>
+                      </div>
+                      <div className="expense-actions">
+                                          <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
+                                          <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
+                      </div>
+                    
                   </>
                 )}
+                </div>
               </li>
             ))}
           </ul>
@@ -257,8 +261,8 @@ const GroupDetailPage: React.FC = () => {
 
           <h3>Registro de pagos a usuarios</h3>
           <div className="payment-controls">
-            <button onClick={handleOpenRecordPaymentModal} className="record-payment-button">Registrar Nuevo Pago</button>
-            <button onClick={handleOpenPaymentHistoryModal} className="view-history-button">Ver Historial de Pagos</button>
+            <button onClick={handleOpenRecordPaymentModal} className="normal-button">Registrar Nuevo Pago</button>
+            <button onClick={handleOpenPaymentHistoryModal} className="normal-button">Ver Historial de Pagos</button>
           </div>
         </div>
       )}

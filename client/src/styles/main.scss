@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use './variables' as *;
 @use '../pages/GroupDetailPage.scss';
 
@@ -15,4 +16,15 @@ body {
   box-sizing: inherit;
 }
 
-
+.normal-button {
+  background-color: $secondary-color; // Or any suitable color from your variables
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: $font-size-base;
+  &:hover {
+    background-color: color.scale($secondary-color, $lightness: -10%);
+  }
+}
