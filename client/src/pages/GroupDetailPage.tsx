@@ -83,6 +83,10 @@ interface DebtTransaction {
 import './GroupDetailPage.scss';
 import '../components/AddExpenseModal.scss'; // Import modal styles
 
+const formatCurrency = (amount: number) => {
+  return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
@@ -300,14 +304,14 @@ const GroupDetailPage: React.FC = () => {
         <div className="expenses-tab-content">
           <div className="expenses-summary">
             <div>
-              <p><strong>Total: {totalExpenses.toFixed(2)}€</strong></p>
+              <p><strong>Total grupo: {formatCurrency(totalExpenses)}€</strong></p>
             </div>
             <div>
-              <p><strong>Mi parte: {myTotalExpenses.toFixed(2)}€</strong></p>
-              <p><strong>Pagos: {myTotalExpensesPay.toFixed(2)}€</strong></p>
-              <p><strong>Saldado: {myTotalSettledIncome.toFixed(2)}€</strong></p>
-              {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
-              {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
+              <p><strong>Mi parte: {formatCurrency(myTotalExpenses)}€</strong></p>
+              <p><strong>Pagos: {formatCurrency(myTotalExpensesPay)}€</strong></p>
+              <p><strong>Saldado: {formatCurrency(myTotalSettledIncome)}€</strong></p>
+              {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
+              {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
             </div>
           </div>
           
@@ -331,7 +335,7 @@ const GroupDetailPage: React.FC = () => {
                   <>
                     
                       <div className="expense-info">
-                        {expense.descripcion}: {expense.monto}€
+                        {expense.descripcion}: {formatCurrency(expense.monto)}€
                         <span>
                           {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
                         </span>
@@ -353,7 +357,7 @@ const GroupDetailPage: React.FC = () => {
       {activeTab === 'balances' && (
         <div className="balances-tab-content">
           <h3>Balance del Grupo</h3>
-          <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>{m.balance.toFixed(2)}€</strong></li>)}</ul>
+          <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>{formatCurrency(m.balance)}€</strong></li>)}</ul>
           
           <hr/>
 
@@ -362,7 +366,7 @@ const GroupDetailPage: React.FC = () => {
             <ul className="settlement-list">
               {settlementTransactions.map((tx, index) => (
                 <li key={index}>
-                  {tx.from.nombre} debe {tx.amount.toFixed(2)}€ a {tx.to.nombre}
+                  {tx.from.nombre} debe {formatCurrency(tx.amount)}€ a {tx.to.nombre}
                 </li>
               ))}
             </ul>
