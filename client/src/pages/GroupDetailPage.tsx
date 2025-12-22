@@ -300,12 +300,12 @@ const GroupDetailPage: React.FC = () => {
         <div className="expenses-tab-content">
           <div className="expenses-summary">
             <div>
-              <p><strong>Total grupo: {totalExpenses.toFixed(2)}€</strong></p>
+              <p><strong>Total: {totalExpenses.toFixed(2)}€</strong></p>
             </div>
             <div>
-              <p><strong>Mi participación: {myTotalExpenses.toFixed(2)}€</strong></p>
-              <p><strong>Mis pagos in situ: {myTotalExpensesPay.toFixed(2)}€</strong></p>
-              <p><strong>Ingresos saldados: {myTotalSettledIncome.toFixed(2)}€</strong></p>
+              <p><strong>Mi parte: {myTotalExpenses.toFixed(2)}€</strong></p>
+              <p><strong>Pagos: {myTotalExpensesPay.toFixed(2)}€</strong></p>
+              <p><strong>Ingresos: {myTotalSettledIncome.toFixed(2)}€</strong></p>
               {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
               {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
             </div>
