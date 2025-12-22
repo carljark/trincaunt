@@ -305,7 +305,7 @@ const GroupDetailPage: React.FC = () => {
             <div>
               <p><strong>Mi parte: {myTotalExpenses.toFixed(2)}€</strong></p>
               <p><strong>Pagos: {myTotalExpensesPay.toFixed(2)}€</strong></p>
-              <p><strong>Ingresos: {myTotalSettledIncome.toFixed(2)}€</strong></p>
+              <p><strong>Saldado: {myTotalSettledIncome.toFixed(2)}€</strong></p>
               {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
               {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
             </div>
