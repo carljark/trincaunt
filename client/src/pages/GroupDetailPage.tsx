@@ -6,6 +6,13 @@ import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal'; // Import the new payment history modal
 import AddExpenseModal from '../components/AddExpenseModal'; // Import the new AddExpenseModal
 
+export interface IBalanceItem {
+    "id": string; // "6943cb6f8084e9d54d53d790",
+    "nombre": string; // "jarklos",
+    "email": string; // "elcal.lico@gmail.com",
+    "balance": number; // 20
+}
+
 export interface ITransactionItem {
   "from": {
       "id": string; // "6943d7fa7230c66e22f92697",
@@ -131,7 +138,9 @@ const GroupDetailPage: React.FC = () => {
       const myTotalMinusSettlementTransactions = calculatedMyTotalExpenses - sumTransactionsToMe(settlementData.data.transactions, user);
       setMyTotalExpensesPay(myTotalMinusSettlementTransactions);
 
-      setMyTotalDebt(myTotalMinusSettlementTransactions - calculatedMyTotalExpensesParticipation);
+      const myBalance = balanceData.data.balances.find((b: IBalanceItem) => b.id === user?._id)?.balance;
+
+      setMyTotalDebt(myBalance);
 
       setBalance(balanceData.data.balances);
       setSettlementTransactions(settlementData.data.transactions);
@@ -305,8 +314,8 @@ const GroupDetailPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="expense-actions">
-                                          <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
-                                          <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
+                        <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
+                        <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
                       </div>
                     
                   </>
