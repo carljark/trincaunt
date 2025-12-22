@@ -41,8 +41,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ groupId, token,
         `${apiHost}${apiBaseUrl}/debt-transactions`,
         {
           group: groupId,
-          from: toUser, // Receiver now 'owes' the payer this amount as a record of payment
-          to: fromUser, // Payer is the one who is now 'owed'
+          from: fromUser, 
+          to: toUser,
           amount: parseFloat(amount),
         },
         {

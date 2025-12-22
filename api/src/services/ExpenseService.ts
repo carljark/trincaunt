@@ -116,28 +116,30 @@ export class ExpenseService {
     }
   }
 
-  private async _incorporateDebtTransactions(groupId: string, balances: { [userId: string]: number }, allUserIds: Set<string>): Promise<void> {
-    const debtTransactions = await DebtTransaction.find({ group: groupId });
-    for (const dt of debtTransactions) {
-      const fromUser = dt.from.toString();
-      const toUser = dt.to.toString();
-      const amountInCents = Math.round(dt.amount * 100);
-
-      if (balances[fromUser] === undefined) {
-        balances[fromUser] = -amountInCents;
-      } else {
-        balances[fromUser] -= amountInCents;
+    private async _incorporateDebtTransactions(groupId: string, balances: { [userId: string]: number }, allUserIds: Set<string>): Promise<void> {
+      const debtTransactions = await DebtTransaction.find({ group: groupId });
+      for (const dt of debtTransactions) {
+        const fromUser = dt.from.toString();
+        const toUser = dt.to.toString();
+        const amountInCents = Math.round(dt.amount * 100);
+  
+        // 'fromUser' is the payer, their balance should increase (they are settling a debt).
+        if (balances[fromUser] === undefined) {
+          balances[fromUser] = amountInCents;
+        } else {
+          balances[fromUser] += amountInCents;
+        }
+  
+        // 'toUser' is the receiver, their balance should decrease (their credit is being paid off).
+        if (balances[toUser] === undefined) {
+          balances[toUser] = -amountInCents;
+        } else {
+          balances[toUser] -= amountInCents;
+        }
+        allUserIds.add(fromUser);
+        allUserIds.add(toUser);
       }
-      if (balances[toUser] === undefined) {
-        balances[toUser] = amountInCents;
-      } else {
-        balances[toUser] += amountInCents;
-      }
-      allUserIds.add(fromUser);
-      allUserIds.add(toUser);
     }
-  }
-
   private async _formatFinalBalances(allUserIds: Set<string>, balances: { [userId: string]: number }): Promise<IBalance[]> {
     const users = await User.find({ _id: { $in: Array.from(allUserIds) } }).select('nombre email');
     const userMap = new Map(users.map(u => [u._id.toString(), u]));

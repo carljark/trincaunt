@@ -37,6 +37,7 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ groupId, toke
           },
         }
       );
+      console.log('Payment History Data:', response.data.data);
       setPayments(response.data.data);
     } catch (err: any) {
       console.error('Error fetching payment history:', err);
@@ -91,7 +92,7 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ groupId, toke
           <ul className="payment-history-list">
             {payments.map((payment) => (
               <li key={payment._id}>
-                {getUserName(payment.to._id)} pagó ${payment.amount.toFixed(2)} a {getUserName(payment.from._id)} el{' '}
+                {getUserName(payment.from._id)} pagó ${payment.amount.toFixed(2)} a {getUserName(payment.to._id)} el{' '}
                 {new Date(payment.createdAt).toLocaleDateString()}
                 <button onClick={() => handleDeletePayment(payment._id)} className="delete-payment-button">Eliminar</button>
               </li>

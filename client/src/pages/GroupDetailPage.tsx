@@ -71,6 +71,15 @@ export interface IExpensesItem {
     "__v": number; // 0
 }
 
+interface DebtTransaction {
+  _id: string;
+  from: { _id: string; nombre: string };
+  to: { _id: string; nombre: string };
+  amount: number;
+  paid: boolean;
+  createdAt: string;
+}
+
 import './GroupDetailPage.scss';
 import '../components/AddExpenseModal.scss'; // Import modal styles
 
@@ -90,11 +99,13 @@ const GroupDetailPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransactionItem[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<DebtTransaction[]>([]);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false); // State for modal visibility
   const [totalExpenses, setTotalExpenses] = useState<number>(0); // New state for total expenses
   const [myTotalExpenses, setMyTotalExpenses] = useState<number>(0); // New state for user's total expenses participation
   const [myTotalExpensesPay, setMyTotalExpensesPay] = useState<number>(0); // New state for user's total expenses
   const [myTotalDebt, setMyTotalDebt] = useState<number>(0); // New state for user's total expenses
+  const [myTotalSettledIncome, setMyTotalSettledIncome] = useState<number>(0); // New state for user's settled income
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses'); // New state for active tab
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false); // State for Add Expense modal visibility
@@ -103,22 +114,34 @@ const GroupDetailPage: React.FC = () => {
     if (!token || !groupId) return;
     setLoading(true);
     try {
-      const [groupRes, expenseRes, balanceRes, settlementRes] = await Promise.all([
+      const [groupRes, expenseRes, balanceRes, settlementRes, debtTransactionsRes] = await Promise.all([
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/balance`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/settle`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/debt-transactions`, { headers: { 'Authorization': `Bearer ${token}` } }),
       ]);
 
       if (!groupRes.ok) throw new Error('Failed to fetch group details');
       if (!expenseRes.ok) throw new Error('Failed to fetch expenses');
       if (!balanceRes.ok) throw new Error('Failed to fetch balance');
       if (!settlementRes.ok) throw new Error('Failed to fetch settlement transactions');
+      if (!debtTransactionsRes.ok) throw new Error('Failed to fetch debt transactions');
 
       const groupData = await groupRes.json();
       const expensesData = await expenseRes.json() as { data: IExpensesItem[] };
       const balanceData = await balanceRes.json();
       const settlementData = await settlementRes.json();
+      const debtTransactionsData = await debtTransactionsRes.json();
+
+      console.log('debtTransactionsData.data:', debtTransactionsData.data);
+      
+      setPaymentHistory(debtTransactionsData.data);
+
+      const settledIncome = debtTransactionsData.data
+        .filter((p: DebtTransaction) => p.from._id === user?._id)
+        .reduce((sum: number, p: DebtTransaction) => sum + p.amount, 0);
+      setMyTotalSettledIncome(settledIncome);
       
       setGroup(groupData.data);
       setExpenses(expensesData.data);
@@ -282,6 +305,7 @@ const GroupDetailPage: React.FC = () => {
             <div>
               <p><strong>Mi participación: {myTotalExpenses.toFixed(2)}€</strong></p>
               <p><strong>Mis pagos in situ: {myTotalExpensesPay.toFixed(2)}€</strong></p>
+              <p><strong>Ingresos saldados: {myTotalSettledIncome.toFixed(2)}€</strong></p>
               {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
               {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
             </div>
