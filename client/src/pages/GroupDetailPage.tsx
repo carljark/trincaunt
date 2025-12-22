@@ -135,8 +135,7 @@ const GroupDetailPage: React.FC = () => {
       const calculatedMyTotalExpenses = expensesData.data
         .filter((expense) => expense.pagado_por._id === user?._id)
         .reduce((sum, expense) => sum + expense.monto, 0);
-      const myTotalMinusSettlementTransactions = calculatedMyTotalExpenses - sumTransactionsToMe(settlementData.data.transactions, user);
-      setMyTotalExpensesPay(myTotalMinusSettlementTransactions);
+      setMyTotalExpensesPay(calculatedMyTotalExpenses);
 
       const myBalance = balanceData.data.balances.find((b: IBalanceItem) => b.id === user?._id)?.balance;
 
@@ -281,10 +280,10 @@ const GroupDetailPage: React.FC = () => {
               <p><strong>Total grupo: {totalExpenses.toFixed(2)}€</strong></p>
             </div>
             <div>
-              <p><strong>Mis gastos: {myTotalExpenses.toFixed(2)}€</strong></p>
-              <p><strong>Mis pagos: {myTotalExpensesPay.toFixed(2)}€</strong></p>
-              {myTotalDebt >= 0 && <p className="positive-balance"><strong>Mi balance: {myTotalDebt.toFixed(2)}€</strong></p>}
-              {myTotalDebt < 0 && <p className="negative-balance"><strong>Mi balance: {myTotalDebt.toFixed(2)}€</strong></p>}
+              <p><strong>Mi participación: {myTotalExpenses.toFixed(2)}€</strong></p>
+              <p><strong>Mis pagos in situ: {myTotalExpensesPay.toFixed(2)}€</strong></p>
+              {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
+              {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {myTotalDebt.toFixed(2)}€</strong></p>}
             </div>
           </div>
           
