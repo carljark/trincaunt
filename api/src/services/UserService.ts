@@ -34,9 +34,7 @@ export class UserService {
       throw new AppError('JWT_SECRET no está definido en las variables de entorno', 500);
     }
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET!, {
-      expiresIn: '1d',
-    });
+    const token = jwt.sign({ id: user._id }, JWT_SECRET!);
     
     user.password = undefined as any;
     return { token, user };
