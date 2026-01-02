@@ -341,15 +341,16 @@
   .sort-button {
     padding: 0.5rem 1rem;
     border: 1px solid \-color;
-    background-color: transparent;
-    color: \-color;
+    // background-color: transparent;
+    background-color: $primary-color;
+    color: white;
     border-radius: 4px;
     cursor: pointer;
     font-size: \-size-base;
-    &:hover {
-      background-color: \-color;
-      color: white;
-    }
+    // &:hover {
+    //   background-color: \-color;
+    //   color: white;
+    // }
   }
 }
 
