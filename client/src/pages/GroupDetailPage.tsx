@@ -335,10 +335,13 @@ const GroupDetailPage: React.FC = () => {
                   <>
                     
                       <div className="expense-info">
-                        {expense.descripcion}: {formatCurrency(expense.monto)}€
-                        <span>
-                          {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
-                        </span>
+                        <div>{expense.descripcion}: {formatCurrency(expense.monto)}€</div>
+                        <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
+                        <div>
+                          <span>
+                            {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
+                          </span>
+                        </div>
                       </div>
                       <div className="expense-actions">
                         <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>

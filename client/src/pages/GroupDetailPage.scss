@@ -96,13 +96,18 @@
     .expense-item {
       width: 100%;
       display: flex;
-      justify-content: center;
+      justify-content: space-between;
       align-items: center;
       margin-bottom: 0.5rem;
       padding: 0.5rem;
       border-bottom: 1px solid $light-color;
       .expense-info {
-        min-width: 240px;
+        display: flex;
+        flex-direction: column;
+        .expense-date {
+          font-size: 0.8em;
+          color: #666;
+        }
       }
     }
     li {
