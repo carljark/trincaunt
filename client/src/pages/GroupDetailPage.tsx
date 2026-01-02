@@ -112,7 +112,18 @@ const GroupDetailPage: React.FC = () => {
   const [myTotalSettledIncome, setMyTotalSettledIncome] = useState<number>(0); // New state for user's settled income
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses'); // New state for active tab
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false); // State for Add Expense modal visibility
+
+  const sortedExpenses = [...expenses].sort((a, b) => {
+    const dateA = new Date(a.fecha).getTime();
+    const dateB = new Date(b.fecha).getTime();
+    if (sortOrder === 'desc') {
+      return dateB - dateA;
+    } else {
+      return dateA - dateB;
+    }
+  });
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
@@ -317,9 +328,14 @@ const GroupDetailPage: React.FC = () => {
           
           <hr/>
 
-          <h3>Gastos del Grupo</h3>
+          <div className="expenses-header">
+            <h3>Gastos del Grupo</h3>
+            <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="sort-button">
+              Ordenar ({sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'})
+            </button>
+          </div>
           <ul className="expenses-list">
-            {expenses.map((expense: any) => (
+            {sortedExpenses.map((expense: any) => (
               <li key={expense._id}>
                 <div className="expense-item">
                 {editingExpenseId === expense._id ? (
