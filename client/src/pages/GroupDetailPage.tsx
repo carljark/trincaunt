@@ -68,6 +68,7 @@ export interface IExpensesItem {
         }[],
     "asume_gasto": boolean; // false,
     "fecha": string; // "2025-12-19T11:31:03.364Z",
+    "categoria": "comida" | "ocio" | "facturas";
     "__v": number; // 0
 }
 
@@ -99,7 +100,7 @@ const GroupDetailPage: React.FC = () => {
   const [balance, setBalance] = useState<any[]>([]);
   const [email, setEmail] = useState('');
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-  const [editingExpenseData, setEditingExpenseData] = useState({ descripcion: '', monto: '' });
+  const [editingExpenseData, setEditingExpenseData] = useState({ descripcion: '', monto: '', categoria: 'comida' as 'comida' | 'ocio' | 'facturas' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransactionItem[]>([]);
@@ -226,9 +227,9 @@ const GroupDetailPage: React.FC = () => {
     } catch (err: any) { setError(err.message); }
   };
 
-  const handleEdit = (expense: any) => {
+  const handleEdit = (expense: IExpensesItem) => {
     setEditingExpenseId(expense._id);
-    setEditingExpenseData({ descripcion: expense.descripcion, monto: expense.monto });
+    setEditingExpenseData({ descripcion: expense.descripcion, monto: String(expense.monto), categoria: expense.categoria });
   };
 
   const handleCancelEdit = () => {
@@ -335,13 +336,18 @@ const GroupDetailPage: React.FC = () => {
             </button>
           </div>
           <ul className="expenses-list">
-            {sortedExpenses.map((expense: any) => (
+            {sortedExpenses.map((expense: IExpensesItem) => (
               <li key={expense._id}>
                 <div className="expense-item">
                 {editingExpenseId === expense._id ? (
                   <form onSubmit={handleUpdateExpense} className="edit-form">
                     <input type="text" value={editingExpenseData.descripcion} onChange={e=>setEditingExpenseData({...editingExpenseData, descripcion: e.target.value})} required/>
                     <input type="number" value={editingExpenseData.monto} onChange={e=>setEditingExpenseData({...editingExpenseData, monto: e.target.value})} required/>
+                    <select value={editingExpenseData.categoria} onChange={e => setEditingExpenseData({ ...editingExpenseData, categoria: e.target.value as 'comida' | 'ocio' | 'facturas' })}>
+                      <option value="comida">Comida</option>
+                      <option value="ocio">Ocio</option>
+                      <option value="facturas">Facturas</option>
+                    </select>
                     <div className="expense-actions">
                       <button type="submit">Guardar</button>
                       <button type="button" onClick={handleCancelEdit}>Cancelar</button>
@@ -351,7 +357,7 @@ const GroupDetailPage: React.FC = () => {
                   <>
                     
                       <div className="expense-info">
-                        <div>{expense.descripcion}: {formatCurrency(expense.monto)}€</div>
+                        <div>{expense.descripcion} ({expense.categoria}): {formatCurrency(expense.monto)}€</div>
                         <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
                         <div>
                           <span>

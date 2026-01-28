@@ -222,6 +222,9 @@ export class ExpenseService {
       if (data.monto <= 0) throw new AppError('El monto debe ser mayor a 0', 400);
       expense.monto = data.monto;
     }
+    if (data.categoria) {
+      expense.categoria = data.categoria;
+    }
 
     await expense.save();
     return expense;

@@ -18,6 +18,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   const [paidBy, setPaidBy] = useState<string>(paidByInitial);
   const [assumeExpense, setAssumeExpense] = useState<boolean>(false);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
+  const [category, setCategory] = useState<'comida' | 'ocio' | 'facturas'>('comida');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -54,6 +55,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       grupo_id: groupId,
       pagado_por: paidBy,
       assumeExpense: assumeExpense,
+      categoria: category,
     };
 
     if (!assumeExpense) {
@@ -99,6 +101,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
           <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
           <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
           
+          <div>
+            <label htmlFor="category">Categoría:</label>
+            <select id="category" value={category} onChange={e => setCategory(e.target.value as 'comida' | 'ocio' | 'facturas')}>
+              <option value="comida">Comida</option>
+              <option value="ocio">Ocio</option>
+              <option value="facturas">Facturas</option>
+            </select>
+          </div>
+
           <div>
             <label htmlFor="paidBy">Pagado por:</label>
             <select id="paidBy" value={paidBy} onChange={e => setPaidBy(e.target.value)}>

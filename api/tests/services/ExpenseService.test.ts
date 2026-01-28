@@ -25,6 +25,7 @@ describe('ExpenseService', () => {
       descripcion: 'Test Expense',
       monto: 100,
       grupo_id: 'group-123',
+      categoria: 'comida',
     };
 
     it('should create an expense with all group members as participants if not specified', async () => {
@@ -101,6 +102,54 @@ describe('ExpenseService', () => {
 
       expect(Expense.find).toHaveBeenCalledWith({ grupo_id: groupId });
       expect(result).toEqual(expenses);
+    });
+  });
+
+  describe('updateExpense', () => {
+    const expenseId = 'expense-123';
+    const existingExpense = {
+        _id: expenseId,
+        descripcion: 'Old Description',
+        monto: 50,
+        categoria: 'comida',
+        save: jest.fn().mockResolvedValue(this),
+    };
+
+    it('should update an expense with new data', async () => {
+        const updateData = {
+            descripcion: 'New Description',
+            monto: 150,
+            categoria: 'ocio',
+        };
+
+        (ExpenseMock.findById as jest.Mock).mockResolvedValue({
+            ...existingExpense,
+            ...updateData,
+            save: jest.fn().mockResolvedValue(true),
+        });
+
+        const result = await expenseService.updateExpense(expenseId, updateData as any);
+        
+        expect(Expense.findById).toHaveBeenCalledWith(expenseId);
+        if (result) {
+            expect(result.descripcion).toBe(updateData.descripcion);
+            expect(result.monto).toBe(updateData.monto);
+            expect(result.categoria).toBe(updateData.categoria);
+        }
+    });
+
+    it('should throw an error if expense not found', async () => {
+        ExpenseMock.findById.mockResolvedValue(null);
+        await expect(expenseService.updateExpense(expenseId, {})).rejects.toThrow(
+            new AppError('Gasto no encontrado', 404)
+        );
+    });
+
+    it('should throw an error if amount is zero or less', async () => {
+        ExpenseMock.findById.mockResolvedValue(existingExpense as any);
+        await expect(expenseService.updateExpense(expenseId, { monto: 0 } as any)).rejects.toThrow(
+            new AppError('El monto debe ser mayor a 0', 400)
+        );
     });
   });
 });
