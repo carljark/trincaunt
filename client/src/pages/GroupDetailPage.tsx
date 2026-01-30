@@ -457,7 +457,7 @@ const GroupDetailPage: React.FC = () => {
           members={group?.miembros || []}
           onClose={handleCloseAddExpenseModal}
           onExpenseAdded={fetchGroupData}
-          paidByInitial={user?.id || ''}
+          paidByInitial={user?._id || ''}
         />
       )}
     </div>
