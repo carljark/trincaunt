@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface AddExpenseModalProps {
   groupId: string;
@@ -15,22 +15,19 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, members, onClose, onExpenseAdded, paidByInitial }) => {
   const [expenseData, setExpenseData] = useState({ description: '', amount: '' });
-  const [paidBy, setPaidBy] = useState<string>(paidByInitial);
   const [assumeExpense, setAssumeExpense] = useState<boolean>(false);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
-  const [category, setCategory] = useState<'comida' | 'ocio' | 'facturas'>('comida');
+  const [category, setCategory] = useState<'comida' | 'ocio' | 'facturas'>('ocio');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const paidByRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     // Initialize selected participants with all members by default
     if (members && members.length > 0) {
       setSelectedParticipants(members.map(m => m._id));
-      if (!paidByInitial && members[0]) { // If paidByInitial is not set, default to first member
-        setPaidBy(members[0]._id);
-      }
     }
-  }, [members, paidByInitial]);
+  }, [members]);
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +40,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       return;
     }
 
-    if (!paidBy) {
+    const paidByValue = paidByRef.current?.value;
+    if (!paidByValue) {
       setError('Por favor, selecciona quién pagó el gasto.');
       setLoading(false);
       return;
@@ -53,7 +51,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       descripcion: expenseData.description,
       monto: Number.parseFloat(expenseData.amount),
       grupo_id: groupId,
-      pagado_por: paidBy,
+      pagado_por: paidByValue,
       assumeExpense: assumeExpense,
       categoria: category,
     };
@@ -67,7 +65,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       expensePayload.participantes = selectedParticipants;
     } else {
       // If assumeExpense is true, only the payer is the participant
-      expensePayload.participantes = [paidBy];
+      expensePayload.participantes = [paidByValue];
     }
 
 
@@ -104,21 +102,20 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
           <div>
             <label htmlFor="category">Categoría:</label>
             <select id="category" value={category} onChange={e => setCategory(e.target.value as 'comida' | 'ocio' | 'facturas')}>
-              <option value="comida">Comida</option>
               <option value="ocio">Ocio</option>
+              <option value="comida">Comida</option>
               <option value="facturas">Facturas</option>
             </select>
           </div>
 
           <div>
             <label htmlFor="paidBy">Pagado por:</label>
-            <select id="paidBy" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
+            <select id="paidBy" defaultValue={paidByInitial} ref={paidByRef}>
               {members.map((m: any) => (
                 <option key={m._id} value={m._id}>{m.nombre}</option>
               ))}
             </select>
           </div>
-
           <div className="checkbox-container">
             <label>
               <input
@@ -157,5 +154,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
     </div>
   );
 };
+
 
 export default AddExpenseModal;

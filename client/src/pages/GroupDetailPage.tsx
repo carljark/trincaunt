@@ -114,7 +114,13 @@ const GroupDetailPage: React.FC = () => {
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses'); // New state for active tab
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-  const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false); // State for Add Expense modal visibility
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [descriptionFilter, setDescriptionFilter] = useState('');
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
+  const [payerFilter, setPayerFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   const sortedExpenses = [...expenses].sort((a, b) => {
     const dateA = new Date(a.fecha).getTime();
@@ -125,6 +131,35 @@ const GroupDetailPage: React.FC = () => {
       return dateA - dateB;
     }
   });
+
+  const filteredExpenses = sortedExpenses.filter(expense => {
+    if (categoryFilter !== 'all' && expense.categoria !== categoryFilter) {
+      return false;
+    }
+    if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
+      return false;
+    }
+    if (dateFromFilter && new Date(expense.fecha) < new Date(dateFromFilter)) {
+      return false;
+    }
+    if (dateToFilter && new Date(expense.fecha) > new Date(dateToFilter)) {
+      return false;
+    }
+    if (payerFilter !== 'all' && expense.pagado_por._id !== payerFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
+
+  const clearAllFilters = () => {
+    setCategoryFilter('all');
+    setDescriptionFilter('');
+    setDateFromFilter('');
+    setDateToFilter('');
+    setPayerFilter('all');
+  };
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
@@ -329,6 +364,56 @@ const GroupDetailPage: React.FC = () => {
           
           <hr/>
 
+          <div className="filters-accordion-container">
+            <button className="filters-accordion-toggle" onClick={() => setShowFilters(!showFilters)}>
+              <h3>Filtros {showFilters ? '▲' : '▼'}</h3>
+              <span>Gastos Filtrados: {formatCurrency(totalFilteredExpenses)}€</span>
+            </button>
+            {showFilters && (
+              <>
+                <div className="filters">
+                  <label>
+                    Categoría:
+                    <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+                        <option value="all">Todas</option>
+                        <option value="comida">Comida</option>
+                        <option value="ocio">Ocio</option>
+                        <option value="facturas">Facturas</option>
+                    </select>
+                  </label>
+                  <label>
+                    Descripción:
+                    <input type="text" placeholder="Filtrar..." value={descriptionFilter} onChange={e => setDescriptionFilter(e.target.value)} />
+                  </label>
+                  <label>
+                    Pagado por:
+                    <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)}>
+                        <option value="all">Todos</option>
+                        {group?.miembros.map((member: any) => (
+                            <option key={member._id} value={member._id}>{member.nombre}</option>
+                        ))}
+                    </select>
+                  </label>
+                  <label>
+                    Desde:
+                    <div className="date-filter-container">
+                      <input type="date" value={dateFromFilter} onChange={e => setDateFromFilter(e.target.value)} />
+                      <button onClick={() => setDateFromFilter('')} className="clear-date-btn">X</button>
+                    </div>
+                  </label>
+                  <label>
+                    Hasta:
+                    <div className="date-filter-container">
+                      <input type="date" value={dateToFilter} onChange={e => setDateToFilter(e.target.value)} />
+                      <button onClick={() => setDateToFilter('')} className="clear-date-btn">X</button>
+                    </div>
+                  </label>
+                  <button onClick={clearAllFilters} className="clear-all-btn">Limpiar filtros</button>
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="expenses-header">
             <h3>Gastos del Grupo</h3>
             <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="sort-button">
@@ -336,7 +421,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
           </div>
           <ul className="expenses-list">
-            {sortedExpenses.map((expense: IExpensesItem) => (
+            {filteredExpenses.map((expense: IExpensesItem) => (
               <li key={expense._id}>
                 <div className="expense-item">
                 {editingExpenseId === expense._id ? (
