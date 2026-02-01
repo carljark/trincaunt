@@ -22,6 +22,7 @@ router.delete('/groups/:groupId', protect, GroupController.deleteGroup); // New 
 router.post('/expenses', protect, ExpenseController.createExpense);
 router.put('/expenses/:expenseId', protect, ExpenseController.updateExpense);
 router.delete('/expenses/:expenseId', protect, ExpenseController.deleteExpense);
+router.get('/expenses/categories', protect, ExpenseController.getExpenseCategories);
 router.get('/groups/:groupId/expenses', protect, ExpenseController.getGroupExpenses);
 router.get('/groups/:groupId/balance', protect, ExpenseController.getGroupBalance);
 router.get('/groups/:groupId/settle', protect, ExpenseController.settleGroupDebts);

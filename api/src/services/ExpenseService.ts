@@ -218,7 +218,7 @@ export class ExpenseService {
     if (data.descripcion) {
       expense.descripcion = data.descripcion;
     }
-    if (data.monto) {
+    if (data.monto !== undefined) {
       if (data.monto <= 0) throw new AppError('El monto debe ser mayor a 0', 400);
       expense.monto = data.monto;
     }
@@ -230,12 +230,44 @@ export class ExpenseService {
     return expense;
   }
 
-  async deleteExpense(expenseId: string): Promise<void> {
-    const expense = await Expense.findById(expenseId);
-    if (!expense) {
-      throw new AppError('Gasto no encontrado', 404);
+  
+
+    async deleteExpense(expenseId: string): Promise<void> {
+
+      const expense = await Expense.findById(expenseId);
+
+      if (!expense) {
+
+        throw new AppError('Gasto no encontrado', 404);
+
+      }
+
+  
+
+      await expense.deleteOne();
+
     }
 
-    await expense.deleteOne();
+  
+
+    async getExpenseCategories(): Promise<{ category: string, count: number }[]> {
+
+      const categories = await Expense.aggregate([
+
+        { $match: { categoria: { $nin: [null, ""] } } },
+
+        { $group: { _id: "$categoria", count: { $sum: 1 } } },
+
+        { $sort: { count: -1, _id: 1 } },
+
+        { $project: { _id: 0, category: "$_id", count: 1 } }
+
+      ]);
+
+      return categories;
+
+    }
+
   }
-}
+
+  

@@ -112,3 +112,32 @@
     }
   }
 }
+
+.category-container {
+  position: relative;
+  
+  .suggestions-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-sm;
+    list-style-type: none;
+    padding: 0;
+    margin: 5px 0 0;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 1001; // Should be higher than the modal overlay
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+    li {
+      padding: 10px;
+      cursor: pointer;
+      &:hover {
+        background-color: #f0f0f0;
+      }
+    }
+  }
+}

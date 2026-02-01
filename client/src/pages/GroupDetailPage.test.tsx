@@ -71,7 +71,7 @@ describe('GroupDetailPage - AddExpenseModal paidByInitial prop', () => {
   });
 
   it('should pass user._id as paidByInitial when user and user._id are defined', async () => {
-    const mockUser = { _id: 'test-user-id', nombre: 'Test User' };
+    const mockUser = { _id: 'test-user-id', nombre: 'Test User', email: 'test@test.com', fecha_registro: '2022-01-01T00:00:00.000Z' };
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       token: 'test-token',
       user: mockUser,
@@ -97,10 +97,10 @@ describe('GroupDetailPage - AddExpenseModal paidByInitial prop', () => {
     expect(capturedPaidByInitial).toBe('test-user-id');
   });
 
-  it('should pass empty string as paidByInitial when user is undefined', async () => {
+  it('should pass empty string as paidByInitial when user is null', async () => {
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       token: 'test-token',
-      user: undefined,
+      user: null,
       login: vi.fn(),
       logout: vi.fn(),
       isAuthenticated: true,
@@ -124,9 +124,10 @@ describe('GroupDetailPage - AddExpenseModal paidByInitial prop', () => {
   });
 
   it('should pass empty string as paidByInitial when user is defined but user._id is undefined', async () => {
-    const mockUserWithoutId = { nombre: 'Test User' }; // user exists but _id is undefined
+    const mockUserWithoutId = { nombre: 'Test User', email: 'test@test.com', fecha_registro: '2022-01-01T00:00:00.000Z' };
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       token: 'test-token',
+      // @ts-expect-error
       user: mockUserWithoutId,
       login: vi.fn(),
       logout: vi.fn(),

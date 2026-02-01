@@ -1,84 +1,29 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
-import PaymentHistoryModal from '../components/PaymentHistoryModal'; // Import the new payment history modal
-import AddExpenseModal from '../components/AddExpenseModal'; // Import the new AddExpenseModal
-
-export interface IBalanceItem {
-    "id": string; // "6943cb6f8084e9d54d53d790",
-    "nombre": string; // "jarklos",
-    "email": string; // "elcal.lico@gmail.com",
-    "balance": number; // 20
-}
-
-export interface ITransactionItem {
-  "from": {
-      "id": string; // "6943d7fa7230c66e22f92697",
-      "nombre": string; // "eve"
-  },
-  "to": {
-      "id": string; // "6943cb6f8084e9d54d53d790",
-      "nombre": string; // "jarklos"
-  },
-  "amount": number; // 20
-}
+import PaymentHistoryModal from '../components/PaymentHistoryModal';
+import AddExpenseModal from '../components/AddExpenseModal';
+import { IExpensePopulated } from '../types/expense';
+import { IGroup } from '../types/group';
+import { IBalance } from '../types/balance';
+import { ITransaction, ISettleGroupDebtsTransaction, IDebtTransaction } from '../types/transaction';
+import { IUser } from '../types/user';
 
 export const checkIfUserIsParticipant = (
-  expense: IExpensesItem,
+  expense: IExpensePopulated,
   userId: string,
 ) => {
   return expense.participantes.some((p) => p._id === userId);
 };
 
 export const sumTransactionsToMe = (
-  settlementData: ITransactionItem[],
-  user: any,
+  settlementData: ITransaction[],
+  user: IUser | null,
 ) => {
   return settlementData
     .filter((tx) => tx.from.id === user?._id)
     .reduce((sum, tx) => sum + tx.amount, 0);
-}
-
-export interface ISettleGroupDebtsTransactionItem {
-    from: { id: string; nombre: string; };
-    to: { id: string; nombre: string; };
-    amount: number;
-}
-
-export interface IParticipant {
-  _id: string;
-  nombre: string;
-}
-
-export interface IExpensesItem {
-    "_id": string; // "69453777df074f9761305be9",
-    "grupo_id": string; // "69447550bb4f27e226d4fefe",
-    "descripcion": string; // "uno",
-    "monto": number; // 20,
-    "pagado_por": {
-        "_id": string; // "6943cb6f8084e9d54d53d790",
-        "nombre": string; // "jarklos"
-    },
-    "participantes":
-        {
-            "_id": string; // "6943cb6f8084e9d54d53d790",
-            "nombre": string; // "jarklos"
-        }[],
-    "asume_gasto": boolean; // false,
-    "fecha": string; // "2025-12-19T11:31:03.364Z",
-    "categoria": "comida" | "ocio" | "facturas";
-    "__v": number; // 0
-}
-
-interface DebtTransaction {
-  _id: string;
-  from: { _id: string; nombre: string };
-  to: { _id: string; nombre: string };
-  amount: number;
-  paid: boolean;
-  createdAt: string;
 }
 
 import './GroupDetailPage.scss';
@@ -95,32 +40,32 @@ const GroupDetailPage: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate(); // Initialize useNavigate
   const { token, user } = useAuth();
-  const [group, setGroup] = useState<any>(null);
-  const [expenses, setExpenses] = useState<any[]>([]);
-  const [balance, setBalance] = useState<any[]>([]);
+  const [group, setGroup] = useState<IGroup | null>(null);
+  const [expenses, setExpenses] = useState<IExpensePopulated[]>([]);
+  const [balance, setBalance] = useState<IBalance[]>([]);
   const [email, setEmail] = useState('');
-  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-  const [editingExpenseData, setEditingExpenseData] = useState({ descripcion: '', monto: '', categoria: 'comida' as 'comida' | 'ocio' | 'facturas' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransactionItem[]>([]);
-  const [paymentHistory, setPaymentHistory] = useState<DebtTransaction[]>([]);
-  const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false); // State for modal visibility
-  const [totalExpenses, setTotalExpenses] = useState<number>(0); // New state for total expenses
-  const [myTotalExpenses, setMyTotalExpenses] = useState<number>(0); // New state for user's total expenses participation
-  const [myTotalExpensesPay, setMyTotalExpensesPay] = useState<number>(0); // New state for user's total expenses
-  const [myTotalDebt, setMyTotalDebt] = useState<number>(0); // New state for user's total expenses
-  const [myTotalSettledIncome, setMyTotalSettledIncome] = useState<number>(0); // New state for user's settled income
-  const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false); // State for payment history modal
-  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses'); // New state for active tab
+  const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransaction[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<IDebtTransaction[]>([]);
+  const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false);
+  const [totalExpenses, setTotalExpenses] = useState<number>(0);
+  const [myTotalExpenses, setMyTotalExpenses] = useState<number>(0);
+  const [myTotalExpensesPay, setMyTotalExpensesPay] = useState<number>(0);
+  const [myTotalDebt, setMyTotalDebt] = useState<number>(0);
+  const [myTotalSettledIncome, setMyTotalSettledIncome] = useState<number>(0);
+  const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false);
+  const [expenseToEdit, setExpenseToEdit] = useState<IExpensePopulated | undefined>(undefined);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [descriptionFilter, setDescriptionFilter] = useState('');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
   const [payerFilter, setPayerFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [groupCategories, setGroupCategories] = useState<string[]>([]);
 
   const sortedExpenses = [...expenses].sort((a, b) => {
     const dateA = new Date(a.fecha).getTime();
@@ -132,7 +77,7 @@ const GroupDetailPage: React.FC = () => {
     }
   });
 
-  const filteredExpenses = sortedExpenses.filter(expense => {
+  const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
     if (categoryFilter !== 'all' && expense.categoria !== categoryFilter) {
       return false;
     }
@@ -180,53 +125,51 @@ const GroupDetailPage: React.FC = () => {
       if (!debtTransactionsRes.ok) throw new Error('Failed to fetch debt transactions');
 
       const groupData = await groupRes.json();
-      const expensesData = await expenseRes.json() as { data: IExpensesItem[] };
+      const expensesData = await expenseRes.json() as { data: IExpensePopulated[] };
       const balanceData = await balanceRes.json();
       const settlementData = await settlementRes.json();
       const debtTransactionsData = await debtTransactionsRes.json();
 
-      console.log('debtTransactionsData.data:', debtTransactionsData.data);
+      const categories = [...new Set(expensesData.data.map(e => e.categoria).filter(Boolean) as string[])];
+      setGroupCategories(categories.sort());
       
       setPaymentHistory(debtTransactionsData.data);
 
       const settledIncome = debtTransactionsData.data
-        .filter((p: DebtTransaction) => p.from._id === user?._id)
-        .reduce((sum: number, p: DebtTransaction) => sum + p.amount, 0);
+        .filter((p: IDebtTransaction) => p.from._id === user?._id)
+        .reduce((sum: number, p: IDebtTransaction) => sum + p.amount, 0);
       setMyTotalSettledIncome(settledIncome);
       
       setGroup(groupData.data);
       setExpenses(expensesData.data);
-      const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0);
+      const calculatedTotalExpenses = expensesData.data.reduce((sum, expense) => sum + expense.monto, 0);
       setTotalExpenses(calculatedTotalExpenses);
 
-      // Calculate my total expenses participation
       const calculatedMyTotalExpensesParticipation = expensesData.data
-        .filter((expense) => checkIfUserIsParticipant(expense, user?._id))
+        .filter((expense) => checkIfUserIsParticipant(expense, user?._id || ''))
         .reduce((sum, expense) => sum + expense.monto / expense.participantes.length, 0);
       setMyTotalExpenses(calculatedMyTotalExpensesParticipation);
 
-      // Calculate my total expenses
       const calculatedMyTotalExpenses = expensesData.data
         .filter((expense) => expense.pagado_por._id === user?._id)
         .reduce((sum, expense) => sum + expense.monto, 0);
       setMyTotalExpensesPay(calculatedMyTotalExpenses);
 
-      const myBalance = balanceData.data.balances.find((b: IBalanceItem) => b.id === user?._id)?.balance;
-
-      setMyTotalDebt(myBalance);
+      const myBalance = balanceData.data.balances.find((b: IBalance) => b.id === user?._id)?.balance;
+      setMyTotalDebt(myBalance || 0);
 
       setBalance(balanceData.data.balances);
       setSettlementTransactions(settlementData.data.transactions);
-      // No longer need to set selectedParticipants here as it's managed by AddExpenseModal
-      // if (groupData.data?.miembros) {
-      //   setSelectedParticipants(groupData.data.miembros.map((m: any) => m._id));
-      // }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
     } finally {
       setLoading(false);
     }
-  }, [groupId, token, user?.id]);
+  }, [groupId, token, user?._id]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,12 +185,18 @@ const GroupDetailPage: React.FC = () => {
         fetchGroupData();
         setEmail('');
         alert('Miembro añadido con éxito');
-      } else { const data = await res.json(); throw new Error(data.message || 'Error al añadir miembro'); }
-    } catch (err: any) { setError(err.message); }
+      } else { 
+        const data = await res.json(); 
+        throw new Error(data.message || 'Error al añadir miembro'); 
+      }
+    } catch (err: unknown) { 
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+    }
   };
-
-  // handleAddExpense function is moved to AddExpenseModal
-
 
   const handleDeleteExpense = async (expenseId: string) => {
     if (!token || !globalThis.confirm('¿Estás seguro de que quieres borrar este gasto?')) return;
@@ -258,33 +207,22 @@ const GroupDetailPage: React.FC = () => {
       });
       if (res.ok) {
         fetchGroupData();
-      } else { const data = await res.json(); throw new Error(data.message || 'Error al borrar el gasto'); }
-    } catch (err: any) { setError(err.message); }
+      } else { 
+        const data = await res.json(); 
+        throw new Error(data.message || 'Error al borrar el gasto'); 
+      }
+    } catch (err: unknown) { 
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+    }
   };
-
-  const handleEdit = (expense: IExpensesItem) => {
-    setEditingExpenseId(expense._id);
-    setEditingExpenseData({ descripcion: expense.descripcion, monto: String(expense.monto), categoria: expense.categoria });
-  };
-
-  const handleCancelEdit = () => {
-    setEditingExpenseId(null);
-  };
-
-  const handleUpdateExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !editingExpenseId) return;
-    try {
-      const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/${editingExpenseId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ ...editingExpenseData, monto: Number.parseFloat(editingExpenseData.monto) })
-      });
-      if (res.ok) {
-        setEditingExpenseId(null);
-        fetchGroupData();
-      } else { const data = await res.json(); throw new Error(data.message || 'Error al actualizar el gasto'); }
-    } catch (err: any) { setError(err.message); }
+  
+  const handleEdit = (expense: IExpensePopulated) => {
+    setExpenseToEdit(expense);
+    setShowAddExpenseModal(true);
   };
 
   const handleOpenRecordPaymentModal = () => setShowRecordPaymentModal(true);
@@ -296,20 +234,19 @@ const GroupDetailPage: React.FC = () => {
   };
   const handleClosePaymentHistoryModal = () => setShowPaymentHistoryModal(false);
 
-  // Handlers for AddExpenseModal
-  const handleOpenAddExpenseModal = () => setShowAddExpenseModal(true);
+  const handleOpenAddExpenseModal = () => {
+    setExpenseToEdit(undefined);
+    setShowAddExpenseModal(true);
+  }
   const handleCloseAddExpenseModal = () => {
     setShowAddExpenseModal(false);
-    fetchGroupData(); // Refresh data after closing modal (expense might have been added)
+    setExpenseToEdit(undefined);
+    fetchGroupData();
   };
 
   useEffect(() => {
-    // We no longer need to set paidBy here if it's passed as initial prop to modal
-    // if (user?.id) {
-    //   setPaidBy(user.id);
-    // }
     fetchGroupData();
-  }, [fetchGroupData, user?.id]);
+  }, [fetchGroupData]);
   
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
@@ -376,9 +313,9 @@ const GroupDetailPage: React.FC = () => {
                     Categoría:
                     <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
                         <option value="all">Todas</option>
-                        <option value="comida">Comida</option>
-                        <option value="ocio">Ocio</option>
-                        <option value="facturas">Facturas</option>
+                        {groupCategories.map(category => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
                     </select>
                   </label>
                   <label>
@@ -389,7 +326,7 @@ const GroupDetailPage: React.FC = () => {
                     Pagado por:
                     <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)}>
                         <option value="all">Todos</option>
-                        {group?.miembros.map((member: any) => (
+                        {group?.miembros.map((member) => (
                             <option key={member._id} value={member._id}>{member.nombre}</option>
                         ))}
                     </select>
@@ -421,42 +358,22 @@ const GroupDetailPage: React.FC = () => {
             </button>
           </div>
           <ul className="expenses-list">
-            {filteredExpenses.map((expense: IExpensesItem) => (
+            {filteredExpenses.map((expense: IExpensePopulated) => (
               <li key={expense._id}>
                 <div className="expense-item">
-                {editingExpenseId === expense._id ? (
-                  <form onSubmit={handleUpdateExpense} className="edit-form">
-                    <input type="text" value={editingExpenseData.descripcion} onChange={e=>setEditingExpenseData({...editingExpenseData, descripcion: e.target.value})} required/>
-                    <input type="number" value={editingExpenseData.monto} onChange={e=>setEditingExpenseData({...editingExpenseData, monto: e.target.value})} required/>
-                    <select value={editingExpenseData.categoria} onChange={e => setEditingExpenseData({ ...editingExpenseData, categoria: e.target.value as 'comida' | 'ocio' | 'facturas' })}>
-                      <option value="comida">Comida</option>
-                      <option value="ocio">Ocio</option>
-                      <option value="facturas">Facturas</option>
-                    </select>
-                    <div className="expense-actions">
-                      <button type="submit">Guardar</button>
-                      <button type="button" onClick={handleCancelEdit}>Cancelar</button>
+                  <div className="expense-info">
+                    <div>{expense.descripcion} ({expense.categoria}): {formatCurrency(expense.monto)}€</div>
+                    <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
+                    <div>
+                      <span>
+                        {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
+                      </span>
                     </div>
-                  </form>
-                ) : (
-                  <>
-                    
-                      <div className="expense-info">
-                        <div>{expense.descripcion} ({expense.categoria}): {formatCurrency(expense.monto)}€</div>
-                        <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
-                        <div>
-                          <span>
-                            {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
-                          </span>
-                        </div>
-                      </div>
-                      <div className="expense-actions">
-                        <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
-                        <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
-                      </div>
-                    
-                  </>
-                )}
+                  </div>
+                  <div className="expense-actions">
+                    <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
+                    <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -507,7 +424,7 @@ const GroupDetailPage: React.FC = () => {
           <hr/>
 
           <h4>Miembros:</h4>
-          <ul className="members-list">{group.miembros.map((m:any) => <li key={m._id||m}>{typeof m==='object'?m.nombre:m}</li>)}</ul>
+          <ul className="members-list">{group.miembros.map((m: IUser) => <li key={m._id}>{m.nombre}</li>)}</ul>
         </div>
       )}
 
@@ -531,7 +448,7 @@ const GroupDetailPage: React.FC = () => {
           token={token!}
           members={group?.miembros || []}
           onClose={handleClosePaymentHistoryModal}
-          onHistoryUpdated={fetchGroupData} // Changed from onPaymentRecorded
+          onHistoryUpdated={fetchGroupData}
         />
       )}
 
@@ -541,8 +458,9 @@ const GroupDetailPage: React.FC = () => {
           token={token!}
           members={group?.miembros || []}
           onClose={handleCloseAddExpenseModal}
-          onExpenseAdded={fetchGroupData}
+          onExpenseAction={fetchGroupData}
           paidByInitial={user?._id || ''}
+          expenseToEdit={expenseToEdit}
         />
       )}
     </div>

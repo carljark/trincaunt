@@ -8,7 +8,7 @@ export interface IExpense extends Document {
   participantes: mongoose.Types.ObjectId[];
   fecha: Date;
   asume_gasto: boolean;
-  categoria: 'comida' | 'ocio' | 'facturas';
+  categoria: string;
 }
 
 const ExpenseSchema: Schema = new Schema({
@@ -19,7 +19,7 @@ const ExpenseSchema: Schema = new Schema({
   participantes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   fecha: { type: Date, default: Date.now },
   asume_gasto: { type: Boolean, default: false },
-  categoria: { type: String, enum: ['comida', 'ocio', 'facturas'], required: true }
+  categoria: { type: String, required: false }
 });
 
 export default mongoose.model<IExpense>('Expense', ExpenseSchema);

@@ -375,6 +375,12 @@
         appearance: none;
         -webkit-appearance: none;
         height: 40px;
+        font-size: $font-size-base; // Ensure input text size is correct
+
+        &::placeholder { // Style for placeholder text
+          font-size: $font-size-base;
+          color: #888; // A slightly darker color for better visibility
+        }
     }
 
     .date-filter-container {

@@ -1,35 +1,62 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef } from 'react';
+import { IExpense, IExpensePopulated } from '../types/expense';
+import { IUserPopulated } from '../types/user';
 
 interface AddExpenseModalProps {
   groupId: string;
   token: string;
   members: Array<{ _id: string; nombre: string }>;
   onClose: () => void;
-  onExpenseAdded: () => void;
+  onExpenseAction: (expense: IExpense) => void; // Renamed from onExpenseAdded
   paidByInitial: string;
+  expenseToEdit?: IExpensePopulated; // Changed from IExpense to IExpensePopulated
 }
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, members, onClose, onExpenseAdded, paidByInitial }) => {
-  const [expenseData, setExpenseData] = useState({ description: '', amount: '' });
-  const [assumeExpense, setAssumeExpense] = useState<boolean>(false);
-  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
-  const [category, setCategory] = useState<'comida' | 'ocio' | 'facturas'>('ocio');
+const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, members, onClose, onExpenseAction, paidByInitial, expenseToEdit }) => {
+  const [expenseData, setExpenseData] = useState({
+    description: expenseToEdit?.descripcion || '',
+    amount: expenseToEdit?.monto.toString() || ''
+  });
+  const [assumeExpense, setAssumeExpense] = useState<boolean>(expenseToEdit?.asume_gasto || false);
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>(expenseToEdit?.participantes.map((p: IUserPopulated) => p._id) || []);
+  const [category, setCategory] = useState(expenseToEdit?.categoria || '');
+  const [paidBy, setPaidBy] = useState<string>(paidByInitial); // New state for paidBy
+  const [suggestedCategories, setSuggestedCategories] = useState<{ category: string, count: number }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const paidByRef = useRef<HTMLSelectElement>(null);
+  const categoryInputRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
-    // Initialize selected participants with all members by default
-    if (members && members.length > 0) {
+    if (expenseToEdit) {
+      // If editing, set paidBy to the expense's payer
+      setPaidBy(expenseToEdit.pagado_por._id.toString());
+    } else if (members && members.length > 0) {
+      // If adding, initialize participants with all members
       setSelectedParticipants(members.map(m => m._id));
     }
-  }, [members]);
 
-  const handleAddExpense = async (e: React.FormEvent) => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/categories`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestedCategories(data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    fetchCategories();
+  }, [members, token, expenseToEdit]);
+
+  const handleSubmitExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -40,8 +67,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       return;
     }
 
-    const paidByValue = paidByRef.current?.value;
-    if (!paidByValue) {
+    // Use paidBy state variable
+    if (!paidBy) {
       setError('Por favor, selecciona quién pagó el gasto.');
       setLoading(false);
       return;
@@ -51,8 +78,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       descripcion: expenseData.description,
       monto: Number.parseFloat(expenseData.amount),
       grupo_id: groupId,
-      pagado_por: paidByValue,
-      assumeExpense: assumeExpense,
+      pagado_por: paidBy,
+      asume_gasto: assumeExpense,
       categoria: category,
     };
 
@@ -65,26 +92,29 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       expensePayload.participantes = selectedParticipants;
     } else {
       // If assumeExpense is true, only the payer is the participant
-      expensePayload.participantes = [paidByValue];
+      expensePayload.participantes = [paidBy];
     }
 
-
     try {
-      const res = await fetch(`${apiHost}${apiBaseUrl}/expenses`, {
-        method: 'POST',
+      const url = expenseToEdit ? `${apiHost}${apiBaseUrl}/expenses/${expenseToEdit._id}` : `${apiHost}${apiBaseUrl}/expenses`;
+      const method = expenseToEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(expensePayload)
       });
       if (res.ok) {
-        onExpenseAdded(); // Refresh data in parent component
+        const result = await res.json();
+        onExpenseAction(result.data); // Refresh data in parent component
         onClose(); // Close the modal
-      } else { 
-        const data = await res.json(); 
-        setError(data.message || 'Error al añadir gasto'); 
+      } else {
+        const data = await res.json();
+        setError(data.message || `Error al ${expenseToEdit ? 'actualizar' : 'añadir'} gasto`);
       }
-    } catch (err: any) { 
-      console.error('Error adding expense:', err);
-      setError('Error de red o del servidor.'); 
+    } catch (err: any) {
+      console.error(`Error ${expenseToEdit ? 'updating' : 'adding'} expense:`, err);
+      setError('Error de red o del servidor.');
     } finally {
       setLoading(false);
     }
@@ -93,24 +123,55 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h3>Añadir Nuevo Gasto</h3>
+        <h3>{expenseToEdit ? 'Editar Gasto' : 'Añadir Nuevo Gasto'}</h3>
         {error && <p className="error-message">{error}</p>}
-        <form onSubmit={handleAddExpense}>
+        <form onSubmit={handleSubmitExpense}>
           <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
           <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
-          
-          <div>
+
+          <div
+            className="category-container"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setShowSuggestions(false);
+              }
+            }}
+          >
             <label htmlFor="category">Categoría:</label>
-            <select id="category" value={category} onChange={e => setCategory(e.target.value as 'comida' | 'ocio' | 'facturas')}>
-              <option value="ocio">Ocio</option>
-              <option value="comida">Comida</option>
-              <option value="facturas">Facturas</option>
-            </select>
+            <input
+              type="text"
+              id="category"
+              placeholder="Ej: Comida, Ocio..."
+              value={category}
+              ref={categoryInputRef}
+              onChange={e => setCategory(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              autoComplete="off"
+            />
+            {showSuggestions && (
+              <ul className="suggestions-list">
+                {suggestedCategories
+                  .filter(c => c.category.toLowerCase().includes(category.toLowerCase()))
+                  .map(c => (
+                    <li
+                      key={c.category}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setCategory(c.category);
+setShowSuggestions(false);
+                        categoryInputRef.current?.blur();
+                      }}
+                    >
+                      {c.category}
+                    </li>
+                  ))}
+              </ul>
+            )}
           </div>
 
           <div>
             <label htmlFor="paidBy">Pagado por:</label>
-            <select id="paidBy" defaultValue={paidByInitial} ref={paidByRef}>
+            <select id="paidBy" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
               {members.map((m: any) => (
                 <option key={m._id} value={m._id}>{m.nombre}</option>
               ))}
@@ -143,7 +204,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
 
           <div className="modal-actions">
             <button type="submit" disabled={loading}>
-              {loading ? 'Añadiendo Gasto...' : 'Añadir Gasto'}
+              {loading ? (expenseToEdit ? 'Actualizando Gasto...' : 'Añadiendo Gasto...') : (expenseToEdit ? 'Actualizar Gasto' : 'Añadir Gasto')}
             </button>
             <button type="button" onClick={onClose} disabled={loading}>
               Cancelar
