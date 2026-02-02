@@ -74,7 +74,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       setCategories([...categories, categoryToAdd]);
     }
     setCategoryInput('');
-    setShowSuggestions(false);
   };
 
   const removeCategory = (categoryToRemove: string) => {
@@ -176,6 +175,14 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
             />
             {showSuggestions && (
               <ul className="suggestions-list">
+                {categoryInput.trim() !== '' && !categories.includes(categoryInput.trim()) && (
+                  <li onMouseDown={(e) => {
+                      e.preventDefault();
+                      addCategory(categoryInput.trim());
+                  }}>
+                    Añadir "{categoryInput.trim()}"
+                  </li>
+                )}
                 {suggestedCategories
                   .filter(c => c.category.toLowerCase().includes(categoryInput.toLowerCase()))
                   .map(c => (
