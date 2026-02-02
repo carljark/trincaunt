@@ -9,6 +9,7 @@ const apiHost = import.meta.env.VITE_API_HOST;
 const HomePage: React.FC = () => {
   const { user, token, logout } = useAuth();
   const [groups, setGroups] = useState<any[]>([]);
+  const [globalExpenses, setGlobalExpenses] = useState<any[]>([]);
 
   const fetchGroups = async () => {
     if (!token) return;
@@ -27,6 +28,23 @@ const HomePage: React.FC = () => {
     } catch (error) {
       console.error(error);
       // Optional: handle error in UI
+    }
+  };
+
+  const fetchGlobalExpenses = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiHost}/api/v1/expenses/global`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if(res.ok) {
+        setGlobalExpenses(data.data);
+      } else {
+        throw new Error(data.message || 'Failed to fetch global expenses');
+      }
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -74,6 +92,7 @@ const HomePage: React.FC = () => {
 
   useEffect(() => {
     fetchGroups();
+    fetchGlobalExpenses();
   }, [token]);
 
   return (
@@ -90,6 +109,11 @@ const HomePage: React.FC = () => {
       <div className="groups-list-section">
         <h3>Mis Grupos</h3>
         <ul>
+          <li key="global-group">
+            <Link to={`/group/global`}>
+              <strong>Global</strong> - {globalExpenses.length} gastos
+            </Link>
+          </li>
           {groups.length > 0 ? (
             groups.map(g => (
               <li key={g._id}>

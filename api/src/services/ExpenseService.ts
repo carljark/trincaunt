@@ -46,6 +46,34 @@ export class ExpenseService {
       .populate('participantes', 'nombre');
   }
 
+  async getGlobalExpenses(userId: string): Promise<any[]> {
+    const userExpenses = await Expense.find({ pagado_por: userId })
+      .populate('grupo_id', 'nombre')
+      .populate('participantes', '_id');
+
+    const globalExpenses = userExpenses.map(expense => {
+      const expenseObject = expense.toObject();
+      let userShare = 0;
+
+      const isParticipant = expenseObject.participantes.some(p => p._id.toString() === userId);
+
+      if (expenseObject.asume_gasto) {
+        userShare = expenseObject.monto;
+      } else if (isParticipant) {
+        userShare = expenseObject.monto / expenseObject.participantes.length;
+      }
+
+      return {
+        ...expenseObject,
+        monto: userShare,
+        original_monto: expenseObject.monto,
+        grupo_nombre: (expenseObject.grupo_id as any)?.nombre || 'Grupo Desconocido',
+      };
+    });
+
+    return globalExpenses.filter(e => e.monto > 0);
+  }
+
   async getGroupBalance(groupId: string): Promise<{ balances: IBalance[]}> {
     const { balances, allUserIds, expenses } = await this._getInitialBalancesAndUsers(groupId);
     this._calculateExpenseBalances(expenses, balances);

@@ -38,6 +38,7 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const GroupDetailPage: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
+  const isGlobal = groupId === 'global';
   const navigate = useNavigate(); // Initialize useNavigate
   const { token, user } = useAuth();
   const [group, setGroup] = useState<IGroup | null>(null);
@@ -105,6 +106,39 @@ const GroupDetailPage: React.FC = () => {
     setDateToFilter('');
     setPayerFilter('all');
   };
+
+  const fetchGlobalData = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+        const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/global`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch global expenses');
+        const expensesData = await res.json();
+
+        setGroup({ _id: 'global', nombre: 'Global', miembros: [], creado_por: user?._id || '', fecha_creacion: new Date().toISOString() });
+        setExpenses(expensesData.data);
+        setBalance([]);
+        setSettlementTransactions([]);
+        setPaymentHistory([]);
+        setTotalExpenses(expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0));
+        const allCategories: (string[] | undefined)[] = expensesData.data.map((e: any) => e.categoria);
+        const flattenedCategories: (string | undefined)[] = allCategories.flat();
+        const filteredCategories: string[] = flattenedCategories.filter((c): c is string => !!c);
+        const uniqueCategories: string[] = [...new Set(filteredCategories)];
+        setGroupCategories(uniqueCategories.sort());
+
+    } catch (err: unknown) {
+        if (err instanceof Error) {
+            setError(err.message);
+        } else {
+            setError('An unknown error occurred');
+        }
+    } finally {
+        setLoading(false);
+    }
+  }, [token, user?._id]);
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
@@ -241,12 +275,20 @@ const GroupDetailPage: React.FC = () => {
   const handleCloseAddExpenseModal = () => {
     setShowAddExpenseModal(false);
     setExpenseToEdit(undefined);
-    fetchGroupData();
+    if (isGlobal) {
+      fetchGlobalData();
+    } else {
+      fetchGroupData();
+    }
   };
 
   useEffect(() => {
-    fetchGroupData();
-  }, [fetchGroupData]);
+    if (isGlobal) {
+      fetchGlobalData();
+    } else {
+      fetchGroupData();
+    }
+  }, [isGlobal, fetchGroupData, fetchGlobalData]);
   
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
@@ -263,40 +305,44 @@ const GroupDetailPage: React.FC = () => {
       <button onClick={() => navigate(-1)} className="back-button">Volver</button>
       <h2>{group.nombre}</h2>
 
-      <div className="tab-navigation">
-        <button
-          className={activeTab === 'expenses' ? 'active' : ''}
-          onClick={() => setActiveTab('expenses')}
-        >
-          Gastos
-        </button>
-        <button
-          className={activeTab === 'balances' ? 'active' : ''}
-          onClick={() => setActiveTab('balances')}
-        >
-          Saldos
-        </button>
-        <button
-          className={activeTab === 'group' ? 'active' : ''}
-          onClick={() => setActiveTab('group')}
-        >
-          Grupo
-        </button>
-      </div>
+      {!isGlobal && (
+        <div className="tab-navigation">
+          <button
+            className={activeTab === 'expenses' ? 'active' : ''}
+            onClick={() => setActiveTab('expenses')}
+          >
+            Gastos
+          </button>
+          <button
+            className={activeTab === 'balances' ? 'active' : ''}
+            onClick={() => setActiveTab('balances')}
+          >
+            Saldos
+          </button>
+          <button
+            className={activeTab === 'group' ? 'active' : ''}
+            onClick={() => setActiveTab('group')}
+          >
+            Grupo
+          </button>
+        </div>
+      )}
 
       {activeTab === 'expenses' && (
         <div className="expenses-tab-content">
           <div className="expenses-summary">
             <div>
-              <p><strong>Total grupo: {formatCurrency(totalExpenses)}€</strong></p>
+              <p><strong>Total: {formatCurrency(totalExpenses)}€</strong></p>
             </div>
-            <div>
-              <p><strong>Mi parte: {formatCurrency(myTotalExpenses)}€</strong></p>
-              <p><strong>Pagos: {formatCurrency(myTotalExpensesPay)}€</strong></p>
-              <p><strong>Saldado: {formatCurrency(myTotalSettledIncome)}€</strong></p>
-              {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
-              {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
-            </div>
+            {!isGlobal && (
+              <div>
+                <p><strong>Mi parte: {formatCurrency(myTotalExpenses)}€</strong></p>
+                <p><strong>Pagos: {formatCurrency(myTotalExpensesPay)}€</strong></p>
+                <p><strong>Saldado: {formatCurrency(myTotalSettledIncome)}€</strong></p>
+                {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
+                {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
+              </div>
+            )}
           </div>
           
           <hr/>
@@ -322,15 +368,17 @@ const GroupDetailPage: React.FC = () => {
                     Descripción:
                     <input type="text" placeholder="Filtrar..." value={descriptionFilter} onChange={e => setDescriptionFilter(e.target.value)} />
                   </label>
-                  <label>
-                    Pagado por:
-                    <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)}>
-                        <option value="all">Todos</option>
-                        {group?.miembros.map((member) => (
-                            <option key={member._id} value={member._id}>{member.nombre}</option>
-                        ))}
-                    </select>
-                  </label>
+                  {!isGlobal && (
+                    <label>
+                      Pagado por:
+                      <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)}>
+                          <option value="all">Todos</option>
+                          {group?.miembros.map((member) => (
+                              <option key={member._id} value={member._id}>{member.nombre}</option>
+                          ))}
+                      </select>
+                    </label>
+                  )}
                   <label>
                     Desde:
                     <div className="date-filter-container">
@@ -358,22 +406,31 @@ const GroupDetailPage: React.FC = () => {
             </button>
           </div>
           <ul className="expenses-list">
-            {filteredExpenses.map((expense: IExpensePopulated) => (
+            {filteredExpenses.map((expense: any) => (
               <li key={expense._id}>
                 <div className="expense-item">
                   <div className="expense-info">
-                    <div>{expense.descripcion} ({expense.categoria?.join(', ')}): {formatCurrency(expense.monto)}€</div>
-                    <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
                     <div>
-                      <span>
-                        {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
-                      </span>
+                      {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
+                      {expense.descripcion} ({expense.categoria?.join(', ')}): 
+                      <strong> {formatCurrency(expense.monto)}€</strong>
+                      {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
                     </div>
+                    <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
+                    {!isGlobal && (
+                      <div>
+                        <span>
+                          {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div className="expense-actions">
-                    <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
-                    <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
-                  </div>
+                  {!isGlobal && (
+                    <div className="expense-actions">
+                      <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
+                      <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
+                    </div>
+                  )}
                 </div>
               </li>
             ))}
@@ -381,7 +438,7 @@ const GroupDetailPage: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'balances' && (
+      {!isGlobal && activeTab === 'balances' && (
         <div className="balances-tab-content">
           <h3>Balance del Grupo</h3>
           <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>{formatCurrency(m.balance)}€</strong></li>)}</ul>
@@ -411,7 +468,7 @@ const GroupDetailPage: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'group' && (
+      {!isGlobal && activeTab === 'group' && (
         <div className="group-tab-content">
           <div className="form-section">
             <h4>Añadir nuevo miembro</h4>
@@ -428,11 +485,13 @@ const GroupDetailPage: React.FC = () => {
         </div>
       )}
 
-      <div className="fixed-add-expense-button-container">
-        <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
-      </div>
+      {!isGlobal && (
+        <div className="fixed-add-expense-button-container">
+          <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
+        </div>
+      )}
 
-      {showRecordPaymentModal && (
+      {!isGlobal && showRecordPaymentModal && (
         <RecordPaymentModal
           groupId={groupId!}
           token={token!}
@@ -442,7 +501,7 @@ const GroupDetailPage: React.FC = () => {
         />
       )}
 
-      {showPaymentHistoryModal && (
+      {!isGlobal && showPaymentHistoryModal && (
         <PaymentHistoryModal
           groupId={groupId!}
           token={token!}
@@ -452,7 +511,7 @@ const GroupDetailPage: React.FC = () => {
         />
       )}
 
-      {showAddExpenseModal && (
+      {!isGlobal && showAddExpenseModal && (
         <AddExpenseModal
           groupId={groupId!}
           token={token!}
