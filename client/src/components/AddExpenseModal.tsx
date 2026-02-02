@@ -51,7 +51,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.data)) {
-            setSuggestedCategories(data.data);
+            const validCategories = data.data.filter((item: any) => item && typeof item.category === 'string');
+            setSuggestedCategories(validCategories);
           }
         }
       } catch (err) {
