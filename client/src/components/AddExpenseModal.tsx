@@ -40,7 +40,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       // If adding, initialize participants with all members
       setSelectedParticipants(members.map(m => m._id));
     }
+  }, [expenseToEdit, members]);
 
+  useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/categories`, {
@@ -48,14 +50,16 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
         });
         if (res.ok) {
           const data = await res.json();
-          setSuggestedCategories(data.data);
+          if (Array.isArray(data.data)) {
+            setSuggestedCategories(data.data);
+          }
         }
       } catch (err) {
         console.error('Error fetching categories:', err);
       }
     };
     fetchCategories();
-  }, [members, token, expenseToEdit]);
+  }, [token]);
 
   const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && categoryInput.trim() !== '') {
