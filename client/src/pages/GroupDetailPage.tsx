@@ -78,7 +78,7 @@ const GroupDetailPage: React.FC = () => {
   });
 
   const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
-    if (categoryFilter !== 'all' && expense.categoria !== categoryFilter) {
+    if (categoryFilter !== 'all' && !expense.categoria?.includes(categoryFilter)) {
       return false;
     }
     if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
@@ -130,7 +130,7 @@ const GroupDetailPage: React.FC = () => {
       const settlementData = await settlementRes.json();
       const debtTransactionsData = await debtTransactionsRes.json();
 
-      const categories = [...new Set(expensesData.data.map(e => e.categoria).filter(Boolean) as string[])];
+      const categories = [...new Set(expensesData.data.flatMap(e => e.categoria).filter((c): c is string => !!c))];
       setGroupCategories(categories.sort());
       
       setPaymentHistory(debtTransactionsData.data);
@@ -362,7 +362,7 @@ const GroupDetailPage: React.FC = () => {
               <li key={expense._id}>
                 <div className="expense-item">
                   <div className="expense-info">
-                    <div>{expense.descripcion} ({expense.categoria}): {formatCurrency(expense.monto)}€</div>
+                    <div>{expense.descripcion} ({expense.categoria?.join(', ')}): {formatCurrency(expense.monto)}€</div>
                     <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
                     <div>
                       <span>

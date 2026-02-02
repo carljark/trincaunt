@@ -9,5 +9,5 @@ export interface IExpensePopulated {
   participantes: IUserPopulated[];
   fecha: string;
   asume_gasto: boolean;
-  categoria?: string;
+  categoria?: string[];
 }

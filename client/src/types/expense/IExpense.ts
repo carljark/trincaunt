@@ -7,5 +7,5 @@ export interface IExpense {
   participantes: string[]; // Array of User IDs
   fecha: string; // ISO Date string
   asume_gasto: boolean;
-  categoria?: string;
+  categoria?: string[];
 }

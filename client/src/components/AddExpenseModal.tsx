@@ -22,7 +22,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   });
   const [assumeExpense, setAssumeExpense] = useState<boolean>(expenseToEdit?.asume_gasto || false);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>(expenseToEdit?.participantes.map((p: IUserPopulated) => p._id) || []);
-  const [category, setCategory] = useState(expenseToEdit?.categoria || '');
+  const [categories, setCategories] = useState<string[]>(expenseToEdit?.categoria || []);
+  const [categoryInput, setCategoryInput] = useState('');
   const [paidBy, setPaidBy] = useState<string>(paidByInitial); // New state for paidBy
   const [suggestedCategories, setSuggestedCategories] = useState<{ category: string, count: number }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -56,6 +57,25 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
     fetchCategories();
   }, [members, token, expenseToEdit]);
 
+  const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && categoryInput.trim() !== '') {
+      e.preventDefault();
+      addCategory(categoryInput.trim());
+    }
+  };
+
+  const addCategory = (categoryToAdd: string) => {
+    if (!categories.includes(categoryToAdd)) {
+      setCategories([...categories, categoryToAdd]);
+    }
+    setCategoryInput('');
+    setShowSuggestions(false);
+  };
+
+  const removeCategory = (categoryToRemove: string) => {
+    setCategories(categories.filter(cat => cat !== categoryToRemove));
+  };
+
   const handleSubmitExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -80,7 +100,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       grupo_id: groupId,
       pagado_por: paidBy,
       asume_gasto: assumeExpense,
-      categoria: category,
+      categoria: categories,
     };
 
     if (!assumeExpense) {
@@ -142,24 +162,23 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
               type="text"
               id="category"
               placeholder="Ej: Comida, Ocio..."
-              value={category}
+              value={categoryInput}
               ref={categoryInputRef}
-              onChange={e => setCategory(e.target.value)}
+              onChange={e => setCategoryInput(e.target.value)}
+              onKeyDown={handleCategoryKeyDown}
               onFocus={() => setShowSuggestions(true)}
               autoComplete="off"
             />
             {showSuggestions && (
               <ul className="suggestions-list">
                 {suggestedCategories
-                  .filter(c => c.category.toLowerCase().includes(category.toLowerCase()))
+                  .filter(c => c.category.toLowerCase().includes(categoryInput.toLowerCase()))
                   .map(c => (
                     <li
                       key={c.category}
                       onMouseDown={(e) => {
                         e.preventDefault();
-                        setCategory(c.category);
-setShowSuggestions(false);
-                        categoryInputRef.current?.blur();
+                        addCategory(c.category);
                       }}
                     >
                       {c.category}
@@ -167,6 +186,14 @@ setShowSuggestions(false);
                   ))}
               </ul>
             )}
+            <div className="selected-categories">
+              {categories.map(cat => (
+                <div key={cat} className="selected-category">
+                  {cat}
+                  <button type="button" onClick={() => removeCategory(cat)}>x</button>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div>
