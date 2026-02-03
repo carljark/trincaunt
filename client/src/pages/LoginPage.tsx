@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
-import './LoginPage.scss'; // Import the new SCSS file
+import './LoginPage.scss';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 
@@ -37,30 +37,41 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="login-page">
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit} className="login-form">
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
-        <button type="submit">Login</button>
-      </form>
-      {error && <p className="error-message">{error}</p>}
-      <p>
-        ¿No tienes cuenta? <Link to="/register" className="register-link">Regístrate</Link>
+    <div className="login-container">
+      <h2 className="login-title">Login</h2>
+      <div className="card login-form">
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          {error && <p className="error-message">{error}</p>}
+          <button type="submit" className="button login-button">
+            Login
+          </button>
+        </form>
+      </div>
+      <p className="register-link-container">
+        ¿No tienes cuenta?{' '}
+        <Link to="/register" className="register-link">
+          Regístrate
+        </Link>
       </p>
     </div>
   );

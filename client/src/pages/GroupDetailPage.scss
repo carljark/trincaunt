@@ -1,248 +1,259 @@
-@use 'sass:color';
 @use '../styles/variables' as *;
-
-.positive-balance {
-  color: green;
-}
-
-.negative-balance {
-  color: red;
-}
+@use 'sass:color';
 
 .group-detail-page {
-  padding: 1rem;
-  font-family: $font-family;
-  position: relative; // Needed for absolute positioning of back-button
+  padding-bottom: 100px; // Space for the FAB
+
+  .header {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    position: relative;
+    justify-content: center;
+
+    .back-button {
+      position: absolute;
+      left: 1rem;
+      background: none;
+      border: none;
+      color: $light-color;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .group-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+    }
+  }
+
+  .balance-summary {
+    background-color: $accent-color;
+    color: white;
+    padding: 1.5rem;
+    margin: 0 1rem 1.5rem;
+    border-radius: $border-radius;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+    .balance-title {
+      font-size: 1rem;
+      margin: 0 0 0.5rem;
+      opacity: 0.8;
+    }
+
+    .balance-amount {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 0;
+
+      &.negative {
+        color: #ffdddd;
+      }
+    }
+  }
+
+  .action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin: 0 1rem 1.5rem;
+
+    .action-button {
+      flex-grow: 1;
+      background-color: $secondary-color;
+    }
+  }
 
   .tab-navigation {
     display: flex;
-    justify-content: center;
+    justify-content: space-around;
     margin-bottom: 1.5rem;
-    border-bottom: solid 2px $medium-color;
-    padding-bottom: 0.5rem;
+    border-bottom: 1px solid $border-color;
 
-    button.active {
-      background-color: $primary-color;
-      color: white;
-    }
     button {
-      padding: 0.5rem 1rem;
+      background: none;
       border: none;
-      border-radius: 4px;
+      color: $medium-color;
+      padding: 1rem;
       cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      position: relative;
+
+      &.active {
+        color: $light-color;
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background-color: $accent-color;
+        }
+      }
     }
   }
 
-  .back-button {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    background-color: $secondary-color; // Or any suitable color from your variables
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: $font-size-base;
-    &:hover {
-      background-color: color.scale($secondary-color, $lightness: -10%);
-    }
+  // Common styles for tab content
+  .tab-content {
+    padding: 0 1rem;
   }
 
-  h2, h3, h4 {
-    color: $dark-color;
-  }
-
-  h2 {
-    text-align: center;
-    margin-bottom: 1.5rem;
-  }
-
-  ul {
+  .expenses-list {
     list-style: none;
     padding: 0;
-  }
-
-  hr {
-    border: 0;
-    border-top: 1px solid $light-color;
-    margin: 1.5rem 0;
-  }
-
-  .expenses-summary {
+    margin: 0;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid $light-color;
+    flex-direction: column;
+    gap: 0.75rem;
 
-    p {
-      margin: 0; /* Remove default paragraph margin */
-    }
-  }
-
-  .balances-tab-content {
-    .payment-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-  }
-
-  .balance-list, .members-list, .expenses-list {
-    margin-bottom: 1.5rem;
     .expense-item {
-      width: 100%;
+      background-color: $secondary-color;
+      border-radius: $border-radius;
+      padding: 1rem;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.5rem;
-      padding: 0.5rem;
-      border-bottom: 1px solid $light-color;
-      .expense-info {
-        display: flex;
-        flex-direction: column;
-        .expense-date {
-          font-size: 0.8em;
-          color: #666;
-        }
-      }
-    }
-    li {
-      padding: 0.5rem;
-      border-bottom: 1px solid $light-color;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-  }
-
-  .form-section {
-    background-color: #fff;
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-
-    form {
-      display: flex;
-      flex-direction: column;
       gap: 1rem;
+      position: relative;
 
-      input[type="text"],
-      input[type="number"],
-      input[type="email"],
-      select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: $font-size-base;
+      .expense-icon {
+        font-size: 1.5rem;
       }
 
-      button {
-        padding: 0.75rem;
-        border: none;
-        border-radius: 4px;
-        background-color: $primary-color;
-        color: white;
-        font-size: $font-size-base;
-        cursor: pointer;
-        transition: background-color 0.3s;
-
-        &:hover {
-          background-color: color.scale($primary-color, $lightness: -10%);
+      .expense-details {
+        flex-grow: 1;
+        .expense-description {
+          font-weight: 600;
+          color: $light-color;
+          margin-bottom: 0.25rem;
+        }
+        .expense-payer {
+          font-size: 0.9rem;
+          color: $medium-color;
         }
       }
-      
-      .checkbox-container {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-    }
-  }
-  
-  .expenses-list {
-    li {
-      flex-wrap: wrap;
-    }
-    .expense-actions {
-      margin-top: 0.5rem;
-      flex-basis: 100%;
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.5rem;
 
-      button {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.9rem;
-        color: white;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-        border: none;
-      }
-      .edit-btn {
-        background-color: $secondary-color;
-        &:hover {
-          background-color: color.scale($secondary-color, $lightness: -10%);
+      .expense-amount-date {
+        text-align: right;
+        .expense-amount {
+          font-weight: 600;
+          font-size: 1.1rem;
+          color: $light-color;
+        }
+        .expense-date {
+          font-size: 0.8rem;
+          color: $medium-color;
         }
       }
-      .delete-btn {
-        background-color: $danger-color;
-         &:hover {
-          background-color: color.scale($danger-color, $lightness: -10%);
-        }
-      }
-    }
-  }
 
-  // Tablet and wider
-  @media (min-width: $breakpoint-tablet) {
-    max-width: 800px;
-    margin: 0 auto;
-    
-    .expenses-list {
-      li {
-        flex-wrap: nowrap;
-      }
       .expense-actions {
-        margin-top: 0;
-        flex-basis: auto;
+        display: flex;
+        gap: 0.5rem;
+        button {
+          background: none;
+          border: none;
+          color: $medium-color;
+          cursor: pointer;
+          font-size: 1rem;
+          &:hover {
+            color: $light-color;
+          }
+        }
+      }
+    }
+  }
+
+  .balance-list,
+  .settlement-list,
+  .members-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    li {
+      background-color: $secondary-color;
+      padding: 1rem;
+      border-radius: $border-radius-sm;
+      display: flex;
+      justify-content: space-between;
+      span {
+        color: $light-color;
+      }
+      strong {
+        color: $accent-color;
+      }
+    }
+  }
+
+  .add-member-form {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    input {
+      flex-grow: 1;
+    }
+  }
+
+  .fab-container {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+
+    .fab {
+      background-color: $accent-color;
+      color: white;
+      border: none;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      font-size: 2rem;
+      line-height: 56px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+
+      &:hover {
+        background-color: color.scale($accent-color, $lightness: -10%);
       }
     }
   }
 }
 
+// Modal Overhaul
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw; // Ensure it covers the entire viewport width
-  height: 100vh; // Ensure it covers the entire viewport height
-  background-color: rgba(0, 0, 0, 0.7);
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000; // Ensure it's above other content
+  z-index: 1000;
 }
 
 .modal-content {
-  background-color: white;
-  padding: 2rem;
-  border-radius: 8px;
+  background-color: $secondary-color;
+  padding: 1.5rem;
+  border-radius: $border-radius;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   width: 90%;
   max-width: 500px;
-  position: relative;
+  color: $light-color;
 
   h3 {
     margin-top: 0;
-    color: $dark-color;
     text-align: center;
     margin-bottom: 1.5rem;
+    font-weight: 600;
   }
 
   .form-group {
@@ -250,16 +261,7 @@
     label {
       display: block;
       margin-bottom: 0.5rem;
-      font-weight: bold;
-      color: $dark-color;
-    }
-    input[type="number"],
-    select {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: $font-size-base;
+      font-weight: 600;
     }
   }
 
@@ -267,167 +269,22 @@
     display: flex;
     justify-content: flex-end;
     gap: 1rem;
-    margin-top: 1.5rem;
-
-    button {
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: $font-size-base;
-      transition: background-color 0.3s;
-
-      &[type="submit"] {
-        background-color: $primary-color;
-        color: white;
-        &:hover {
-          background-color: color.scale($primary-color, $lightness: -10%);
-        }
-        &:disabled {
-          background-color: #cccccc;
-          cursor: not-allowed;
-        }
-      }
-
-      &[type="button"] { // Cancel button
-        background-color: $secondary-color;
-        color: white;
-        &:hover {
-          background-color: color.scale($secondary-color, $lightness: -10%);
-        }
-      }
-    }
-  }
-  .error-message {
-    color: $danger-color;
-    text-align: center;
-    margin-bottom: 1rem;
+    margin-top: 2rem;
   }
 }
 
-.fixed-add-expense-button-container {
-  position: fixed;
-  bottom: 20px; /* Distance from the bottom */
-  left: 50%;
-  transform: translateX(-50%); /* Center horizontally */
-  z-index: 999; /* Ensure it stays above other content */
-
-  .add-expense-button {
-    padding: 15px 30px;
-    font-size: 1.2rem;
-    background-color: $primary-color;
-    color: white;
-    border: none;
-    border-radius: $border-radius;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-
-    &:hover {
-      background-color: color.scale($primary-color, $lightness: -10%);
-    }
-  }
-}
-
-
-
-
-.expenses-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-
-  .sort-button {
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--primary-color);
-    background-color: $primary-color;
-    color: white;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: var(--font-size-base);
-  }
-}
-
-.filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    background-color: #f7f7f7;
-    border-radius: 8px;
-
-    label {
-        display: flex;
-        flex-direction: column;
-        font-size: 0.9rem;
-        color: #333;
-    }
-
-    input, select {
-        width: 100%;
-        padding: 0.5rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        margin-top: 0.25rem;
-        box-sizing: border-box;
-        appearance: none;
-        -webkit-appearance: none;
-        height: 40px;
-        font-size: $font-size-base; // Ensure input text size is correct
-
-        &::placeholder { // Style for placeholder text
-          font-size: $font-size-base;
-          color: #888; // A slightly darker color for better visibility
-        }
-    }
-
-    .date-filter-container {
-        display: flex;
-        align-items: center;
-
-        input[type="date"] {
-            flex-grow: 1;
-        }
-    }
-
-    .clear-date-btn {
-        margin-left: 0.5rem;
-        padding: 0.2rem 0.5rem;
-        border: none;
-        background-color: #e0e0e0;
-        cursor: pointer;
-        border-radius: 4px;
-        font-weight: bold;
-        line-height: 1;
-    }
-    
-    .clear-all-btn {
-        grid-column: 1 / -1;
-        padding: 0.5rem;
-        border: none;
-        background-color: $secondary-color;
-        color: white;
-        cursor: pointer;
-        border-radius: 4px;
-        margin-top: 0.5rem;
-        justify-self: center;
-        width: fit-content;
-    }
-}
-
+// Filter styles
 .filters-accordion-container {
-  margin-bottom: 1.5rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  margin: 0 1rem 1.5rem;
+  background-color: $secondary-color;
+  border-radius: $border-radius;
   overflow: hidden;
 }
 
 .filters-accordion-toggle {
   width: 100%;
-  padding: 0.8rem 1rem;
-  background-color: $light-color;
+  padding: 1rem;
+  background: none;
   border: none;
   text-align: left;
   cursor: pointer;
@@ -435,16 +292,33 @@
   justify-content: space-between;
   align-items: center;
   font-size: 1rem;
-  font-weight: bold;
-  color: $dark-color;
+  font-weight: 600;
+  color: $light-color;
+}
 
-  &:hover {
-    background-color: color.scale($light-color, $lightness: -5%);
+.filters {
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.9rem;
   }
 
-  h3 {
-    margin: 0;
-    font-size: 1rem;
+  .clear-all-btn {
+    grid-column: 1 / -1;
+    justify-self: center;
   }
 }
 
+.positive-balance {
+  color: $accent-color;
+}
+
+.negative-balance {
+  color: $danger-color;
+}

@@ -1,9 +1,9 @@
 @use 'sass:color';
 @use './variables' as *;
-@use '../pages/GroupDetailPage.scss';
 
 body {
-  background-color: $light-color;
+  background-color: $background-color;
+  color: $light-color;
   font-family: $font-family;
   margin: 0;
   padding: 0;
@@ -16,15 +16,84 @@ body {
   box-sizing: inherit;
 }
 
-.normal-button {
-  background-color: $secondary-color; // Or any suitable color from your variables
-  color: white;
+// General container for pages
+.page-container {
+  padding: 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+// General card style
+.card {
+  background-color: $secondary-color;
+  border-radius: $border-radius;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+// General input style
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid $border-color;
+  background-color: $secondary-color;
+  color: $light-color;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-base;
+  font-family: $font-family;
+
+  &::placeholder {
+    color: $medium-color;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: $accent-color;
+  }
+}
+
+// General button styles
+.button {
+  display: inline-block;
+  background-color: $accent-color;
+  color: #ffffff;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  border-radius: $border-radius-sm;
   cursor: pointer;
   font-size: $font-size-base;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.2s ease-in-out;
+
   &:hover {
-    background-color: color.scale($secondary-color, $lightness: -10%);
+    background-color: color.scale($accent-color, $lightness: -10%);
   }
+
+  &.button-danger {
+    background-color: $danger-color;
+    &:hover {
+      background-color: color.scale($danger-color, $lightness: -10%);
+    }
+  }
+
+  &.button-secondary {
+    background-color: $medium-color;
+    &:hover {
+      background-color: color.scale($medium-color, $lightness: -10%);
+    }
+  }
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  color: $light-color;
 }

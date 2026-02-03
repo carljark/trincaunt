@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
-import './LoginPage.scss'; // Import the new SCSS file
-import { Link } from 'react-router-dom';
+import './RegisterPage.scss';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 
 const RegisterPage: React.FC = () => {
-  const [formData, setFormData] = useState({ nombre: '', email: '', password: '' });
+  const [formData, setFormData] = useState({
+    nombre: '',
+    email: '',
+    password: '',
+  });
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -36,38 +39,51 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="login-page">
-      <h2>Registro</h2>
-      <form onSubmit={handleSubmit} className="login-form">
-        <input
-          type="text"
-          name="nombre"
-          placeholder="Nombre"
-          value={formData.nombre}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
-        <button type="submit">Registrarse</button>
-      </form>
-      {error && <p className="error-message">{error}</p>}
-      <p>
-        ¿Ya tienes cuenta? <Link to="/login" className="register-link">Inicia sesión</Link>
+    <div className="register-container">
+      <h2 className="register-title">Registro</h2>
+      <div className="card register-form">
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <input
+              type="text"
+              name="nombre"
+              placeholder="Nombre"
+              value={formData.nombre}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          {error && <p className="error-message">{error}</p>}
+          <button type="submit" className="button register-button">
+            Registrarse
+          </button>
+        </form>
+      </div>
+      <p className="login-link-container">
+        ¿Ya tienes cuenta?{' '}
+        <Link to="/login" className="login-link">
+          Inicia sesión
+        </Link>
       </p>
     </div>
   );

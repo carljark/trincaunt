@@ -1,6 +1,6 @@
 @use '../styles/variables' as *;
 
-.login-container {
+.register-container {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -8,7 +8,7 @@
   min-height: 100vh;
   padding: 1rem;
 
-  .login-title {
+  .register-title {
     font-size: 2.5rem;
     font-weight: 700;
     margin-bottom: 2rem;
@@ -16,7 +16,7 @@
     text-align: center;
   }
 
-  .login-form {
+  .register-form {
     width: 100%;
     max-width: 400px;
 
@@ -24,7 +24,7 @@
       margin-bottom: 1.5rem;
     }
 
-    .login-button {
+    .register-button {
       width: 100%;
       margin-top: 1rem;
     }
@@ -37,12 +37,12 @@
     margin-bottom: 1rem;
   }
 
-  .register-link-container {
+  .login-link-container {
     margin-top: 2rem;
     text-align: center;
     color: $medium-color;
 
-    .register-link {
+    .login-link {
       color: $accent-color;
       text-decoration: none;
       font-weight: 600;

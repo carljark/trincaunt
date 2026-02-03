@@ -1,17 +1,19 @@
-$primary-color: #3498db;
-$secondary-color: #2ecc71;
+// Dark Theme Palette inspired by the image
+$primary-color: #1a1a1a; // Very dark, almost black background
+$secondary-color: #2c2c2c; // Slightly lighter for cards/elements
+$accent-color: #00b894; // Vibrant green for buttons and highlights
 $danger-color: #e74c3c;
-$light-color: #ecf0f1;
-$medium-color: #95a5a6;
-$dark-color: #2c3e50;
-$background-color: #f4f7f6;
-$border-color: #ddd;
+$light-color: #ecf0f1; // Light gray/off-white for text
+$medium-color: #95a5a6; // For secondary text or borders
+$dark-color: #121212; // A slightly different dark shade
+$background-color: #1a1a1a;
+$border-color: #444;
 
-$font-family: sans-serif;
+$font-family: 'Poppins', sans-serif; // A modern, clean font
 $font-size-base: 16px;
 
-$border-radius: 8px;
-$border-radius-sm: 4px;
+$border-radius: 12px; // A bit more rounded
+$border-radius-sm: 6px;
 
 $breakpoint-mobile: 480px;
 $breakpoint-tablet: 768px;
