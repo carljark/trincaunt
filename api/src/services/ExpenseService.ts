@@ -47,19 +47,27 @@ export class ExpenseService {
   }
 
   async getGlobalExpenses(userId: string): Promise<any[]> {
-    const userExpenses = await Expense.find({ pagado_por: userId })
-      .populate('grupo_id', 'nombre')
-      .populate('participantes', '_id');
+    const userGroups = await Group.find({ miembros: userId });
+    const groupIds = userGroups.map(g => g._id);
 
-    const globalExpenses = userExpenses.map(expense => {
+    const expensesInUserGroups = await Expense.find({ grupo_id: { $in: groupIds }, participantes: userId })
+      .populate('grupo_id', 'nombre')
+      .populate('participantes', '_id')
+      .populate('pagado_por', '_id');
+
+    const globalExpenses = expensesInUserGroups.map(expense => {
       const expenseObject = expense.toObject();
       let userShare = 0;
 
-      const isParticipant = expenseObject.participantes.some(p => p._id.toString() === userId);
+      const isPayer = expenseObject.pagado_por._id.toString() === userId;
 
       if (expenseObject.asume_gasto) {
-        userShare = expenseObject.monto;
-      } else if (isParticipant) {
+        if (isPayer) {
+          userShare = expenseObject.monto;
+        } else {
+          userShare = 0; // Not the payer, so their share is 0
+        }
+      } else {
         userShare = expenseObject.monto / expenseObject.participantes.length;
       }
 
