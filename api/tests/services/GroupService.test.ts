@@ -1,14 +1,17 @@
 import { GroupService } from '../../src/services/GroupService';
 import Group from '../../src/models/Group';
 import User from '../../src/models/User';
+import Expense from '../../src/models/Expense';
 import { AppError } from '../../src/utils/AppError';
 import mongoose from 'mongoose';
 
 jest.mock('../../src/models/Group');
 jest.mock('../../src/models/User');
+jest.mock('../../src/models/Expense');
 
 const GroupMock = Group as jest.Mocked<typeof Group>;
 const UserMock = User as jest.Mocked<typeof User>;
+const ExpenseMock = Expense as jest.Mocked<typeof Expense>;
 
 // Mocking the save method on the document instance
 const mockGroupSave = jest.fn().mockResolvedValue(undefined);
@@ -35,9 +38,12 @@ describe('GroupService', () => {
     GroupMock.create.mockImplementation((data: any) => Promise.resolve({ ...data, _id: 'group-123' } as any));
     GroupMock.findById.mockResolvedValue(mockGroupInstance as any);
     GroupMock.find.mockReturnValue({
-      populate: jest.fn().mockResolvedValue([]),
+      populate: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue([]),
+      }),
     } as any);
     UserMock.findOne.mockResolvedValue({ _id: 'user-456', id: 'user-456' } as any);
+    ExpenseMock.find.mockResolvedValue([]);
   });
 
   describe('createGroup', () => {
@@ -103,17 +109,34 @@ describe('GroupService', () => {
   });
 
   describe('getGroupsForUser', () => {
-    it('should return groups for a given user', async () => {
+    it('should return groups with expense data for a given user', async () => {
       const userId = 'user-123';
-      const groups = [{ nombre: 'Group 1' }];
+      const group1 = { _id: 'group-1', nombre: 'Group 1', miembros: [userId] };
+      const groups = [group1];
+  
       (Group.find as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockResolvedValue(groups),
-      } as any);
-
+          populate: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue(groups),
+          }),
+      });
+  
+      const expense1 = {
+          _id: 'exp-1',
+          grupo_id: 'group-1',
+          monto: 100,
+          participantes: [userId],
+          asume_gasto: false,
+          pagado_por: userId
+      };
+      (Expense.find as jest.Mock).mockResolvedValue([expense1] as any);
+  
       const result = await groupService.getGroupsForUser(userId);
-
+  
       expect(Group.find).toHaveBeenCalledWith({ miembros: userId });
-      expect(result).toEqual(groups);
+      expect(Expense.find).toHaveBeenCalledWith({ grupo_id: 'group-1' });
+      expect(result[0].totalExpenses).toBe(100);
+      expect(result[0].userShare).toBe(100);
     });
   });
 });
+

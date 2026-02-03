@@ -30,8 +30,38 @@ export class GroupService {
     return group;
   }
 
-  async getGroupsForUser(userId: string): Promise<IGroup[]> {
-    return Group.find({ miembros: userId }).populate('miembros', 'nombre email');
+  async getGroupsForUser(userId: string): Promise<any[]> {
+    const groups = await Group.find({ miembros: userId }).populate('miembros', 'nombre email').lean();
+
+    const groupsWithExpenses = await Promise.all(groups.map(async (group) => {
+        const expenses = await Expense.find({ grupo_id: group._id });
+
+        const totalExpenses = expenses.reduce((sum, expense) => sum + expense.monto, 0);
+
+        const userShare = expenses.reduce((sum, expense) => {
+            const isParticipant = expense.participantes.some(p => p.toString() === userId);
+            if (!isParticipant) {
+                return sum;
+            }
+
+            if (expense.asume_gasto) {
+                if (expense.pagado_por.toString() === userId) {
+                    return sum + expense.monto;
+                }
+                return sum;
+            }
+
+            return sum + (expense.monto / expense.participantes.length);
+        }, 0);
+
+        return {
+            ...group,
+            totalExpenses,
+            userShare,
+        };
+    }));
+
+    return groupsWithExpenses;
   }
 
   async getGroupById(groupId: string): Promise<IGroup | null> {

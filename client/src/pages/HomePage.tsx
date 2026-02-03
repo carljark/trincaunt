@@ -6,6 +6,10 @@ import './HomePage.scss'; // Import the new SCSS file
 
 const apiHost = import.meta.env.VITE_API_HOST;
 
+const formatCurrency = (amount: number) => {
+  return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 const HomePage: React.FC = () => {
   const { user, token, logout } = useAuth();
   const [groups, setGroups] = useState<any[]>([]);
@@ -95,6 +99,8 @@ const HomePage: React.FC = () => {
     fetchGlobalExpenses();
   }, [token]);
 
+  const totalGlobalExpenses = globalExpenses.reduce((sum, expense) => sum + expense.monto, 0);
+
   return (
     <div className="home-page"> {/* Main container */}
       <div className="user-info">
@@ -111,14 +117,14 @@ const HomePage: React.FC = () => {
         <ul>
           <li key="global-group">
             <Link to={`/group/global`}>
-              <strong>Global</strong> - {globalExpenses.length} gastos
+              <strong>Global</strong> - Total: {formatCurrency(totalGlobalExpenses)}€
             </Link>
           </li>
           {groups.length > 0 ? (
             groups.map(g => (
               <li key={g._id}>
                 <Link to={`/group/${g._id}`}>
-                  <strong>{g.nombre}</strong> - {g.miembros.length} miembros
+                  <strong>{g.nombre}</strong> - {formatCurrency(g.totalExpenses)}€ ({formatCurrency(g.userShare)}€)
                 </Link>
                 <button onClick={() => handleDeleteGroup(g._id, g.nombre)} className="delete-group-button">Eliminar</button>
               </li>
