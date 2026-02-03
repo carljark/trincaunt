@@ -136,7 +136,7 @@ const GroupDetailPage: React.FC = () => {
           ...new Set(
             expensesData.data.flatMap((e: any) => e.categoria).filter(Boolean)
           ),
-        ];
+        ] as string[];
         setGroupCategories(categories.sort());
       } else {
         const [groupRes, expenseRes, balanceRes, settlementRes] =
@@ -173,7 +173,7 @@ const GroupDetailPage: React.FC = () => {
           ...new Set(
             expensesData.data.flatMap((e: any) => e.categoria).filter(Boolean)
           ),
-        ];
+        ] as string[];
         setGroupCategories(categories.sort());
       }
     } catch (err: any) {
@@ -408,7 +408,7 @@ const GroupDetailPage: React.FC = () => {
               {filteredExpenses.map(expense => (
                 <li key={expense._id} className="expense-item">
                   <div className="expense-icon">
-                    {getCategoryIcon(expense.categoria?.[0])}
+                    {getCategoryIcon(expense.categoria?.[0] || '')}
                   </div>
                   <div className="expense-details">
                     <div className="expense-description">
