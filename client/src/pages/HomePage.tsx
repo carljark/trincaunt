@@ -102,35 +102,39 @@ const HomePage: React.FC = () => {
   const totalGlobalExpenses = globalExpenses.reduce((sum, expense) => sum + expense.monto, 0);
 
   return (
-    <div className="home-page"> {/* Main container */}
-      <div className="user-info">
-        <h1 className="welcome-message">Bienvenido, {user?.nombre}</h1>
-        <button onClick={logout} className="logout-button">Logout</button>
+    <div className="home-page">
+      <div className="header-section">
+        <h1 className="welcome-message">Bienvenido, <strong>{user?.nombre}</strong></h1>
+        <button onClick={logout} className="button button--danger">Logout</button>
       </div>
       
       <div className="create-group-section">
-        <button onClick={createGroup} className="create-group-button">Crear Nuevo Grupo</button>
+        <button onClick={createGroup} className="button button--primary">Crear Nuevo Grupo</button>
       </div>
       
       <div className="groups-list-section">
         <h3>Mis Grupos</h3>
-        <ul>
-          <li key="global-group">
-            <Link to={`/group/global`}>
-              <strong>Global</strong> - Total: {formatCurrency(totalGlobalExpenses)}€
+        <ul className="groups-grid">
+          <li key="global-group" className="group-card">
+            <Link to={`/group/global`} className="group-card-link">
+              <strong>Global</strong>
+              <p>Total: {formatCurrency(totalGlobalExpenses)}€</p>
             </Link>
           </li>
           {groups.length > 0 ? (
             groups.map(g => (
-              <li key={g._id}>
-                <Link to={`/group/${g._id}`}>
-                  <strong>{g.nombre}</strong> - {formatCurrency(g.totalExpenses)}€ ({formatCurrency(g.userShare)}€)
+              <li key={g._id} className="group-card">
+                <Link to={`/group/${g._id}`} className="group-card-link">
+                  <strong>{g.nombre}</strong>
+                  <p>Total: {formatCurrency(g.totalExpenses)}€ / Mi parte: {formatCurrency(g.userShare)}€</p>
                 </Link>
-                <button onClick={() => handleDeleteGroup(g._id, g.nombre)} className="delete-group-button">Eliminar</button>
+                <div className="group-card-footer">
+                  <button onClick={() => handleDeleteGroup(g._id, g.nombre)} className="button button--danger">Eliminar</button>
+                </div>
               </li>
             ))
           ) : (
-            <p>No perteneces a ningún grupo.</p>
+            <p className="no-groups-message">No perteneces a ningún grupo.</p>
           )}
         </ul>
       </div>

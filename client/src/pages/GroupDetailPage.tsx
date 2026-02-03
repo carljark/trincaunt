@@ -405,36 +405,33 @@ const GroupDetailPage: React.FC = () => {
               Ordenar ({sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'})
             </button>
           </div>
-          <ul className="expenses-list">
+          <div className="expenses-list">
             {filteredExpenses.map((expense: any) => (
-              <li key={expense._id}>
-                <div className="expense-item">
-                  <div className="expense-info">
-                    <div>
-                      {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
-                      {expense.descripcion} ({expense.categoria?.join(', ')}): 
-                      <strong> {formatCurrency(expense.monto)}€</strong>
-                      {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
-                    </div>
-                    <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
-                    {!isGlobal && (
-                      <div>
-                        <span>
-                          {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
-                        </span>
-                      </div>
-                    )}
+              <div key={expense._id} className="expense-card">
+                <div className="expense-main-info">
+                  <div className="expense-description">
+                    {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
+                    {expense.descripcion}
                   </div>
-                  {!isGlobal && (
-                    <div className="expense-actions">
-                      <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
-                      <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
-                    </div>
-                  )}
+                  <div className="expense-category">{expense.categoria?.join(', ')}</div>
                 </div>
-              </li>
+                <div className="expense-details">
+                  <div className="expense-amount">
+                    {formatCurrency(expense.monto)}€
+                    {isGlobal && <span style={{ fontSize: '0.8rem', color: '#555' }}> (de {formatCurrency(expense.original_monto)}€)</span>}
+                  </div>
+                  <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
+                  {!isGlobal && <div className="expense-payer">Pagado por: {expense.pagado_por?.nombre || '...'}</div>}
+                </div>
+                {!isGlobal && (
+                  <div className="expense-actions">
+                    <button onClick={() => handleEdit(expense)} title="Editar">&#9998;</button>
+                    <button onClick={() => handleDeleteExpense(expense._id)} title="Borrar">&#10006;</button>
+                  </div>
+                )}
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 

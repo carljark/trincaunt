@@ -7,106 +7,73 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 1050;
+  backdrop-filter: blur(5px);
 }
 
 .modal-content {
-  background-color: $background-color;
-  padding: 20px;
-  border-radius: $border-radius;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: $card-border-radius;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
   width: 90%;
-  max-width: 500px;
+  max-width: 550px;
 
   h3 {
-    color: $primary-color;
-    margin-bottom: 15px;
+    color: $dark-color;
+    margin-top: 0;
+    margin-bottom: 2rem;
     text-align: center;
+    font-size: 1.8rem;
   }
 
   .error-message {
     color: $danger-color;
+    background-color: color.scale($danger-color, $alpha: -90%);
     text-align: center;
-    margin-bottom: 10px;
+    padding: 0.8rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
   }
 
   form {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-
-    input[type="text"],
-    input[type="number"],
-    select {
-      padding: 10px;
-      border: 1px solid $border-color;
-      border-radius: $border-radius-sm;
-      font-size: 1rem;
-      width: 100%;
-      box-sizing: border-box;
-    }
+    gap: 1rem;
 
     .form-group {
       display: flex;
       flex-direction: column;
-      label {
-        margin-bottom: 5px;
-        font-weight: bold;
-        color: $dark-color;
-      }
     }
+
+    // Uses global .form-input and .form-label styles from main.scss
 
     .checkbox-container {
       display: flex;
       align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
       label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: normal;
-        input[type="checkbox"] {
-          width: auto;
-        }
+        font-weight: 500;
       }
     }
 
     .modal-actions {
       display: flex;
       justify-content: flex-end;
-      gap: 10px;
-      margin-top: 20px;
+      gap: 1rem;
+      margin-top: 1.5rem;
 
-      button {
-        padding: 10px 20px;
-        border: none;
-        border-radius: $border-radius-sm;
-        cursor: pointer;
-        font-size: 1rem;
-        transition: background-color 0.3s ease;
-
-        &[type="submit"] {
-          background-color: $primary-color;
-          color: white;
-          &:hover:not(:disabled) {
-            background-color: color.scale($primary-color, $lightness: -10%);
-          }
-        }
-
-        &[type="button"] { // Cancel button
-          background-color: $secondary-color;
-          color: $dark-color;
-          &:hover:not(:disabled) {
-            background-color: color.scale($secondary-color, $lightness: -10%);
-          }
-        }
-
-        &:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
+      // Uses global .button styles from main.scss
+      .button--secondary {
+        background-color: $light-color;
+        color: $dark-color;
+        &:hover {
+          background-color: $border-color;
         }
       }
     }
@@ -123,20 +90,20 @@
     right: 0;
     background-color: #fff;
     border: 1px solid $border-color;
-    border-radius: $border-radius-sm;
+    border-radius: 8px;
     list-style-type: none;
-    padding: 0;
-    margin: 5px 0 0;
-    max-height: 150px;
+    padding: 0.5rem 0;
+    margin-top: 0.5rem;
+    max-height: 200px;
     overflow-y: auto;
-    z-index: 1001; // Should be higher than the modal overlay
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1060;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 
     li {
-      padding: 10px;
+      padding: 0.8rem 1rem;
       cursor: pointer;
       &:hover {
-        background-color: #f0f0f0;
+        background-color: $light-color;
       }
     }
   }
@@ -144,8 +111,8 @@
   .selected-categories {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 0.5rem;
+    margin-top: 0.8rem;
   }
 
   .selected-category {
@@ -153,19 +120,25 @@
     align-items: center;
     background-color: $primary-color;
     color: white;
-    padding: 5px 10px;
-    border-radius: $border-radius-sm;
+    padding: 0.4rem 0.8rem;
+    border-radius: 15px;
     font-size: 0.9rem;
 
     button {
       background: none;
       border: none;
       color: white;
-      margin-left: 8px;
+      margin-left: 0.5rem;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 1.1rem;
       padding: 0;
       line-height: 1;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+
+      &:hover {
+        opacity: 1;
+      }
     }
   }
 }

@@ -2,29 +2,84 @@
 @use './variables' as *;
 @use '../pages/GroupDetailPage.scss';
 
+// Estilos base para el cuerpo del documento
 body {
-  background-color: $light-color;
+  background-color: $background-color;
+  color: $dark-color;
   font-family: $font-family;
   margin: 0;
-  padding: 0;
+  padding: 2rem;
   box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: inherit;
+// Contenedor principal para centrar el contenido
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
 }
 
-.normal-button {
-  background-color: $secondary-color; // Or any suitable color from your variables
-  color: white;
+// Estilo de botones global y moderno
+.button {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: $card-border-radius;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
+  font-weight: 600;
   font-size: $font-size-base;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  text-align: center;
+  text-decoration: none;
+
   &:hover {
-    background-color: color.scale($secondary-color, $lightness: -10%);
+    transform: translateY(-2px);
+  }
+
+  &--primary {
+    background-color: $primary-color;
+    color: white;
+
+    &:hover {
+      background-color: color.scale($primary-color, $lightness: 10%);
+    }
+  }
+
+  &--secondary {
+    background-color: $secondary-color;
+    color: $dark-color;
+
+    &:hover {
+      background-color: color.scale($secondary-color, $lightness: -10%);
+    }
+  }
+}
+
+// Estilos para formularios e inputs
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: $dark-color;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 15px;
+  border-radius: 8px;
+  border: 1px solid $border-color;
+  font-size: $font-size-base;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 3px color.scale($primary-color, $alpha: -80%);
   }
 }

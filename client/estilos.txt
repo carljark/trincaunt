@@ -1,0 +1,16 @@
+Layouts Responsivos: Usa display: grid o flexbox para organizar los gastos, participantes y botones de acción. La función clamp(min, preferred, max) es excelente para tamaños de fuente fluidos.
+Tarjetas Modernas (Cards): Utiliza sombras sutiles, bordes redondeados y un ligero cambio de escala al pasar el ratón (hover) para listar los gastos.
+css
+.gasto-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+.gasto-card:hover { transform: translateY(-5px); }
+Colores y Estados: Usa variables CSS (--primary-color: #6200ea;) para una gestión fácil de colores. Implementa clases para estados de deuda (p.ej., texto rojo para "debe", verde para "pagado").
+Input y UI: Campos de entrada modernos con bordes inferiores (border-bottom) o bordes redondeados, fuentes sin serifas claras (Sans-serif) y transiciones suaves para la interacción.
+Estructura de Tabla/Lista: Usa gap para separar elementos en lugar de margin para diseños más limpios. 
+YouTube
+YouTube
+ +2
+Para una interfaz estilo "Splitwise" o similar, la clave es la simplicidad visual y la claridad en los montos.

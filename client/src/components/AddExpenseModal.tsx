@@ -150,22 +150,38 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
         <h3>{expenseToEdit ? 'Editar Gasto' : 'Añadir Nuevo Gasto'}</h3>
         {error && <p className="error-message">{error}</p>}
         <form onSubmit={handleSubmitExpense}>
-          <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
-          <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
+          <div className="form-group">
+            <label className="form-label" htmlFor="description">Descripción</label>
+            <input id="description" className="form-input" type="text" placeholder="Ej: Cena de equipo" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="amount">Monto</label>
+            <input id="amount" className="form-input" type="number" placeholder="0.00" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="paidBy">Pagado por:</label>
+            <select id="paidBy" className="form-input" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
+              {members.map((m: any) => (
+                <option key={m._id} value={m._id}>{m.nombre}</option>
+              ))}
+            </select>
+          </div>
 
           <div
-            className="category-container"
+            className="category-container form-group"
             onBlur={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node)) {
                 setShowSuggestions(false);
               }
             }}
           >
-            <label htmlFor="category">Categoría:</label>
+            <label className="form-label" htmlFor="category">Categoría:</label>
             <input
               type="text"
               id="category"
-              placeholder="Ej: Comida, Ocio..."
+              className="form-input"
+              placeholder="Añadir categorías..."
               value={categoryInput}
               ref={categoryInputRef}
               onChange={e => setCategoryInput(e.target.value)}
@@ -208,32 +224,26 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
             </div>
           </div>
 
-          <div>
-            <label htmlFor="paidBy">Pagado por:</label>
-            <select id="paidBy" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
-              {members.map((m: any) => (
-                <option key={m._id} value={m._id}>{m.nombre}</option>
-              ))}
-            </select>
-          </div>
           <div className="checkbox-container">
-            <label>
-              <input
-                type="checkbox"
-                checked={assumeExpense}
-                onChange={e => setAssumeExpense(e.target.checked)}
-              />Asumir el gasto (invita)
-            </label>
+            <input
+              type="checkbox"
+              id="assumeExpense"
+              checked={assumeExpense}
+              onChange={e => setAssumeExpense(e.target.checked)}
+            />
+            <label htmlFor="assumeExpense">Asumir el gasto (invita)</label>
           </div>
 
-          <div>
-            <label htmlFor="participants">Participantes:</label>
+          <div className="form-group">
+            <label className="form-label" htmlFor="participants">Participantes:</label>
             <select
               id="participants"
+              className="form-input"
               multiple
               value={selectedParticipants}
               onChange={e => setSelectedParticipants(Array.from(e.target.selectedOptions, option => option.value))}
               disabled={assumeExpense}
+              style={{ minHeight: '120px' }}
             >
               {members.map((m: any) => (
                 <option key={m._id} value={m._id}>{m.nombre}</option>
@@ -242,11 +252,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
           </div>
 
           <div className="modal-actions">
-            <button type="submit" disabled={loading}>
-              {loading ? (expenseToEdit ? 'Actualizando Gasto...' : 'Añadiendo Gasto...') : (expenseToEdit ? 'Actualizar Gasto' : 'Añadir Gasto')}
-            </button>
-            <button type="button" onClick={onClose} disabled={loading}>
+            <button type="button" className="button button--secondary" onClick={onClose} disabled={loading}>
               Cancelar
+            </button>
+            <button type="submit" className="button button--primary" disabled={loading}>
+              {loading ? (expenseToEdit ? 'Actualizando...' : 'Añadiendo...') : (expenseToEdit ? 'Actualizar Gasto' : 'Añadir Gasto')}
             </button>
           </div>
         </form>

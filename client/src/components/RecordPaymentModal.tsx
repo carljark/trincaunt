@@ -68,8 +68,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ groupId, token,
         {error && <p className="error-message">{error}</p>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="fromUser">Pagador:</label>
-            <select id="fromUser" value={fromUser} onChange={(e) => setFromUser(e.target.value)} required>
+            <label className="form-label" htmlFor="fromUser">Pagador:</label>
+            <select id="fromUser" className="form-input" value={fromUser} onChange={(e) => setFromUser(e.target.value)} required>
               <option value="">Seleccionar...</option>
               {members.map((member) => (
                 <option key={member._id} value={member._id}>
@@ -80,8 +80,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ groupId, token,
           </div>
 
           <div className="form-group">
-            <label htmlFor="toUser">Receptor:</label>
-            <select id="toUser" value={toUser} onChange={(e) => setToUser(e.target.value)} required>
+            <label className="form-label" htmlFor="toUser">Receptor:</label>
+            <select id="toUser" className="form-input" value={toUser} onChange={(e) => setToUser(e.target.value)} required>
               <option value="">Seleccionar...</option>
               {members.map((member) => (
                 <option key={member._id} value={member._id}>
@@ -92,24 +92,26 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ groupId, token,
           </div>
 
           <div className="form-group">
-            <label htmlFor="amount">Monto:</label>
+            <label className="form-label" htmlFor="amount">Monto:</label>
             <input
               type="number"
               id="amount"
+              className="form-input"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               min="0.01"
               step="0.01"
               required
+              placeholder="0.00"
             />
           </div>
 
           <div className="modal-actions">
-            <button type="submit" disabled={loading}>
-              {loading ? 'Registrando...' : 'Registrar Pago'}
-            </button>
-            <button type="button" onClick={onClose} disabled={loading}>
+            <button type="button" className="button button--secondary" onClick={onClose} disabled={loading}>
               Cancelar
+            </button>
+            <button type="submit" className="button button--primary" disabled={loading}>
+              {loading ? 'Registrando...' : 'Registrar Pago'}
             </button>
           </div>
         </form>

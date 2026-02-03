@@ -38,30 +38,42 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="login-page">
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit} className="login-form">
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
-        <button type="submit">Login</button>
-      </form>
-      {error && <p className="error-message">{error}</p>}
-      <p>
-        ¿No tienes cuenta? <Link to="/register" className="register-link">Regístrate</Link>
-      </p>
+      <div className="login-container">
+        <h2>Login</h2>
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label className="form-label" htmlFor="email">Email</label>
+            <input
+              id="email"
+              className="form-input"
+              type="email"
+              name="email"
+              placeholder="tu@email.com"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="password">Password</label>
+            <input
+              id="password"
+              className="form-input"
+              type="password"
+              name="password"
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <button type="submit" className="button button--primary" style={{ width: '100%', marginTop: '1rem' }}>Login</button>
+        </form>
+        {error && <p className="error-message">{error}</p>}
+        <p className="register-prompt">
+          ¿No tienes cuenta? <Link to="/register" className="register-link">Regístrate</Link>
+        </p>
+      </div>
     </div>
   );
 };
