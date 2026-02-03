@@ -11,6 +11,7 @@
   "devDependencies": {
     "concurrently": "^9.2.1",
     "cypress": "^13.6.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "mongoose": "^7.0.3"
   }
 }
