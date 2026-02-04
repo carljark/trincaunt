@@ -3,6 +3,7 @@ import * as UserController from '../controllers/UserController';
 import * as GroupController from '../controllers/GroupController';
 import * as ExpenseController from '../controllers/ExpenseController';
 import * as DebtTransactionController from '../controllers/DebtTransactionController';
+import * as ReceiptController from '../controllers/ReceiptController';
 import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -28,10 +29,17 @@ router.get('/groups/:groupId/expenses', protect, ExpenseController.getGroupExpen
 router.get('/groups/:groupId/balance', protect, ExpenseController.getGroupBalance);
 router.get('/groups/:groupId/settle', protect, ExpenseController.settleGroupDebts);
 
+import * as ReceiptController from '../controllers/ReceiptController';
+
+// ... (existing routes)
+
 // Debt Transaction Routes (Protected)
 router.post('/debt-transactions', protect, DebtTransactionController.createDebtTransaction);
 router.get('/groups/:groupId/debt-transactions', protect, DebtTransactionController.getGroupDebtTransactions);
 router.patch('/debt-transactions/:transactionId/pay', protect, DebtTransactionController.markDebtTransactionAsPaid);
 router.delete('/debt-transactions/:transactionId', protect, DebtTransactionController.deleteDebtTransaction); // New route for deleting a debt transaction
+
+// Receipt Routes (Protected)
+router.post('/receipts/upload', protect, ReceiptController.uploadReceipt);
 
 export default router;

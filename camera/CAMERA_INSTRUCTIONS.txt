@@ -1,0 +1,475 @@
+Componente React + TypeScript para Cámara y Subida de Fotos
+Prompt principal para React (versión completa):
+text
+Actúa como experto frontend senior especializado en React 18+, TypeScript, hooks modernos y manejo de archivos. Necesito desarrollar un componente React para capturar y subir fotos que se integre con un backend Node.js/Express.
+
+## CONTEXTO TÉCNICO
+- **Frontend**: React 18+ con TypeScript
+- **Build tool**: Vite (preferido) o Create React App
+- **Estado**: React Hooks (useState, useEffect, useRef, useCallback)
+- **HTTP Client**: Axios o Fetch API
+- **UI Framework**: Tailwind CSS (opcional, puede ser CSS modules o styled-components)
+- **Backend**: Node.js + Express con endpoint POST /api/upload
+- **Formato de subida**: multipart/form-data
+
+## REQUISITOS DEL COMPONENTE REACT
+
+### 1. COMPONENTE PRINCIPAL: `<CameraUpload />`
+**Props (TypeScript interface):**
+```typescript
+interface CameraUploadProps {
+  userId?: string;           // ID opcional para asociar foto a usuario
+  onUploadSuccess?: (response: UploadResponse) => void;
+  onUploadError?: (error: Error) => void;
+  maxSizeMB?: number;        // Tamaño máximo en MB (default: 1)
+  endpoint?: string;         // URL del endpoint (default: '/api/upload')
+  showPreview?: boolean;     // Mostrar vista previa después de captura
+  compressQuality?: number;  // Calidad de compresión 0.1-1.0
+}
+Estado necesario:
+
+isCameraActive: boolean - Cámara encendida/apagada
+
+photoPreview: string | null - Base64 de foto capturada
+
+isUploading: boolean - Estado de subida
+
+error: string | null - Mensaje de error
+
+stream: MediaStream | null - Referencia al stream de cámara
+
+2. FUNCIONALIDADES REQUERIDAS
+Acceso a cámara:
+
+Botón "Activar Cámara" que solicita permisos
+
+Preferencia por cámara trasera en dispositivos móviles
+
+Manejo de errores de permisos (user denied, no camera found)
+
+Limpieza adecuada de stream en unmount
+
+Captura de foto:
+
+Botón "Capturar Foto" solo visible cuando cámara está activa
+
+Conversión a Base64 usando canvas
+
+Vista previa inmediata después de captura
+
+Botón "Tomar de nuevo" para reiniciar
+
+Procesamiento de imagen:
+
+Compresión automática si imagen > maxSizeMB
+
+Redimensionamiento manteniendo aspect ratio
+
+Conversión a JPEG para reducir tamaño
+
+Opción de rotación si es necesario
+
+Subida al servidor:
+
+Botón "Subir Foto" que envía FormData
+
+Indicador de progreso (barra o spinner)
+
+Manejo de errores de red/server
+
+Reset después de subida exitosa
+
+3. HOOKS PERSONALIZADOS (si aplica)
+typescript
+// Ejemplo de hooks personalizados
+useCamera() - Para manejo de stream de cámara
+useImageCompression() - Para compresión/optimización
+useFileUpload() - Para manejo de subida con progreso
+4. UI/UX ESPECÍFICA
+Estados visuales:
+
+Inactivo: Botón para activar cámara
+
+Cámara activa: Video preview + botón capturar
+
+Foto capturada: Preview estática + botones (retomar/subir)
+
+Subiendo: Spinner + posible barra de progreso
+
+Éxito: Mensaje de confirmación + posible thumbnail
+
+Error: Mensaje claro + botón para reintentar
+
+Responsive design:
+
+Mobile-first approach
+
+Video preview que se adapta al contenedor
+
+Botones accesibles en móvil (tamaño adecuado)
+
+Orientación portrait/landscape support
+
+5. CÓDIGO ESPERADO
+Genera los siguientes archivos:
+
+1. CameraUpload.tsx - Componente principal
+
+typescript
+// Incluir:
+// - Interface de props
+// - Hooks de estado y referencias (useRef para video/canvas)
+// - Funciones: startCamera, stopCamera, capturePhoto, compressImage, uploadPhoto
+// - Efectos para cleanup
+// - Manejo de errores try/catch
+2. useCamera.ts - Hook personalizado para cámara
+
+typescript
+// Hook que devuelve { stream, start, stop, error, isActive }
+// Maneja permisos y selección de cámara
+3. useImageProcessor.ts - Hook para procesamiento de imágenes
+
+typescript
+// Funciones: compress, resize, toBlob, getImageSize
+// Usa canvas API para manipulación
+4. uploadService.ts - Servicio para subida de archivos
+
+typescript
+// Clase/función con métodos upload, getProgress, cancel
+// Usa Axios con interceptores o Fetch API
+5. types.ts - Tipos TypeScript
+
+typescript
+// Interfaces: UploadResponse, CameraOptions, CompressionOptions, etc.
+6. Estilos (elegir uno):
+
+CameraUpload.module.css (CSS Modules)
+
+O con Tailwind: className="..."
+
+O styled-components
+
+6. CARACTERÍSTICAS AVANZADAS (OPCIONAL)
+Si el modelo puede, incluir:
+
+Filtros en tiempo real: brightness, contrast controls
+
+Recorte (crop): Selección de área antes de subir
+
+Modo selfie/trasera: Switch entre cámaras
+
+Flash/linterna: Control si el dispositivo soporta
+
+Grabación de video: Extensión para grabar clips cortos
+
+EXIF data: Preservar/metadatos
+
+Offline support: Guardar en IndexedDB y sincronizar después
+
+7. EJEMPLO DE USO
+tsx
+// App.tsx
+function App() {
+  const handleUploadSuccess = (response) => {
+    console.log('Foto subida:', response.url);
+    // Actualizar estado global, mostrar notificación, etc.
+  };
+
+  return (
+    <div className="app">
+      <h1>Subir Foto de Perfil</h1>
+      <CameraUpload
+        userId="user123"
+        onUploadSuccess={handleUploadSuccess}
+        maxSizeMB={2}
+        compressQuality={0.8}
+        showPreview={true}
+      />
+    </div>
+  );
+}
+8. CONSIDERACIONES ESPECÍFICAS REACT
+Performance: Use useCallback/useMemo para funciones pesadas
+
+Memory leaks: Cleanup de event listeners y media streams
+
+Accessibility: ARIA labels, keyboard navigation
+
+Testing: Fácil de testear (separar lógica de UI)
+
+Error boundaries: Componente padre puede manejar errores
+
+9. CONEXIÓN CON BACKEND
+El componente debe enviar:
+
+javascript
+FormData {
+  'photo': Blob/File,
+  'userId': string (opcional),
+  'metadata': JSON string con { width, height, compressed: boolean }
+}
+Y esperar respuesta:
+
+json
+{
+  "success": true,
+  "url": "https://api.com/uploads/foto.jpg",
+  "filename": "foto.jpg",
+  "size": 123456
+}
+POR FAVOR GENERA:
+
+Código completo del componente CameraUpload.tsx
+
+Hooks personalizados relacionados
+
+Servicio de upload
+
+Tipos TypeScript
+
+Estilos básicos (CSS Modules o Tailwind)
+
+Ejemplo de implementación en App.tsx
+
+Instrucciones para instalar dependencias necesarias
+
+Formato de respuesta:
+Archivos separados con bloques de código markdown, explicaciones breves entre secciones, y notas sobre decisiones técnicas importantes.
+
+text
+
+---
+
+## **Prompt alternativo más conciso (React + TypeScript):**
+Crea un componente React 18 con TypeScript para capturar y subir fotos con estas características:
+
+Componente: <CameraUploader />
+
+Props: onSuccess(data), onError(error), maxSize (default 1MB)
+
+Funciones:
+
+startCamera(): activa cámara usando navigator.mediaDevices
+
+capturePhoto(): toma foto con canvas
+
+compressImage(base64): redimensiona a maxWidth 1024px
+
+uploadPhoto(blob): envía a endpoint usando fetch/FormData
+
+Estados visuales:
+
+Inicial: "Start Camera" button
+
+Active: Video preview + "Capture" button
+
+Captured: Image preview + "Upload" / "Retake" buttons
+
+Uploading: Progress indicator
+
+UI: Simple con Tailwind CSS o CSS modules
+
+Cleanup: Stop camera stream on unmount
+
+Genera solo:
+
+CameraUploader.tsx completo con hooks
+
+Tipo UploadResponse
+
+uploadService.ts con función uploadFile()
+
+Ejemplo de uso en App.tsx
+
+Código listo para copiar y pegar en un proyecto Vite + React + TypeScript.
+
+text
+
+---
+
+## **Prompt para funcionalidad muy específica (React):**
+Necesito SOLO la lógica de cámara en React Hook personalizado. Crea:
+
+Hook: useCameraHook() que devuelve:
+
+typescript
+{
+  stream: MediaStream | null,
+  error: string | null,
+  isActive: boolean,
+  start: (constraints?: MediaStreamConstraints) => Promise<void>,
+  stop: () => void,
+  capture: () => Promise<string> // returns base64
+}
+Hook: useImageUpload() que devuelve:
+
+typescript
+{
+  upload: (file: Blob, endpoint: string) => Promise<Response>,
+  progress: number, // 0-100
+  isUploading: boolean,
+  error: string | null
+}
+Componente: SimpleCamera.tsx que usa estos hooks
+
+Botón start/stop
+
+Video element con ref
+
+Canvas hidden para capture
+
+Manejo de errores
+
+Requisitos técnicos:
+
+React 18 functional components
+
+TypeScript estricto
+
+No UI framework (usar CSS modules)
+
+Manejo de cleanup en useEffect
+
+Error boundaries considerados
+
+Genera los 3 archivos con código completo y comentarios explicativos.
+
+text
+
+---
+
+## **Prompt optimizado para ChatGPT/Gemini/Claude (React):**
+React Camera Component with Upload
+Context: React 18 + TypeScript + Vite project
+
+Task: Create a camera photo capture and upload component
+
+Requirements:
+
+Component name: CameraCapture
+
+Features:
+
+Request camera permissions
+
+Live video preview
+
+Capture photo button
+
+Preview captured image
+
+Retake option
+
+Upload to server
+
+Loading states
+
+Error handling
+
+Technical specs:
+
+Use useRef for video/canvas elements
+
+Use useState for component state
+
+Convert captured image to Blob for upload
+
+Compress image if > 500KB
+
+Send as FormData to POST /api/upload
+
+Expected output files:
+
+CameraCapture.tsx (main component)
+
+types.ts (TypeScript interfaces)
+
+uploadUtils.ts (compression and upload helpers)
+
+Example usage in App.tsx
+
+Code style:
+
+Functional components
+
+Custom hooks if needed
+
+Tailwind CSS classes for styling
+
+Async/await for promises
+
+Proper cleanup in useEffect
+
+Please provide complete, ready-to-use code.
+
+text
+
+---
+
+## **Consejos adicionales para prompts de React:**
+
+1. **Especifica el bundler** si es importante:
+Usando Vite con plugin react-swc
+
+text
+
+2. **Menciona hooks de terceros** si los quieres:
+Puedes usar react-webcam si simplifica, pero prefiero vanilla MediaDevices API
+
+text
+
+3. **Especifica manejo de estado global** si aplica:
+Integra con Redux Toolkit / Zustand / React Context para guardar las fotos subidas
+
+text
+
+4. **Pide testing** si lo necesitas:
+Incluye tests con Jest + React Testing Library para:
+
+Permisos de cámara mockeados
+
+Simulación de captura
+
+Test de subida mockeada
+
+text
+
+5. **Para backend Express** (si también lo necesitas):
+Además, genera el endpoint Express correspondiente:
+
+POST /api/upload con Multer
+
+Validaciones de tipo/size
+
+Guardar en carpeta uploads/
+
+Retornar URL pública
+
+text
+
+**Ejemplo de prompt completo con todo incluido:**
+Crea una aplicación completa:
+
+Frontend: React 18 + TypeScript + Vite + Tailwind CSS
+
+Componente de cámara con captura y subida
+
+Backend: Node.js + Express + Multer
+
+Base de datos: MongoDB para guardar metadata de fotos
+
+Genera:
+
+Todo el frontend (componentes, hooks, servicios)
+
+Todo el backend (endpoints, middlewares, modelos)
+
+Dockerfile para cada parte
+
+docker-compose.yml para orquestar
+
+.env.example con variables necesarias
+
+README.md con instrucciones
+
+Enfócate en buenas prácticas, seguridad y escalabilidad.

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import AddExpenseModal from '../components/AddExpenseModal';
+import UploadReceiptModal from '../components/UploadReceiptModal';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -59,6 +60,7 @@ const GroupDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false);
+  const [showUploadReceiptModal, setShowUploadReceiptModal] = useState<boolean>(false);
   const [expenseToEdit, setExpenseToEdit] = useState<IExpensePopulated | undefined>(undefined);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [descriptionFilter, setDescriptionFilter] = useState('');
@@ -282,12 +284,20 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
+  const handleOpenUploadReceiptModal = () => setShowUploadReceiptModal(true);
+  const handleCloseUploadReceiptModal = () => setShowUploadReceiptModal(false);
+  const handleUploadSuccess = (data: any) => {
+    alert(`Recibo subido: ${data.filename}`);
+    // Here you could trigger a function to process the receipt
+  };
+
   useEffect(() => {
     if (isGlobal) {
       fetchGlobalData();
     } else {
       fetchGroupData();
     }
+
   }, [isGlobal, fetchGroupData, fetchGlobalData]);
   
   const getBalanceColor = (amount: number) => {
@@ -487,7 +497,8 @@ const GroupDetailPage: React.FC = () => {
 
       {!isGlobal && (
         <div className="fixed-add-expense-button-container">
-          <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
+          <button onClick={handleOpenUploadReceiptModal} className="add-expense-button" style={{ right: '220px', width: '60px', height: '60px', borderRadius: '50%', fontSize: '1.5rem' }}>&#128247;</button>
+          <button onClick={handleOpenAddExpenseModal} className="add-expense-button">+</button>
         </div>
       )}
 
@@ -520,6 +531,14 @@ const GroupDetailPage: React.FC = () => {
           onExpenseAction={fetchGroupData}
           paidByInitial={user?._id || ''}
           expenseToEdit={expenseToEdit}
+        />
+      )}
+
+      {!isGlobal && showUploadReceiptModal && (
+        <UploadReceiptModal
+          token={token!}
+          onClose={handleCloseUploadReceiptModal}
+          onUploadSuccess={handleUploadSuccess}
         />
       )}
     </div>
