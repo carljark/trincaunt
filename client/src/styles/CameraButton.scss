@@ -1,0 +1,58 @@
+@use './variables' as *;
+@use 'sass:color';
+
+.camera-ia-button {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: $primary-color;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+
+  &:hover {
+    transform: scale(1.1);
+    background-color: color.scale($primary-color, $lightness: 10%);
+  }
+}
+
+// Re-using modal styles from the previous implementation
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1050;
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: $card-border-radius;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 600px;
+  
+  // To avoid conflicts with Tailwind's classes in CameraCapture
+  .camera-capture-container {
+    padding: 0;
+    box-shadow: none;
+  }
+}
