@@ -30,12 +30,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const categoryInputRef = useRef<HTMLInputElement>(null);
-
+  const today = new Date();
+  const formattedToday = today.toISOString().split('T')[0]; // YYYY-MM-DD
+  const [expenseDate, setExpenseDate] = useState<string>(expenseToEdit?.fecha?.split('T')[0] || formattedToday);
 
   useEffect(() => {
     if (expenseToEdit) {
       // If editing, set paidBy to the expense's payer
       setPaidBy(expenseToEdit.pagado_por._id.toString());
+      setExpenseDate(expenseToEdit.fecha.split('T')[0]); // Set existing expense date
     } else if (members && members.length > 0) {
       // If adding, initialize participants with all members
       setSelectedParticipants(members.map(m => m._id));
@@ -105,6 +108,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       pagado_por: paidBy,
       asume_gasto: assumeExpense,
       categoria: categories,
+      fecha: expenseDate, // Add the expense date here
     };
 
     if (!assumeExpense) {
@@ -152,6 +156,10 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
         <form onSubmit={handleSubmitExpense}>
           <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
           <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
+          <div className="form-group">
+            <label htmlFor="expense-date">Fecha del Gasto:</label>
+            <input type="date" id="expense-date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} required />
+          </div>
 
           <div
             className="category-container"

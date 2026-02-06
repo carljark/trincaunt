@@ -1,25 +1,27 @@
-
 import mongoose from 'mongoose';
+import { connectDB } from '../src/config/db';
 import Group from '../src/models/Group';
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/trincaunt';
-
 const getGroups = async () => {
-    try {
-        await mongoose.connect(MONGO_URI);
-        console.log('MongoDB Connected...');
+  await connectDB();
 
-        const groups = await Group.find({});
-        const groupNames = groups.map(group => group.nombre);
-
-        console.log('Found groups:');
-        console.log(groupNames.join(', '));
-
-    } catch (err) {
-        console.error((err as Error).message);
-    } finally {
-        mongoose.disconnect();
+  try {
+    const groups = await Group.find({}, 'nombre');
+    if (groups.length === 0) {
+      console.log('No groups found.');
+      return;
     }
+
+    console.log('Available groups:');
+    groups.forEach(group => {
+      console.log(`- ${group.nombre}`);
+    });
+
+  } catch (error) {
+    console.error('Error fetching groups:', error);
+  } finally {
+    mongoose.disconnect();
+  }
 };
 
 getGroups();

@@ -251,15 +251,27 @@ export class ExpenseService {
     }
     
     // Allow updating only certain fields
-    if (data.descripcion) {
+    if (data.descripcion !== undefined) { // Check for undefined to allow empty string
       expense.descripcion = data.descripcion;
     }
     if (data.monto !== undefined) {
       if (data.monto <= 0) throw new AppError('El monto debe ser mayor a 0', 400);
       expense.monto = data.monto;
     }
-    if (data.categoria) {
+    if (data.categoria !== undefined) { // Check for undefined to allow empty array
       expense.categoria = data.categoria;
+    }
+    if (data.fecha !== undefined) {
+      expense.fecha = data.fecha;
+    }
+    if (data.participantes !== undefined) {
+      expense.participantes = data.participantes;
+    }
+    if (data.pagado_por !== undefined) {
+      expense.pagado_por = data.pagado_por;
+    }
+    if (data.asume_gasto !== undefined) {
+      expense.asume_gasto = data.asume_gasto;
     }
 
     await expense.save();

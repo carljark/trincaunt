@@ -58,6 +58,18 @@
         font-weight: bold;
         color: $dark-color;
       }
+      input[type="date"] {
+        padding: 10px; // Equivalent to 0.75rem or 12px in GroupDetailPage
+        height: 40px;
+        font-size: 1rem;
+        border: 1px solid $border-color;
+        border-radius: $border-radius-sm;
+        width: 100%;
+        box-sizing: border-box;
+        text-decoration: none;
+        appearance: none;
+        -webkit-appearance: none;
+      }
     }
 
     .checkbox-container {
