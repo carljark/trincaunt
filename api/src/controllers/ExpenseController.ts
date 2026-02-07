@@ -16,7 +16,8 @@ export const createExpense = async (req: Request, res: Response, next: NextFunct
 export const getGroupExpenses = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { groupId } = req.params;
-    const expenses = await expenseService.getExpensesByGroup(groupId);
+    const category = req.query.category as string | undefined;
+    const expenses = await expenseService.getExpensesByGroup(groupId, category);
     res.status(200).json({ status: 'success', data: expenses });
   } catch (error) {
     next(error);

@@ -3,6 +3,7 @@ import * as UserController from '../controllers/UserController';
 import * as GroupController from '../controllers/GroupController';
 import * as ExpenseController from '../controllers/ExpenseController';
 import * as DebtTransactionController from '../controllers/DebtTransactionController';
+import * as CategoryAliasController from '../controllers/CategoryAliasController';
 import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -10,6 +11,12 @@ const router = Router();
 // User Routes
 router.post('/users/register', UserController.register);
 router.post('/users/login', UserController.login);
+
+// Category Alias Routes (Protected)
+router.get('/category-aliases', protect, CategoryAliasController.getAllAliases);
+router.post('/category-aliases', protect, CategoryAliasController.createAlias);
+router.put('/category-aliases/:aliasId', protect, CategoryAliasController.updateAlias);
+router.delete('/category-aliases/:aliasId', protect, CategoryAliasController.deleteAlias);
 
 // Group Routes (Protected)
 router.post('/groups', protect, GroupController.createGroup);

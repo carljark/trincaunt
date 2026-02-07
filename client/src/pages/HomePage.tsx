@@ -105,7 +105,10 @@ const HomePage: React.FC = () => {
     <div className="home-page"> {/* Main container */}
       <div className="user-info">
         <h1 className="welcome-message">Bienvenido, {user?.nombre}</h1>
-        <button onClick={logout} className="logout-button">Logout</button>
+        <div className="header-buttons">
+          <Link to="/preferences" className="preferences-button">Preferencias</Link>
+          <button onClick={logout} className="logout-button">Logout</button>
+        </div>
       </div>
       
       <div className="create-group-section">

@@ -2,6 +2,7 @@ import Expense, { IExpense } from '../models/Expense';
 import Group, { IBalance } from '../models/Group';
 import User from '../models/User';
 import DebtTransaction, { ISettleGroupDebts } from '../models/DebtTransaction';
+import CategoryAlias from '../models/CategoryAlias';
 import { AppError } from '../utils/AppError';
 
 export class ExpenseService {
@@ -40,8 +41,19 @@ export class ExpenseService {
     return expense;
   }
 
-  async getExpensesByGroup(groupId: string): Promise<IExpense[]> {
-    return Expense.find({ grupo_id: groupId })
+  async getExpensesByGroup(groupId: string, categoryFilter?: string): Promise<IExpense[]> {
+    let query: any = { grupo_id: groupId };
+
+    if (categoryFilter && categoryFilter !== 'all') {
+      const relatedAliases = await CategoryAlias.find({ mainCategories: categoryFilter }).select('alias');
+      const aliasCategories = relatedAliases.map(ca => ca.alias);
+
+      // Include the filter itself and all its aliases
+      const categoriesToFilter = [categoryFilter, ...aliasCategories];
+      query.categoria = { $in: categoriesToFilter };
+    }
+    
+    return Expense.find(query)
       .populate('pagado_por', 'nombre _id')
       .populate('participantes', 'nombre');
   }

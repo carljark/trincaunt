@@ -67,6 +67,7 @@ const GroupDetailPage: React.FC = () => {
   const [payerFilter, setPayerFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [groupCategories, setGroupCategories] = useState<string[]>([]);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
 
   const sortedExpenses = [...expenses].sort((a, b) => {
     const dateA = new Date(a.fecha).getTime();
@@ -79,9 +80,9 @@ const GroupDetailPage: React.FC = () => {
   });
 
   const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
-    if (categoryFilter !== 'all' && !expense.categoria?.includes(categoryFilter)) {
-      return false;
-    }
+    // This filtering is now mostly done on the backend, 
+    // but we can keep it for client-side filtering after the initial fetch if needed.
+    // For now, the main filtering will be based on the backend response.
     if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
       return false;
     }
@@ -111,23 +112,37 @@ const GroupDetailPage: React.FC = () => {
     if (!token) return;
     setLoading(true);
     try {
-        const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/global`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!res.ok) throw new Error('Failed to fetch global expenses');
-        const expensesData = await res.json();
+      const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/expenses/global`);
+      if (categoryFilter !== 'all') {
+        expenseUrl.searchParams.append('category', categoryFilter);
+      }
+      
+      const [expensesRes, aliasesRes] = await Promise.all([
+        fetch(expenseUrl.toString(), { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
 
-        setGroup({ _id: 'global', nombre: 'Global', miembros: [], creado_por: user?._id || '', fecha_creacion: new Date().toISOString() });
-        setExpenses(expensesData.data);
-        setBalance([]);
-        setSettlementTransactions([]);
-        setPaymentHistory([]);
-        setTotalExpenses(expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0));
-        const allCategories: (string[] | undefined)[] = expensesData.data.map((e: any) => e.categoria);
-        const flattenedCategories: (string | undefined)[] = allCategories.flat();
-        const filteredCategories: string[] = flattenedCategories.filter((c): c is string => !!c);
-        const uniqueCategories: string[] = [...new Set(filteredCategories)];
-        setGroupCategories(uniqueCategories.sort());
+      if (!expensesRes.ok) throw new Error('Failed to fetch global expenses');
+      const expensesData = await expensesRes.json();
+      
+      let allCats = new Set<string>();
+      if (aliasesRes.ok) {
+        const aliasesData = await aliasesRes.json();
+        aliasesData.data.forEach((alias: any) => {
+          alias.mainCategories.forEach((mc: string) => allCats.add(mc));
+        });
+      }
+
+      setGroup({ _id: 'global', nombre: 'Global', miembros: [], creado_por: user?._id || '', fecha_creacion: new Date().toISOString() });
+      setExpenses(expensesData.data);
+      setBalance([]);
+      setSettlementTransactions([]);
+      setPaymentHistory([]);
+      setTotalExpenses(expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0));
+      
+      const expenseCategories = [...new Set(expensesData.data.flatMap((e: any) => e.categoria).filter(Boolean))];
+      expenseCategories.forEach(cat => allCats.add(cat as string));
+      setAllCategories(Array.from(allCats).sort());
 
     } catch (err: unknown) {
         if (err instanceof Error) {
@@ -138,18 +153,24 @@ const GroupDetailPage: React.FC = () => {
     } finally {
         setLoading(false);
     }
-  }, [token, user?._id]);
+  }, [token, user?._id, categoryFilter]);
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
     setLoading(true);
     try {
-      const [groupRes, expenseRes, balanceRes, settlementRes, debtTransactionsRes] = await Promise.all([
+      const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses`);
+      if (categoryFilter !== 'all') {
+        expenseUrl.searchParams.append('category', categoryFilter);
+      }
+
+      const [groupRes, expenseRes, balanceRes, settlementRes, debtTransactionsRes, aliasesRes] = await Promise.all([
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(expenseUrl.toString(), { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/balance`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/settle`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/debt-transactions`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       if (!groupRes.ok) throw new Error('Failed to fetch group details');
@@ -164,8 +185,17 @@ const GroupDetailPage: React.FC = () => {
       const settlementData = await settlementRes.json();
       const debtTransactionsData = await debtTransactionsRes.json();
 
-      const categories = [...new Set(expensesData.data.flatMap(e => e.categoria).filter((c): c is string => !!c))];
-      setGroupCategories(categories.sort());
+      let allCats = new Set<string>();
+      if (aliasesRes.ok) {
+        const aliasesData = await aliasesRes.json();
+        aliasesData.data.forEach((alias: any) => {
+          alias.mainCategories.forEach((mc: string) => allCats.add(mc));
+        });
+      }
+      
+      const expenseCategories = [...new Set(expensesData.data.flatMap(e => e.categoria).filter((c): c is string => !!c))];
+      expenseCategories.forEach(cat => allCats.add(cat));
+      setAllCategories(Array.from(allCats).sort());
       
       setPaymentHistory(debtTransactionsData.data);
 
@@ -203,7 +233,7 @@ const GroupDetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [groupId, token, user?._id]);
+  }, [groupId, token, user?._id, categoryFilter]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -288,7 +318,7 @@ const GroupDetailPage: React.FC = () => {
     } else {
       fetchGroupData();
     }
-  }, [isGlobal, fetchGroupData, fetchGlobalData]);
+  }, [isGlobal, fetchGroupData, fetchGlobalData, categoryFilter]);
   
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
@@ -359,7 +389,7 @@ const GroupDetailPage: React.FC = () => {
                     Categoría:
                     <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
                         <option value="all">Todas</option>
-                        {groupCategories.map(category => (
+                        {allCategories.map(category => (
                           <option key={category} value={category}>{category}</option>
                         ))}
                     </select>

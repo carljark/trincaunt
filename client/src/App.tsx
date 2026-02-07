@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import GroupDetailPage from './pages/GroupDetailPage';
+import PreferencesPage from './pages/PreferencesPage';
 
 // Componente para proteger rutas
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -32,6 +33,14 @@ const AppContent: React.FC = () => {
         element={
           <PrivateRoute>
             <GroupDetailPage />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/preferences" 
+        element={
+          <PrivateRoute>
+            <PreferencesPage />
           </PrivateRoute>
         } 
       />

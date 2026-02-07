@@ -1,0 +1,188 @@
+@use '../styles/variables' as *;
+@use 'sass:color';
+
+.preferences-page {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex; /* Added display flex */
+  flex-direction: column; /* Align items in a column */
+  align-items: center; /* Center items horizontally */
+
+  h2, h3 {
+    color: $dark-color;
+    border-bottom: 2px solid $primary-color;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  h4 {
+    color: $dark-color;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .error-message {
+    color: $danger-color;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .alias-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: #f9f9f9;
+    border-radius: $border-radius;
+    border: 1px solid $border-color;
+    
+    .alias-form-content { /* New wrapper for form elements */
+      display: flex;
+      flex-direction: column;
+      align-items: center; /* Center form elements horizontally */
+      gap: 1rem; /* Space between wrapped elements */
+    }
+
+    input[type="text"] {
+      padding: 0.75rem;
+      border: 1px solid $border-color;
+      border-radius: $border-radius-sm;
+      font-size: 1rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .category-input-container {
+      position: relative;
+      width: 100%; /* Ensure it takes full width */
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-categories-input-group {
+      position: relative;
+      width: 100%; /* Ensure it takes full width */
+      display: flex;
+      flex-direction: column;
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+        color: $dark-color;
+      }
+
+      .selected-main-categories {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+
+        .selected-tag {
+          background-color: $primary-color;
+          color: white;
+          padding: 0.3rem 0.6rem;
+          border-radius: $border-radius-sm;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+          font-size: 0.9rem;
+
+          button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            line-height: 1;
+            padding: 0;
+          }
+        }
+      }
+
+      .suggestions-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: #f8f8f8; /* Slightly different background */
+        border: 1px solid #ccc; /* Distinct border */
+        border-radius: $border-radius-sm;
+        padding: 0;
+        margin: 5px 0 0;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 1001;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: flex; /* Use flexbox for layout */
+        flex-direction: column; /* Stack items vertically */
+
+        .suggestion-item { /* Target the new div for items */
+          padding: 0.75rem;
+          cursor: pointer;
+          &:hover {
+            background-color: #f0f0f0;
+          }
+        }
+      }
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+
+      button {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: $border-radius-sm;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background-color 0.3s ease;
+
+        &[type="submit"] {
+          background-color: $primary-color;
+          color: white;
+          &:hover {
+            background-color: color.scale($primary-color, $lightness: -10%);
+          }
+        }
+
+        &[type="button"] { // Cancel button
+          background-color: $secondary-color;
+          color: $dark-color;
+          &:hover {
+            background-color: color.scale($secondary-color, $lightness: -10%);
+          }
+        }
+      }
+    }
+  }
+
+  .aliases-list {
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      
+      th, td {
+        padding: 0.75rem;
+        border: 1px solid $border-color;
+        text-align: left;
+      }
+
+      th {
+        background-color: $light-color;
+      }
+
+      .alias-actions {
+        display: flex;
+        gap: 0.5rem;
+        
+        button {
+          font-size: 0.9rem;
+          padding: 0.3rem 0.6rem;
+        }
+      }
+    }
+  }
+}
