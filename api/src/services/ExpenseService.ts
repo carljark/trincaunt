@@ -58,11 +58,25 @@ export class ExpenseService {
       .populate('participantes', 'nombre');
   }
 
-  async getGlobalExpenses(userId: string): Promise<any[]> {
+  async getGlobalExpenses(userId: string, categoryFilter?: string): Promise<any[]> {
     const userGroups = await Group.find({ miembros: userId });
     const groupIds = userGroups.map(g => g._id);
 
-    const expensesInUserGroups = await Expense.find({ grupo_id: { $in: groupIds }, participantes: userId })
+    let query: any = { 
+      grupo_id: { $in: groupIds }, 
+      participantes: userId 
+    };
+
+    if (categoryFilter && categoryFilter !== 'all') {
+      const relatedAliases = await CategoryAlias.find({ mainCategories: categoryFilter }).select('alias');
+      const aliasCategories = relatedAliases.map(ca => ca.alias);
+
+      // Include the filter itself and all its aliases
+      const categoriesToFilter = [categoryFilter, ...aliasCategories];
+      query.categoria = { $in: categoriesToFilter };
+    }
+
+    const expensesInUserGroups = await Expense.find(query)
       .populate('grupo_id', 'nombre')
       .populate('participantes', '_id')
       .populate('pagado_por', '_id');

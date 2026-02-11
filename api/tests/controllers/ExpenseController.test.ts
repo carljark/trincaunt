@@ -4,11 +4,12 @@ import { ExpenseService } from '../../src/services/ExpenseService';
 
 jest.mock('../../src/services/ExpenseService');
 
-const mockRequest = (body: any, params: any = {}, headers: any = {}, user: any = undefined) => ({
+const mockRequest = (body: any, params: any = {}, headers: any = {}, user: any = undefined, query: any = {}) => ({
   body,
   params,
   headers,
   user,
+  query,
 }) as unknown as Request;
 
 const mockResponse = () => {
@@ -53,7 +54,7 @@ describe('ExpenseController', () => {
 
   describe('getGroupExpenses', () => {
     it('should return a list of expenses for the group with status 200', async () => {
-      req = mockRequest({}, { groupId: 'group-123' });
+      req = mockRequest({}, { groupId: 'group-123' }, {}, undefined, { category: 'all' });
       const expenses = [{ description: 'Lunch', amount: 20 }];
       (ExpenseService.prototype.getExpensesByGroup as jest.Mock).mockResolvedValue(expenses);
 
@@ -61,7 +62,19 @@ describe('ExpenseController', () => {
 
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ status: 'success', data: expenses });
-      expect(ExpenseService.prototype.getExpensesByGroup).toHaveBeenCalledWith('group-123');
+      expect(ExpenseService.prototype.getExpensesByGroup).toHaveBeenCalledWith('group-123', 'all');
+    });
+
+    it('should return a list of expenses for the group with a specific category filter', async () => {
+      req = mockRequest({}, { groupId: 'group-123' }, {}, undefined, { category: 'Food' });
+      const expenses = [{ description: 'Dinner', amount: 30, category: ['Food'] }];
+      (ExpenseService.prototype.getExpensesByGroup as jest.Mock).mockResolvedValue(expenses);
+
+      await getGroupExpenses(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ status: 'success', data: expenses });
+      expect(ExpenseService.prototype.getExpensesByGroup).toHaveBeenCalledWith('group-123', 'Food');
     });
   });
 });

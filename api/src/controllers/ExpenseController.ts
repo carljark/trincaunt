@@ -95,7 +95,8 @@ export const getExpenseCategories = async (req: Request, res: Response, next: Ne
 export const getGlobalExpenses = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;
-    const expenses = await expenseService.getGlobalExpenses(userId);
+    const category = req.query.category as string | undefined;
+    const expenses = await expenseService.getGlobalExpenses(userId, category);
     res.status(200).json({ status: 'success', data: expenses });
   } catch (error) {
     next(error);
