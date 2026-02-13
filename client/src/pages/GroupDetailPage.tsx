@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import AddExpenseModal from '../components/AddExpenseModal';
 import CategoryModal from '../components/CategoryModal';
+import BulkEditForm from '../components/BulkEditForm';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -30,6 +32,8 @@ export const sumTransactionsToMe = (
 import './GroupDetailPage.scss';
 import '../components/AddExpenseModal.scss';
 import '../components/CategoryModal.scss';
+import '../components/BulkEditForm.scss';
+import '../components/ConfirmationModal.scss';
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -40,6 +44,7 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const GroupDetailPage: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
+  const initialCategorySetupDone = useRef(false);
   const isGlobal = groupId === 'global';
   const navigate = useNavigate(); // Initialize useNavigate
   const { token, user } = useAuth();
@@ -73,6 +78,89 @@ const GroupDetailPage: React.FC = () => {
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [filtersToApply, setFiltersToApply] = useState<any>({});
   const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [bulkUpdateData, setBulkUpdateData] = useState<any>(null);
+  const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
+
+  const loadFilters = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/user-preferences`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const { filters } = data;
+        setCategoryFilter(filters.category || []);
+        setDescriptionFilter(filters.description || '');
+        setDateFromFilter(filters.dateFrom || '');
+        setDateToFilter(filters.dateTo || '');
+        setPayerFilter(filters.payer || 'all');
+      }
+    } catch (err) {
+      // It's okay if it fails, it means the user has no saved preferences
+    } finally {
+      setInitialFiltersLoaded(true);
+    }
+  }, [token]);
+
+  const handleBulkUpdate = (updateData: any) => {
+    if (Object.keys(updateData).length === 0) {
+      alert('No hay cambios que aplicar.');
+      return;
+    }
+    setBulkUpdateData(updateData);
+    setShowConfirmationModal(true);
+  };
+
+
+  const confirmBulkUpdate = async () => {
+    if (!bulkUpdateData) return;
+
+    const expenseIds = filteredExpenses.map(e => e._id);
+    if (expenseIds.length === 0) {
+      alert('No hay gastos filtrados para actualizar.');
+      setShowConfirmationModal(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/bulk-update`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          expenseIds,
+          updateData: bulkUpdateData
+        })
+      });
+
+      if (res.ok) {
+        alert('Gastos actualizados con éxito.');
+        if (isGlobal) {
+          fetchGlobalData();
+        } else {
+          fetchGroupData();
+        }
+      } else {
+        const data = await res.json();
+        throw new Error(data.message || 'Error al actualizar los gastos.');
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+    } finally {
+      setShowConfirmationModal(false);
+      setBulkUpdateData(null);
+    }
+  };
+
 
   const applyFilters = () => {
     setFiltersToApply({
@@ -101,6 +189,7 @@ const GroupDetailPage: React.FC = () => {
       });
       if (res.ok) {
         alert('Filtros guardados');
+        loadFilters(); // Call loadFilters after successful save
       } else {
         const data = await res.json();
         throw new Error(data.message || 'Error al guardar los filtros');
@@ -113,29 +202,6 @@ const GroupDetailPage: React.FC = () => {
       }
     }
   };
-
-  useEffect(() => {
-    const loadFilters = async () => {
-      if (!token) return;
-      try {
-        const res = await fetch(`${apiHost}${apiBaseUrl}/user-preferences`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const { filters } = data;
-          setCategoryFilter(filters.category || []);
-          setDescriptionFilter(filters.description || '');
-          setDateFromFilter(filters.dateFrom || '');
-          setDateToFilter(filters.dateTo || '');
-          setPayerFilter(filters.payer || 'all');
-        }
-      } catch (err) {
-        // It's okay if it fails, it means the user has no saved preferences
-      }
-    };
-    loadFilters();
-  }, [token]);
 
   const sortedExpenses = [...expenses].sort((a, b) => {
     const dateA = new Date(a.fecha).getTime();
@@ -179,6 +245,13 @@ const GroupDetailPage: React.FC = () => {
       setAverageExpense(0);
     }
   }, [filteredExpenses, totalFilteredExpenses]);
+
+  useEffect(() => {
+    if (initialFiltersLoaded && !initialCategorySetupDone.current && allCategories.length > 0 && categoryFilter.length === 0) {
+      setCategoryFilter(allCategories);
+      initialCategorySetupDone.current = true;
+    }
+  }, [allCategories, categoryFilter.length, initialFiltersLoaded]);
 
   const clearAllFilters = () => {
     setCategoryFilter([]);
@@ -225,7 +298,6 @@ const GroupDetailPage: React.FC = () => {
       expenseCategories.forEach(cat => allCats.add(cat as string));
       const allCategoriesArray = Array.from(allCats).sort();
       setAllCategories(allCategoriesArray);
-      setCategoryFilter(allCategoriesArray);
 
     } catch (err: unknown) {
         if (err instanceof Error) {
@@ -280,7 +352,6 @@ const GroupDetailPage: React.FC = () => {
       expenseCategories.forEach(cat => allCats.add(cat));
       const allCategoriesArray = Array.from(allCats).sort();
       setAllCategories(allCategoriesArray);
-      setCategoryFilter(allCategoriesArray);
       
       setPaymentHistory(debtTransactionsData.data);
 
@@ -398,12 +469,14 @@ const GroupDetailPage: React.FC = () => {
   };
 
   useEffect(() => {
+    loadFilters(); // Load filters initially
     if (isGlobal) {
       fetchGlobalData();
     } else {
       fetchGroupData();
     }
-  }, [isGlobal, fetchGroupData, fetchGlobalData, filtersToApply]);
+  }, [isGlobal, fetchGroupData, fetchGlobalData, filtersToApply, loadFilters]);
+
 
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
@@ -516,6 +589,21 @@ const GroupDetailPage: React.FC = () => {
               </>
             )}
           </div>
+
+          {!isGlobal && (
+            <div className="filters-accordion-container">
+              <button className="filters-accordion-toggle" onClick={() => setShowBulkEdit(!showBulkEdit)}>
+                <h3>Edición Masiva {showBulkEdit ? '▲' : '▼'}</h3>
+              </button>
+              {showBulkEdit && (
+                <BulkEditForm
+                  members={group?.miembros || []}
+                  allCategories={allCategories}
+                  onBulkUpdate={handleBulkUpdate}
+                />
+              )}
+            </div>
+          )}
 
           <div className="expenses-header">
             <h3>Gastos del Grupo</h3>
@@ -647,6 +735,14 @@ const GroupDetailPage: React.FC = () => {
           selectedCategories={categoryFilter}
           onChange={setCategoryFilter}
           onClose={() => setShowCategoryModal(false)}
+        />
+      )}
+
+      {showConfirmationModal && (
+        <ConfirmationModal
+          message="¿Estás seguro de que quieres aplicar estos cambios a todos los gastos filtrados?"
+          onConfirm={confirmBulkUpdate}
+          onCancel={() => setShowConfirmationModal(false)}
         />
       )}
     </div>

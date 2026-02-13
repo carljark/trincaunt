@@ -304,6 +304,33 @@ export class ExpenseService {
     return expense;
   }
 
+  async bulkUpdate(expenseIds: string[], updateData: Partial<IExpense>): Promise<void> {
+    if (!expenseIds || expenseIds.length === 0) {
+      throw new AppError('No se proporcionaron IDs de gastos para actualizar.', 400);
+    }
+
+    // We need to be careful about what we allow to be updated.
+    // For example, we might not want to allow changing the group.
+    const allowedUpdates: (keyof IExpense)[] = ['categoria', 'pagado_por', 'fecha', 'participantes', 'asume_gasto'];
+    const finalUpdateData: Partial<IExpense> = {};
+
+    for (const key of Object.keys(updateData)) {
+        if (allowedUpdates.includes(key as keyof IExpense)) {
+            (finalUpdateData as any)[key] = (updateData as any)[key];
+        }
+    }
+
+    if (Object.keys(finalUpdateData).length === 0) {
+      throw new AppError('No hay datos válidos para actualizar.', 400);
+    }
+
+    await Expense.updateMany(
+      { _id: { $in: expenseIds } },
+      { $set: finalUpdateData }
+    );
+  }
+
+
   
 
     async deleteExpense(expenseId: string): Promise<void> {

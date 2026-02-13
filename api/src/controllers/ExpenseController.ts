@@ -55,6 +55,17 @@ export const deleteExpense = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+export const bulkUpdate = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { expenseIds, updateData } = req.body;
+    await expenseService.bulkUpdate(expenseIds, updateData);
+    res.status(200).json({ status: 'success', message: 'Expenses updated successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 
 
 export const settleGroupDebts = async (req: Request, res: Response, next: NextFunction) => {

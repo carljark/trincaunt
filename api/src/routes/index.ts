@@ -28,6 +28,7 @@ router.delete('/groups/:groupId', protect, GroupController.deleteGroup); // New 
 
 // Expense Routes (Protected)
 router.post('/expenses', protect, ExpenseController.createExpense);
+router.patch('/expenses/bulk-update', protect, ExpenseController.bulkUpdate);
 router.put('/expenses/:expenseId', protect, ExpenseController.updateExpense);
 router.delete('/expenses/:expenseId', protect, ExpenseController.deleteExpense);
 router.get('/expenses/categories', protect, ExpenseController.getExpenseCategories);
