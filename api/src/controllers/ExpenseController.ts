@@ -17,7 +17,8 @@ export const getGroupExpenses = async (req: Request, res: Response, next: NextFu
   try {
     const { groupId } = req.params;
     const category = req.query.category as string | undefined;
-    const expenses = await expenseService.getExpensesByGroup(groupId, category);
+    const categories = category ? category.split(',') : [];
+    const expenses = await expenseService.getExpensesByGroup(groupId, categories);
     res.status(200).json({ status: 'success', data: expenses });
   } catch (error) {
     next(error);
@@ -96,7 +97,8 @@ export const getGlobalExpenses = async (req: Request, res: Response, next: NextF
   try {
     const userId = (req as any).user.id;
     const category = req.query.category as string | undefined;
-    const expenses = await expenseService.getGlobalExpenses(userId, category);
+    const categories = category ? category.split(',') : [];
+    const expenses = await expenseService.getGlobalExpenses(userId, categories);
     res.status(200).json({ status: 'success', data: expenses });
   } catch (error) {
     next(error);

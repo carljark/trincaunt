@@ -41,15 +41,15 @@ export class ExpenseService {
     return expense;
   }
 
-  async getExpensesByGroup(groupId: string, categoryFilter?: string): Promise<IExpense[]> {
+  async getExpensesByGroup(groupId: string, categories?: string[]): Promise<IExpense[]> {
     let query: any = { grupo_id: groupId };
 
-    if (categoryFilter && categoryFilter !== 'all') {
-      const relatedAliases = await CategoryAlias.find({ mainCategories: categoryFilter }).select('alias');
+    if (categories && categories.length > 0) {
+      const relatedAliases = await CategoryAlias.find({ mainCategories: { $in: categories } }).select('alias');
       const aliasCategories = relatedAliases.map(ca => ca.alias);
 
       // Include the filter itself and all its aliases
-      const categoriesToFilter = [categoryFilter, ...aliasCategories];
+      const categoriesToFilter = [...categories, ...aliasCategories];
       query.categoria = { $in: categoriesToFilter };
     }
     
@@ -58,7 +58,7 @@ export class ExpenseService {
       .populate('participantes', 'nombre');
   }
 
-  async getGlobalExpenses(userId: string, categoryFilter?: string): Promise<any[]> {
+  async getGlobalExpenses(userId: string, categories?: string[]): Promise<any[]> {
     const userGroups = await Group.find({ miembros: userId });
     const groupIds = userGroups.map(g => g._id);
 
@@ -67,12 +67,12 @@ export class ExpenseService {
       participantes: userId 
     };
 
-    if (categoryFilter && categoryFilter !== 'all') {
-      const relatedAliases = await CategoryAlias.find({ mainCategories: categoryFilter }).select('alias');
+    if (categories && categories.length > 0) {
+      const relatedAliases = await CategoryAlias.find({ mainCategories: { $in: categories } }).select('alias');
       const aliasCategories = relatedAliases.map(ca => ca.alias);
 
       // Include the filter itself and all its aliases
-      const categoriesToFilter = [categoryFilter, ...aliasCategories];
+      const categoriesToFilter = [...categories, ...aliasCategories];
       query.categoria = { $in: categoriesToFilter };
     }
 

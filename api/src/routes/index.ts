@@ -4,6 +4,7 @@ import * as GroupController from '../controllers/GroupController';
 import * as ExpenseController from '../controllers/ExpenseController';
 import * as DebtTransactionController from '../controllers/DebtTransactionController';
 import * as CategoryAliasController from '../controllers/CategoryAliasController';
+import * as UserPreferencesController from '../controllers/UserPreferencesController';
 import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -40,5 +41,9 @@ router.post('/debt-transactions', protect, DebtTransactionController.createDebtT
 router.get('/groups/:groupId/debt-transactions', protect, DebtTransactionController.getGroupDebtTransactions);
 router.patch('/debt-transactions/:transactionId/pay', protect, DebtTransactionController.markDebtTransactionAsPaid);
 router.delete('/debt-transactions/:transactionId', protect, DebtTransactionController.deleteDebtTransaction); // New route for deleting a debt transaction
+
+// User Preferences Routes (Protected)
+router.get('/user-preferences', protect, UserPreferencesController.getPreferences);
+router.post('/user-preferences', protect, UserPreferencesController.savePreferences);
 
 export default router;

@@ -2,6 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppError } from '../utils/AppError';
 import User from '../models/User';
+import { IUser } from '../models/User';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: IUser | null;
+    }
+  }
+}
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
   let token;
@@ -21,8 +30,8 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
     
     // Attach user to the request object
-    (req as any).user = await User.findById(decoded.id);
-    if (!(req as any).user) {
+    req.user = await User.findById(decoded.id);
+    if (!req.user) {
         return next(new AppError('El usuario ya no existe.', 401));
     }
 
