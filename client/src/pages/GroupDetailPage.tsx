@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import AddExpenseModal from '../components/AddExpenseModal';
+import CategoryModal from '../components/CategoryModal';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -27,7 +28,8 @@ export const sumTransactionsToMe = (
 }
 
 import './GroupDetailPage.scss';
-import '../components/AddExpenseModal.scss'; // Import modal styles
+import '../components/AddExpenseModal.scss';
+import '../components/CategoryModal.scss';
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -51,6 +53,7 @@ const GroupDetailPage: React.FC = () => {
   const [paymentHistory, setPaymentHistory] = useState<IDebtTransaction[]>([]);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false);
   const [totalExpenses, setTotalExpenses] = useState<number>(0);
+  const [averageExpense, setAverageExpense] = useState<number>(0);
   const [myTotalExpenses, setMyTotalExpenses] = useState<number>(0);
   const [myTotalExpensesPay, setMyTotalExpensesPay] = useState<number>(0);
   const [myTotalDebt, setMyTotalDebt] = useState<number>(0);
@@ -60,7 +63,7 @@ const GroupDetailPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false);
   const [expenseToEdit, setExpenseToEdit] = useState<IExpensePopulated | undefined>(undefined);
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [descriptionFilter, setDescriptionFilter] = useState('');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
@@ -68,6 +71,71 @@ const GroupDetailPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [groupCategories, setGroupCategories] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
+  const [filtersToApply, setFiltersToApply] = useState<any>({});
+  const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
+
+  const applyFilters = () => {
+    setFiltersToApply({
+      category: categoryFilter,
+      description: descriptionFilter,
+      dateFrom: dateFromFilter,
+      dateTo: dateToFilter,
+      payer: payerFilter,
+    });
+  };
+
+  const saveFilters = async () => {
+    if (!token) return;
+    const filters = {
+      category: categoryFilter,
+      description: descriptionFilter,
+      dateFrom: dateFromFilter,
+      dateTo: dateToFilter,
+      payer: payerFilter,
+    };
+    try {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/user-preferences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ filters }),
+      });
+      if (res.ok) {
+        alert('Filtros guardados');
+      } else {
+        const data = await res.json();
+        throw new Error(data.message || 'Error al guardar los filtros');
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+    }
+  };
+
+  useEffect(() => {
+    const loadFilters = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${apiHost}${apiBaseUrl}/user-preferences`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const { filters } = data;
+          setCategoryFilter(filters.category || []);
+          setDescriptionFilter(filters.description || '');
+          setDateFromFilter(filters.dateFrom || '');
+          setDateToFilter(filters.dateTo || '');
+          setPayerFilter(filters.payer || 'all');
+        }
+      } catch (err) {
+        // It's okay if it fails, it means the user has no saved preferences
+      }
+    };
+    loadFilters();
+  }, [token]);
 
   const sortedExpenses = [...expenses].sort((a, b) => {
     const dateA = new Date(a.fecha).getTime();
@@ -80,7 +148,7 @@ const GroupDetailPage: React.FC = () => {
   });
 
   const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
-    // This filtering is now mostly done on the backend, 
+    // This filtering is now mostly done on the backend,
     // but we can keep it for client-side filtering after the initial fetch if needed.
     // For now, the main filtering will be based on the backend response.
     if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
@@ -100,8 +168,20 @@ const GroupDetailPage: React.FC = () => {
 
   const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
 
+  useEffect(() => {
+    if (filteredExpenses.length > 0) {
+      const dates = filteredExpenses.map(expense => new Date(expense.fecha).getTime());
+      const minDate = new Date(Math.min(...dates));
+      const maxDate = new Date(Math.max(...dates));
+      const numberOfDays = Math.ceil(Math.abs(maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      setAverageExpense(numberOfDays > 0 ? totalFilteredExpenses / numberOfDays : 0);
+    } else {
+      setAverageExpense(0);
+    }
+  }, [filteredExpenses, totalFilteredExpenses]);
+
   const clearAllFilters = () => {
-    setCategoryFilter('all');
+    setCategoryFilter([]);
     setDescriptionFilter('');
     setDateFromFilter('');
     setDateToFilter('');
@@ -113,10 +193,10 @@ const GroupDetailPage: React.FC = () => {
     setLoading(true);
     try {
       const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/expenses/global`);
-      if (categoryFilter !== 'all') {
-        expenseUrl.searchParams.append('category', categoryFilter);
+      if (categoryFilter.length > 0) {
+        expenseUrl.searchParams.append('category', categoryFilter.join(','));
       }
-      
+
       const [expensesRes, aliasesRes] = await Promise.all([
         fetch(expenseUrl.toString(), { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } })
@@ -124,7 +204,7 @@ const GroupDetailPage: React.FC = () => {
 
       if (!expensesRes.ok) throw new Error('Failed to fetch global expenses');
       const expensesData = await expensesRes.json();
-      
+
       let allCats = new Set<string>();
       if (aliasesRes.ok) {
         const aliasesData = await aliasesRes.json();
@@ -138,11 +218,14 @@ const GroupDetailPage: React.FC = () => {
       setBalance([]);
       setSettlementTransactions([]);
       setPaymentHistory([]);
-      setTotalExpenses(expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0));
-      
+      const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0);
+      setTotalExpenses(calculatedTotalExpenses);
+
       const expenseCategories = [...new Set(expensesData.data.flatMap((e: any) => e.categoria).filter(Boolean))];
       expenseCategories.forEach(cat => allCats.add(cat as string));
-      setAllCategories(Array.from(allCats).sort());
+      const allCategoriesArray = Array.from(allCats).sort();
+      setAllCategories(allCategoriesArray);
+      setCategoryFilter(allCategoriesArray);
 
     } catch (err: unknown) {
         if (err instanceof Error) {
@@ -153,15 +236,15 @@ const GroupDetailPage: React.FC = () => {
     } finally {
         setLoading(false);
     }
-  }, [token, user?._id, categoryFilter]);
+  }, [token, user?._id, filtersToApply]);
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
     setLoading(true);
     try {
       const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses`);
-      if (categoryFilter !== 'all') {
-        expenseUrl.searchParams.append('category', categoryFilter);
+      if (categoryFilter.length > 0) {
+        expenseUrl.searchParams.append('category', categoryFilter.join(','));
       }
 
       const [groupRes, expenseRes, balanceRes, settlementRes, debtTransactionsRes, aliasesRes] = await Promise.all([
@@ -192,10 +275,12 @@ const GroupDetailPage: React.FC = () => {
           alias.mainCategories.forEach((mc: string) => allCats.add(mc));
         });
       }
-      
+
       const expenseCategories = [...new Set(expensesData.data.flatMap(e => e.categoria).filter((c): c is string => !!c))];
       expenseCategories.forEach(cat => allCats.add(cat));
-      setAllCategories(Array.from(allCats).sort());
+      const allCategoriesArray = Array.from(allCats).sort();
+      setAllCategories(allCategoriesArray);
+      setCategoryFilter(allCategoriesArray);
       
       setPaymentHistory(debtTransactionsData.data);
 
@@ -203,7 +288,7 @@ const GroupDetailPage: React.FC = () => {
         .filter((p: IDebtTransaction) => p.from._id === user?._id)
         .reduce((sum: number, p: IDebtTransaction) => sum + p.amount, 0);
       setMyTotalSettledIncome(settledIncome);
-      
+
       setGroup(groupData.data);
       setExpenses(expensesData.data);
       const calculatedTotalExpenses = expensesData.data.reduce((sum, expense) => sum + expense.monto, 0);
@@ -233,7 +318,7 @@ const GroupDetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [groupId, token, user?._id, categoryFilter]);
+  }, [groupId, token, user?._id, filtersToApply]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -249,11 +334,11 @@ const GroupDetailPage: React.FC = () => {
         fetchGroupData();
         setEmail('');
         alert('Miembro añadido con éxito');
-      } else { 
-        const data = await res.json(); 
-        throw new Error(data.message || 'Error al añadir miembro'); 
+      } else {
+        const data = await res.json();
+        throw new Error(data.message || 'Error al añadir miembro');
       }
-    } catch (err: unknown) { 
+    } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -271,11 +356,11 @@ const GroupDetailPage: React.FC = () => {
       });
       if (res.ok) {
         fetchGroupData();
-      } else { 
-        const data = await res.json(); 
-        throw new Error(data.message || 'Error al borrar el gasto'); 
+      } else {
+        const data = await res.json();
+        throw new Error(data.message || 'Error al borrar el gasto');
       }
-    } catch (err: unknown) { 
+    } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -283,7 +368,7 @@ const GroupDetailPage: React.FC = () => {
       }
     }
   };
-  
+
   const handleEdit = (expense: IExpensePopulated) => {
     setExpenseToEdit(expense);
     setShowAddExpenseModal(true);
@@ -318,8 +403,8 @@ const GroupDetailPage: React.FC = () => {
     } else {
       fetchGroupData();
     }
-  }, [isGlobal, fetchGroupData, fetchGlobalData, categoryFilter]);
-  
+  }, [isGlobal, fetchGroupData, fetchGlobalData, filtersToApply]);
+
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
     if (amount < 0) return 'red';
@@ -374,8 +459,14 @@ const GroupDetailPage: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           <hr/>
+
+          {activeTab === 'expenses' && expenses.length > 0 && (
+            <div className="average-expense-display">
+              <p><strong>Media de gasto por día: {formatCurrency(averageExpense)}€</strong></p>
+            </div>
+          )}
 
           <div className="filters-accordion-container">
             <button className="filters-accordion-toggle" onClick={() => setShowFilters(!showFilters)}>
@@ -387,12 +478,7 @@ const GroupDetailPage: React.FC = () => {
                 <div className="filters">
                   <label>
                     Categoría:
-                    <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-                        <option value="all">Todas</option>
-                        {allCategories.map(category => (
-                          <option key={category} value={category}>{category}</option>
-                        ))}
-                    </select>
+                    <button onClick={() => setShowCategoryModal(true)}>Categorías</button>
                   </label>
                   <label>
                     Descripción:
@@ -424,6 +510,8 @@ const GroupDetailPage: React.FC = () => {
                     </div>
                   </label>
                   <button onClick={clearAllFilters} className="clear-all-btn">Limpiar filtros</button>
+                  <button onClick={saveFilters} className="save-filters-btn">Guardar filtros</button>
+                  <button onClick={applyFilters} className="apply-filters-btn">Aplicar filtros</button>
                 </div>
               </>
             )}
@@ -442,7 +530,7 @@ const GroupDetailPage: React.FC = () => {
                   <div className="expense-info">
                     <div>
                       {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
-                      {expense.descripcion} ({expense.categoria?.join(', ')}): 
+                      {expense.descripcion} ({expense.categoria?.join(', ')}):
                       <strong> {formatCurrency(expense.monto)}€</strong>
                       {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
                     </div>
@@ -472,7 +560,7 @@ const GroupDetailPage: React.FC = () => {
         <div className="balances-tab-content">
           <h3>Balance del Grupo</h3>
           <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>{formatCurrency(m.balance)}€</strong></li>)}</ul>
-          
+
           <hr/>
 
           <h3>Transacciones para Saldar Deudas</h3>
@@ -507,7 +595,7 @@ const GroupDetailPage: React.FC = () => {
               <button type="submit">Añadir Miembro</button>
             </form>
           </div>
-          
+
           <hr/>
 
           <h4>Miembros:</h4>
@@ -550,6 +638,15 @@ const GroupDetailPage: React.FC = () => {
           onExpenseAction={fetchGroupData}
           paidByInitial={user?._id || ''}
           expenseToEdit={expenseToEdit}
+        />
+      )}
+
+      {showCategoryModal && (
+        <CategoryModal
+          allCategories={allCategories}
+          selectedCategories={categoryFilter}
+          onChange={setCategoryFilter}
+          onClose={() => setShowCategoryModal(false)}
         />
       )}
     </div>

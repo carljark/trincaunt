@@ -417,6 +417,17 @@
     }
 }
 
+.average-expense-display {
+  text-align: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid $light-color;
+
+  p {
+    margin: 0;
+  }
+}
+
 .filters-accordion-container {
   margin-bottom: 1.5rem;
   border: 1px solid #ddd;
