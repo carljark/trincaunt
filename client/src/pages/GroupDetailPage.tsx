@@ -44,9 +44,8 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const GroupDetailPage: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
-  const initialCategorySetupDone = useRef(false);
   const isGlobal = groupId === 'global';
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
   const { token, user } = useAuth();
   const [group, setGroup] = useState<IGroup | null>(null);
   const [expenses, setExpenses] = useState<IExpensePopulated[]>([]);
@@ -74,14 +73,16 @@ const GroupDetailPage: React.FC = () => {
   const [dateToFilter, setDateToFilter] = useState('');
   const [payerFilter, setPayerFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [groupCategories, setGroupCategories] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
-  const [filtersToApply, setFiltersToApply] = useState<any>({});
   const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
   const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [bulkUpdateData, setBulkUpdateData] = useState<any>(null);
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  
+  // Usamos useRef para controlar si ya hemos inicializado las categorías
+  const hasInitializedCategories = useRef(false);
 
   const loadFilters = useCallback(async () => {
     if (!token) return;
@@ -113,7 +114,6 @@ const GroupDetailPage: React.FC = () => {
     setBulkUpdateData(updateData);
     setShowConfirmationModal(true);
   };
-
 
   const confirmBulkUpdate = async () => {
     if (!bulkUpdateData) return;
@@ -161,17 +161,6 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
-
-  const applyFilters = () => {
-    setFiltersToApply({
-      category: categoryFilter,
-      description: descriptionFilter,
-      dateFrom: dateFromFilter,
-      dateTo: dateToFilter,
-      payer: payerFilter,
-    });
-  };
-
   const saveFilters = async () => {
     if (!token) return;
     const filters = {
@@ -189,7 +178,6 @@ const GroupDetailPage: React.FC = () => {
       });
       if (res.ok) {
         alert('Filtros guardados');
-        loadFilters(); // Call loadFilters after successful save
       } else {
         const data = await res.json();
         throw new Error(data.message || 'Error al guardar los filtros');
@@ -213,10 +201,12 @@ const GroupDetailPage: React.FC = () => {
     }
   });
 
+  // CORREGIDO: La condición de filtrado ahora está dentro de la función filter
   const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
-    // This filtering is now mostly done on the backend,
-    // but we can keep it for client-side filtering after the initial fetch if needed.
-    // For now, the main filtering will be based on the backend response.
+    // Filtrar por categoría
+    if (categoryFilter.length > 0 && !expense.categoria?.some((cat: string) => categoryFilter.includes(cat))) {
+      return false;
+    }
     if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
       return false;
     }
@@ -246,13 +236,6 @@ const GroupDetailPage: React.FC = () => {
     }
   }, [filteredExpenses, totalFilteredExpenses]);
 
-  useEffect(() => {
-    if (initialFiltersLoaded && !initialCategorySetupDone.current && allCategories.length > 0 && categoryFilter.length === 0) {
-      setCategoryFilter(allCategories);
-      initialCategorySetupDone.current = true;
-    }
-  }, [allCategories, categoryFilter.length, initialFiltersLoaded]);
-
   const clearAllFilters = () => {
     setCategoryFilter([]);
     setDescriptionFilter('');
@@ -266,6 +249,7 @@ const GroupDetailPage: React.FC = () => {
     setLoading(true);
     try {
       const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/expenses/global`);
+      // Solo añadir filtros de categoría si hay alguno seleccionado
       if (categoryFilter.length > 0) {
         expenseUrl.searchParams.append('category', categoryFilter.join(','));
       }
@@ -299,6 +283,15 @@ const GroupDetailPage: React.FC = () => {
       const allCategoriesArray = Array.from(allCats).sort();
       setAllCategories(allCategoriesArray);
 
+      // Inicializar categorías SOLO en la primera carga y si no hay filtros guardados
+      if (initialFiltersLoaded && allCategoriesArray.length > 0 && !hasInitializedCategories.current && categoryFilter.length === 0) {
+        console.log('Inicializando categorías desde fetchGlobalData');
+        setCategoryFilter(allCategoriesArray);
+        hasInitializedCategories.current = true;
+      }
+
+      setInitialDataLoaded(true);
+
     } catch (err: unknown) {
         if (err instanceof Error) {
             setError(err.message);
@@ -308,13 +301,14 @@ const GroupDetailPage: React.FC = () => {
     } finally {
         setLoading(false);
     }
-  }, [token, user?._id, filtersToApply]);
+  }, [token, user?._id, initialFiltersLoaded]);
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
     setLoading(true);
     try {
       const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses`);
+      // Solo añadir filtros de categoría si hay alguno seleccionado
       if (categoryFilter.length > 0) {
         expenseUrl.searchParams.append('category', categoryFilter.join(','));
       }
@@ -352,7 +346,7 @@ const GroupDetailPage: React.FC = () => {
       expenseCategories.forEach(cat => allCats.add(cat));
       const allCategoriesArray = Array.from(allCats).sort();
       setAllCategories(allCategoriesArray);
-      
+
       setPaymentHistory(debtTransactionsData.data);
 
       const settledIncome = debtTransactionsData.data
@@ -380,6 +374,16 @@ const GroupDetailPage: React.FC = () => {
 
       setBalance(balanceData.data.balances);
       setSettlementTransactions(settlementData.data.transactions);
+
+      // Inicializar categorías SOLO en la primera carga y si no hay filtros guardados
+      if (initialFiltersLoaded && allCategoriesArray.length > 0 && !hasInitializedCategories.current && categoryFilter.length === 0) {
+        console.log('Inicializando categorías desde fetchGroupData');
+        setCategoryFilter(allCategoriesArray);
+        hasInitializedCategories.current = true;
+      }
+
+      setInitialDataLoaded(true);
+
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -389,7 +393,7 @@ const GroupDetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [groupId, token, user?._id, filtersToApply]);
+  }, [groupId, token, user?._id, initialFiltersLoaded]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -468,15 +472,19 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
+  // Cargar filtros iniciales
   useEffect(() => {
-    loadFilters(); // Load filters initially
+    loadFilters();
+  }, [loadFilters]);
+
+  // Cargar datos iniciales solo una vez
+  useEffect(() => {
     if (isGlobal) {
       fetchGlobalData();
     } else {
       fetchGroupData();
     }
-  }, [isGlobal, fetchGroupData, fetchGlobalData, filtersToApply, loadFilters]);
-
+  }, [isGlobal]);
 
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
@@ -484,7 +492,7 @@ const GroupDetailPage: React.FC = () => {
     return 'black';
   };
 
-  if (loading) return <p>Cargando...</p>;
+  if (loading && !initialDataLoaded) return <p>Cargando...</p>;
   if (error) return <p className="error-message">Error: {error}</p>;
   if (!group) return <p>Grupo no encontrado.</p>;
 
@@ -584,7 +592,6 @@ const GroupDetailPage: React.FC = () => {
                   </label>
                   <button onClick={clearAllFilters} className="clear-all-btn">Limpiar filtros</button>
                   <button onClick={saveFilters} className="save-filters-btn">Guardar filtros</button>
-                  <button onClick={applyFilters} className="apply-filters-btn">Aplicar filtros</button>
                 </div>
               </>
             )}
@@ -749,4 +756,5 @@ const GroupDetailPage: React.FC = () => {
   );
 };
 
+// AÑADIDO: Exportación por defecto del componente
 export default GroupDetailPage;
