@@ -80,9 +80,57 @@ const GroupDetailPage: React.FC = () => {
   const [bulkUpdateData, setBulkUpdateData] = useState<any>(null);
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  const [dateFilterPreset, setDateFilterPreset] = useState<string | null>(null);
   
   // Usamos useRef para controlar si ya hemos inicializado las categorías
   const hasInitializedCategories = useRef(false);
+
+  const setDatePreset = useCallback((preset: string | null) => {
+    if (!preset) {
+      setDateFilterPreset(null);
+      setDateFromFilter('');
+      setDateToFilter('');
+      return;
+    }
+
+    const today = new Date();
+    let fromDate: Date;
+    const toDate: Date = new Date();
+
+    switch (preset) {
+      case 'day':
+        fromDate = new Date(today);
+        break;
+      case 'week': {
+        const firstDayOfWeek = new Date(today);
+        const day = today.getDay();
+        const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+        firstDayOfWeek.setDate(diff);
+        fromDate = firstDayOfWeek;
+        break;
+      }
+      case 'month':
+        fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        break;
+      case 'year':
+        fromDate = new Date(today.getFullYear(), 0, 1);
+        break;
+      default:
+        return;
+    }
+
+    setDateFilterPreset(preset);
+    setDateFromFilter(fromDate.toISOString().split('T')[0]);
+    setDateToFilter(toDate.toISOString().split('T')[0]);
+  }, []); // Stable function
+
+  const handleDatePresetClick = useCallback((preset: string) => {
+    if (preset === dateFilterPreset) {
+      setDatePreset(null);
+    } else {
+      setDatePreset(preset);
+    }
+  }, [dateFilterPreset, setDatePreset]);
 
   const loadFilters = useCallback(async () => {
     if (!token) return;
@@ -93,10 +141,16 @@ const GroupDetailPage: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         const { filters } = data;
+
+        if (filters.period) {
+          setDatePreset(filters.period);
+        } else {
+          setDateFromFilter(filters.dateFrom || '');
+          setDateToFilter(filters.dateTo || '');
+        }
+
         setCategoryFilter(filters.category || []);
         setDescriptionFilter(filters.description || '');
-        setDateFromFilter(filters.dateFrom || '');
-        setDateToFilter(filters.dateTo || '');
         setPayerFilter(filters.payer || 'all');
       }
     } catch (err) {
@@ -104,8 +158,50 @@ const GroupDetailPage: React.FC = () => {
     } finally {
       setInitialFiltersLoaded(true);
     }
-  }, [token]);
+  }, [token, setDatePreset]);
+  
+  const sortedExpenses = [...expenses].sort((a, b) => {
+    const dateA = new Date(a.fecha).getTime();
+    const dateB = new Date(b.fecha).getTime();
+    if (sortOrder === 'desc') {
+      return dateB - dateA;
+    } else {
+      return dateA - dateB;
+    }
+  });
 
+  // CORREGIDO: La condición de filtrado ahora está dentro de la función filter
+  const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
+    // Filtrar por categoría
+    if (categoryFilter.length > 0 && !expense.categoria?.some((cat: string) => categoryFilter.includes(cat))) {
+      return false;
+    }
+    if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
+      return false;
+    }
+    if (dateFromFilter && new Date(expense.fecha) < new Date(dateFromFilter)) {
+      return false;
+    }
+    if (dateToFilter && new Date(expense.fecha) > new Date(dateToFilter)) {
+      return false;
+    }
+    if (payerFilter !== 'all' && expense.pagado_por._id !== payerFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
+
+  const clearAllFilters = () => {
+    setCategoryFilter([]);
+    setDescriptionFilter('');
+    setDateFromFilter('');
+    setDateToFilter('');
+    setPayerFilter('all');
+    setDateFilterPreset(null);
+  };
+  
   const handleBulkUpdate = (updateData: any) => {
     if (Object.keys(updateData).length === 0) {
       alert('No hay cambios que aplicar.');
@@ -166,9 +262,10 @@ const GroupDetailPage: React.FC = () => {
     const filters = {
       category: categoryFilter,
       description: descriptionFilter,
-      dateFrom: dateFromFilter,
-      dateTo: dateToFilter,
+      dateFrom: dateFilterPreset ? '' : dateFromFilter,
+      dateTo: dateFilterPreset ? '' : dateToFilter,
       payer: payerFilter,
+      period: dateFilterPreset,
     };
     try {
       const res = await fetch(`${apiHost}${apiBaseUrl}/user-preferences`, {
@@ -191,39 +288,6 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
-  const sortedExpenses = [...expenses].sort((a, b) => {
-    const dateA = new Date(a.fecha).getTime();
-    const dateB = new Date(b.fecha).getTime();
-    if (sortOrder === 'desc') {
-      return dateB - dateA;
-    } else {
-      return dateA - dateB;
-    }
-  });
-
-  // CORREGIDO: La condición de filtrado ahora está dentro de la función filter
-  const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
-    // Filtrar por categoría
-    if (categoryFilter.length > 0 && !expense.categoria?.some((cat: string) => categoryFilter.includes(cat))) {
-      return false;
-    }
-    if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
-      return false;
-    }
-    if (dateFromFilter && new Date(expense.fecha) < new Date(dateFromFilter)) {
-      return false;
-    }
-    if (dateToFilter && new Date(expense.fecha) > new Date(dateToFilter)) {
-      return false;
-    }
-    if (payerFilter !== 'all' && expense.pagado_por._id !== payerFilter) {
-      return false;
-    }
-    return true;
-  });
-
-  const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
-
   useEffect(() => {
     if (filteredExpenses.length > 0) {
       const dates = filteredExpenses.map(expense => new Date(expense.fecha).getTime());
@@ -235,14 +299,6 @@ const GroupDetailPage: React.FC = () => {
       setAverageExpense(0);
     }
   }, [filteredExpenses, totalFilteredExpenses]);
-
-  const clearAllFilters = () => {
-    setCategoryFilter([]);
-    setDescriptionFilter('');
-    setDateFromFilter('');
-    setDateToFilter('');
-    setPayerFilter('all');
-  };
 
   const fetchGlobalData = useCallback(async () => {
     if (!token) return;
@@ -301,7 +357,7 @@ const GroupDetailPage: React.FC = () => {
     } finally {
         setLoading(false);
     }
-  }, [token, user?._id, initialFiltersLoaded]);
+  }, [token, user?._id, initialFiltersLoaded, categoryFilter]);
 
   const fetchGroupData = useCallback(async () => {
     if (!token || !groupId) return;
@@ -393,7 +449,7 @@ const GroupDetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [groupId, token, user?._id, initialFiltersLoaded]);
+  }, [groupId, token, user?._id, initialFiltersLoaded, categoryFilter]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -477,14 +533,16 @@ const GroupDetailPage: React.FC = () => {
     loadFilters();
   }, [loadFilters]);
 
-  // Cargar datos iniciales solo una vez
+  // Cargar datos iniciales
   useEffect(() => {
-    if (isGlobal) {
-      fetchGlobalData();
-    } else {
-      fetchGroupData();
+    if (initialFiltersLoaded) {
+      if (isGlobal) {
+        fetchGlobalData();
+      } else {
+        fetchGroupData();
+      }
     }
-  }, [isGlobal]);
+  }, [initialFiltersLoaded, isGlobal, fetchGlobalData, fetchGroupData]);
 
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
@@ -550,10 +608,18 @@ const GroupDetailPage: React.FC = () => {
           )}
 
           <div className="filters-accordion-container">
-            <button className="filters-accordion-toggle" onClick={() => setShowFilters(!showFilters)}>
-              <h3>Filtros {showFilters ? '▲' : '▼'}</h3>
+            <div className="filters-accordion-toggle" onClick={() => setShowFilters(!showFilters)}>
+              <div className="filter-title-with-presets">
+                <h3>Filtros {showFilters ? '▲' : '▼'}</h3>
+                <div className="date-presets">
+                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('day'); }} className={`preset-btn ${dateFilterPreset === 'day' ? 'active' : ''}`}>D</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('week'); }} className={`preset-btn ${dateFilterPreset === 'week' ? 'active' : ''}`}>S</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('month'); }} className={`preset-btn ${dateFilterPreset === 'month' ? 'active' : ''}`}>M</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('year'); }} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
+                </div>
+              </div>
               <span>Gastos Filtrados: {formatCurrency(totalFilteredExpenses)}€</span>
-            </button>
+            </div>
             {showFilters && (
               <>
                 <div className="filters">
@@ -579,15 +645,15 @@ const GroupDetailPage: React.FC = () => {
                   <label>
                     Desde:
                     <div className="date-filter-container">
-                      <input type="date" value={dateFromFilter} onChange={e => setDateFromFilter(e.target.value)} />
-                      <button onClick={() => setDateFromFilter('')} className="clear-date-btn">X</button>
+                      <input type="date" value={dateFromFilter} disabled={!!dateFilterPreset} onChange={e => { setDateFromFilter(e.target.value); setDateFilterPreset(null); }} />
+                      <button onClick={() => { setDateFromFilter(''); setDateFilterPreset(null); }} className="clear-date-btn">X</button>
                     </div>
                   </label>
                   <label>
                     Hasta:
                     <div className="date-filter-container">
-                      <input type="date" value={dateToFilter} onChange={e => setDateToFilter(e.target.value)} />
-                      <button onClick={() => setDateToFilter('')} className="clear-date-btn">X</button>
+                      <input type="date" value={dateToFilter} disabled={!!dateFilterPreset} onChange={e => { setDateToFilter(e.target.value); setDateFilterPreset(null); }} />
+                      <button onClick={() => { setDateToFilter(''); setDateFilterPreset(null); }} className="clear-date-btn">X</button>
                     </div>
                   </label>
                   <button onClick={clearAllFilters} className="clear-all-btn">Limpiar filtros</button>
@@ -605,8 +671,8 @@ const GroupDetailPage: React.FC = () => {
               {showBulkEdit && (
                 <BulkEditForm
                   members={group?.miembros || []}
-                  allCategories={allCategories}
                   onBulkUpdate={handleBulkUpdate}
+                  token={token!}
                 />
               )}
             </div>

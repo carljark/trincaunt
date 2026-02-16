@@ -459,3 +459,38 @@
   }
 }
 
+.filter-title-with-presets {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.date-presets {
+  display: flex;
+  gap: 0.5rem;
+
+  .preset-btn {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid $primary-color;
+    background-color: white;
+    color: $primary-color;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+
+    &.active {
+      background-color: $primary-color;
+      color: white;
+    }
+
+    &:hover:not(.active) {
+      background-color: color.scale($primary-color, $alpha: -90%);
+    }
+  }
+}
+
+input[type="date"]:disabled {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
+}
+
