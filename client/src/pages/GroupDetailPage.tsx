@@ -7,6 +7,7 @@ import AddExpenseModal from '../components/AddExpenseModal';
 import CategoryModal from '../components/CategoryModal';
 import BulkEditForm from '../components/BulkEditForm';
 import ConfirmationModal from '../components/ConfirmationModal';
+import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -63,7 +64,7 @@ const GroupDetailPage: React.FC = () => {
   const [myTotalDebt, setMyTotalDebt] = useState<number>(0);
   const [myTotalSettledIncome, setMyTotalSettledIncome] = useState<number>(0);
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group'>('expenses');
+  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group' | 'graph'>('expenses');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false);
   const [expenseToEdit, setExpenseToEdit] = useState<IExpensePopulated | undefined>(undefined);
@@ -579,6 +580,19 @@ const GroupDetailPage: React.FC = () => {
           >
             Grupo
           </button>
+          <button
+            className={activeTab === 'graph' ? 'active' : ''}
+            onClick={() => setActiveTab('graph')}
+          >
+            Gráfico
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'graph' && (
+        <div className="graph-tab-content">
+          <h3>Gráfico de Gastos</h3>
+          {groupId && token && <ExpenseGraph groupId={groupId} token={token} />}
         </div>
       )}
 

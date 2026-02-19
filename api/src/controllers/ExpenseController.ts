@@ -115,3 +115,24 @@ export const getGlobalExpenses = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+export const getChartExpenses = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const { startDate, endDate, weekdays } = req.query;
+
+    const parsedWeekdays = typeof weekdays === 'string'
+      ? weekdays.split(',').map(Number)
+      : undefined;
+
+    const chartData = await expenseService.getChartExpenses(
+      groupId,
+      startDate as string | undefined,
+      endDate as string | undefined,
+      parsedWeekdays
+    );
+    res.status(200).json({ status: 'success', data: chartData });
+  } catch (error) {
+    next(error);
+  }
+};

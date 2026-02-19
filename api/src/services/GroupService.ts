@@ -3,6 +3,7 @@ import User from '../models/User';
 import Expense from '../models/Expense'; // Import Expense model
 import DebtTransaction from '../models/DebtTransaction'; // Import DebtTransaction model
 import { AppError } from '../utils/AppError';
+import mongoose from 'mongoose'; // Import mongoose
 
 export class GroupService {
   async createGroup(data: Partial<IGroup>, userId: string): Promise<IGroup> {
@@ -78,7 +79,7 @@ export class GroupService {
     await Expense.deleteMany({ grupo_id: groupId });
 
     // Delete all debt transactions related to this group
-    await DebtTransaction.deleteMany({ group: groupId });
+    await DebtTransaction.deleteMany({ group: new mongoose.Types.ObjectId(groupId) } as any);
 
     // Finally, delete the group itself
     await Group.deleteOne({ _id: groupId });

@@ -1,5 +1,6 @@
 @use 'sass:color';
 @use '../styles/variables' as *;
+@use "../components/ExpenseGraph.scss" as *;
 
 .positive-balance {
   color: green;

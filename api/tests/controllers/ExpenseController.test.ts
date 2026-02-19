@@ -62,7 +62,7 @@ describe('ExpenseController', () => {
 
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ status: 'success', data: expenses });
-      expect(ExpenseService.prototype.getExpensesByGroup).toHaveBeenCalledWith('group-123', 'all');
+      expect(ExpenseService.prototype.getExpensesByGroup).toHaveBeenCalledWith('group-123', ['all']);
     });
 
     it('should return a list of expenses for the group with a specific category filter', async () => {
@@ -74,7 +74,7 @@ describe('ExpenseController', () => {
 
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ status: 'success', data: expenses });
-      expect(ExpenseService.prototype.getExpensesByGroup).toHaveBeenCalledWith('group-123', 'Food');
+      expect(ExpenseService.prototype.getExpensesByGroup).toHaveBeenCalledWith('group-123', ['Food']);
     });
   });
 });

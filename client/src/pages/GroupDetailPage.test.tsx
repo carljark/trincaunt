@@ -57,6 +57,9 @@ const setupFetchMock = () => {
     if (url.includes('/groups/') && url.includes('/debt-transactions')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(mockDebtTransactionsResponse) });
     }
+    if (url.includes('/category-aliases')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [] }) });
+    }
     if (url.includes('/groups/')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(mockGroupResponse) });
     }

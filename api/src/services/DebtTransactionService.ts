@@ -1,5 +1,6 @@
 import DebtTransaction, { IDebtTransaction } from '../models/DebtTransaction';
 import { AppError } from '../utils/AppError';
+import mongoose from 'mongoose'; // Import mongoose
 
 export class DebtTransactionService {
 
@@ -8,7 +9,12 @@ export class DebtTransactionService {
     if (amount <= 0) {
       throw new AppError('El monto de la transacción debe ser mayor a 0', 400);
     }
-    const debtTransaction = await DebtTransaction.create({ from, to, group, amount });
+    const debtTransaction = await DebtTransaction.create({
+      from: new mongoose.Types.ObjectId(from),
+      to: new mongoose.Types.ObjectId(to),
+      group: new mongoose.Types.ObjectId(group),
+      amount
+    } as any); // Cast to any to bypass strict type checking
     return debtTransaction;
   }
 

@@ -6,6 +6,7 @@ import { AppError } from '../../src/utils/AppError';
 jest.mock('../../src/models/Expense');
 jest.mock('../../src/models/Group');
 
+
 const ExpenseMock = Expense as jest.Mocked<typeof Expense>;
 const GroupMock = Group as jest.Mocked<typeof Group>;
 
@@ -152,4 +153,100 @@ describe('ExpenseService', () => {
         );
     });
   });
+
+  describe('getChartExpenses', () => {
+    const groupId = '60e0f3e2e3e2e3e2e3e2e3e2'; // Valid ObjectId string
+
+    it('should return aggregated expense data without filters', async () => {
+      const mockChartData = [
+        { date: '2023-01-01', totalAmount: 100 },
+        { date: '2023-01-02', totalAmount: 200 },
+      ];
+      ExpenseMock.aggregate.mockResolvedValue(mockChartData);
+
+      const result = await expenseService.getChartExpenses(groupId);
+
+      expect(ExpenseMock.aggregate).toHaveBeenCalledWith(expect.arrayContaining([
+        { $match: { grupo_id: new (require('mongoose')).Types.ObjectId(groupId) } },
+        { $group: expect.any(Object) },
+        { $sort: { _id: 1 } },
+        { $project: expect.any(Object) },
+      ]));
+      expect(result).toEqual(mockChartData);
+    });
+
+    it('should return aggregated expense data with start and end date filters', async () => {
+      const startDate = '2023-01-01';
+      const endDate = '2023-01-01';
+      const mockChartData = [{ date: '2023-01-01', totalAmount: 150 }];
+      ExpenseMock.aggregate.mockResolvedValue(mockChartData);
+
+      const result = await expenseService.getChartExpenses(groupId, startDate, endDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      expect(ExpenseMock.aggregate).toHaveBeenCalledWith(expect.arrayContaining([
+        { $match: {
+            grupo_id: new (require('mongoose')).Types.ObjectId(groupId),
+            fecha: { '$gte': new Date(startDate), '$lte': end }
+        }},
+        { $group: expect.any(Object) },
+        { $sort: { _id: 1 } },
+        { $project: expect.any(Object) },
+      ]));
+      expect(result).toEqual(mockChartData);
+    });
+
+    it('should return aggregated expense data with weekday filter', async () => {
+      const weekdays = [1, 2]; // Monday, Tuesday
+      const mockChartData = [{ date: '2023-01-02', totalAmount: 75 }];
+      ExpenseMock.aggregate.mockResolvedValue(mockChartData);
+
+      const result = await expenseService.getChartExpenses(groupId, undefined, undefined, weekdays);
+      
+      expect(ExpenseMock.aggregate).toHaveBeenCalledWith(expect.arrayContaining([
+        { $match: {
+            grupo_id: new (require('mongoose')).Types.ObjectId(groupId),
+            $expr: { '$in': [{ '$dayOfWeek': '$fecha' }, [2, 3]] } // MongoDB's dayOfWeek for Mon, Tue
+        }},
+        { $group: expect.any(Object) },
+        { $sort: { _id: 1 } },
+        { $project: expect.any(Object) },
+      ]));
+      expect(result).toEqual(mockChartData);
+    });
+
+    it('should return aggregated expense data with all filters combined', async () => {
+      const startDate = '2023-01-01';
+      const endDate = '2023-01-07';
+      const weekdays = [0, 6]; // Sunday, Saturday
+      const mockChartData = [{ date: '2023-01-01', totalAmount: 50 }, { date: '2023-01-07', totalAmount: 120 }];
+      ExpenseMock.aggregate.mockResolvedValue(mockChartData);
+
+      const result = await expenseService.getChartExpenses(groupId, startDate, endDate, weekdays);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      expect(ExpenseMock.aggregate).toHaveBeenCalledWith(expect.arrayContaining([
+        { $match: {
+            grupo_id: new (require('mongoose')).Types.ObjectId(groupId),
+            fecha: { '$gte': new Date(startDate), '$lte': end },
+            $expr: { '$in': [{ '$dayOfWeek': '$fecha' }, [1, 7]] } // MongoDB's dayOfWeek for Sun, Sat
+        }},
+        { $group: expect.any(Object) },
+        { $sort: { _id: 1 } },
+        { $project: expect.any(Object) },
+      ]));
+      expect(result).toEqual(mockChartData);
+    });
+
+    it('should return an empty array if no expenses match the criteria', async () => {
+      ExpenseMock.aggregate.mockResolvedValue([]);
+
+      const result = await expenseService.getChartExpenses(groupId, '2024-01-01', '2024-01-01', [0]);
+
+      expect(result).toEqual([]);
+    });
+  });
 });
+

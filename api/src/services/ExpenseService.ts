@@ -4,6 +4,7 @@ import User from '../models/User';
 import DebtTransaction, { ISettleGroupDebts } from '../models/DebtTransaction';
 import CategoryAlias from '../models/CategoryAlias';
 import { AppError } from '../utils/AppError';
+import mongoose from 'mongoose'; // Import mongoose
 
 export class ExpenseService {
   async createExpense(data: Partial<IExpense> & { assumeExpense?: boolean }, userId: string): Promise<IExpense> {
@@ -179,7 +180,7 @@ export class ExpenseService {
   }
 
     private async _incorporateDebtTransactions(groupId: string, balances: { [userId: string]: number }, allUserIds: Set<string>): Promise<void> {
-      const debtTransactions = await DebtTransaction.find({ group: groupId });
+      const debtTransactions = await DebtTransaction.find({ group: new mongoose.Types.ObjectId(groupId) } as any);
       for (const dt of debtTransactions) {
         const fromUser = dt.from.toString();
         const toUser = dt.to.toString();
@@ -361,6 +362,61 @@ export class ExpenseService {
       ]);
       return categories;
     }
+
+    async getChartExpenses(
+      groupId: string,
+      startDate?: string,
+      endDate?: string,
+      weekdays?: number[]
+    ): Promise<{ date: string; totalAmount: number }[]> {
+      const match: any = { grupo_id: new mongoose.Types.ObjectId(groupId) };
+
+      if (startDate || endDate) {
+        match.fecha = {};
+        if (startDate) {
+          match.fecha.$gte = new Date(startDate);
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999); // Include the whole end day
+          match.fecha.$lte = end;
+        }
+      }
+
+      if (weekdays && weekdays.length > 0) {
+        // MongoDB's $dayOfWeek returns 1 for Sunday, 7 for Saturday.
+        // Our weekdays array is 0 for Sunday, 6 for Saturday.
+        // So, we need to map 0 to 1, and add 1 to others.
+        // Or, more simply, add 1 to each weekday number, and map 0 to 7 (Sunday)
+        const mongoWeekdays = weekdays.map(day => (day === 0 ? 1 : day + 1));
+        match.$expr = {
+          $in: [{ $dayOfWeek: "$fecha" }, mongoWeekdays]
+        };
+      }
+
+      const pipeline: any[] = [
+        { $match: match },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$fecha" }
+            },
+            totalAmount: { $sum: "$monto" }
+          }
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            date: "$_id",
+            totalAmount: "$totalAmount"
+          }
+        }
+      ];
+
+      return Expense.aggregate(pipeline);
+    }
+
 
   }
 
