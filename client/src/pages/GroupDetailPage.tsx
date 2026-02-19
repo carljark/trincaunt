@@ -591,7 +591,6 @@ const GroupDetailPage: React.FC = () => {
 
       {activeTab === 'graph' && (
         <div className="graph-tab-content">
-          <h3>Gráfico de Gastos</h3>
           {groupId && token && <ExpenseGraph groupId={groupId} token={token} />}
         </div>
       )}

@@ -11,9 +11,25 @@
 }
 
 .group-detail-page {
-  padding: 1rem;
+  padding: 0; // Remove general padding
   font-family: $font-family;
   position: relative; // Needed for absolute positioning of back-button
+
+  // Apply padding to elements that need it
+  h2, .tab-navigation, .expenses-tab-content, .balances-tab-content, .group-tab-content, .back-button {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .back-button {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.5rem 1rem; // Restore original button padding
+  }
+
+  .graph-tab-content {
+    width: 100%;
+  }
 
   .tab-navigation {
     display: flex;

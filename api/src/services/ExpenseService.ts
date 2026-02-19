@@ -367,8 +367,9 @@ export class ExpenseService {
       groupId: string,
       startDate?: string,
       endDate?: string,
-      weekdays?: number[]
-    ): Promise<{ date: string; totalAmount: number }[]> {
+      weekdays?: number[],
+      categories?: string[]
+    ): Promise<{ date: string; totalAmount: number; category?: string }[]> {
       const match: any = { grupo_id: new mongoose.Types.ObjectId(groupId) };
 
       if (startDate || endDate) {
@@ -384,35 +385,55 @@ export class ExpenseService {
       }
 
       if (weekdays && weekdays.length > 0) {
-        // MongoDB's $dayOfWeek returns 1 for Sunday, 7 for Saturday.
-        // Our weekdays array is 0 for Sunday, 6 for Saturday.
-        // So, we need to map 0 to 1, and add 1 to others.
-        // Or, more simply, add 1 to each weekday number, and map 0 to 7 (Sunday)
         const mongoWeekdays = weekdays.map(day => (day === 0 ? 1 : day + 1));
         match.$expr = {
           $in: [{ $dayOfWeek: "$fecha" }, mongoWeekdays]
         };
       }
 
-      const pipeline: any[] = [
-        { $match: match },
-        {
-          $group: {
-            _id: {
-              $dateToString: { format: "%Y-%m-%d", date: "$fecha" }
-            },
-            totalAmount: { $sum: "$monto" }
+      const pipeline: any[] = [{ $match: match }];
+
+      if (categories && categories.length > 0) {
+        pipeline.push(
+          { $unwind: "$categoria" },
+          { $match: { categoria: { $in: categories } } },
+          {
+            $group: {
+              _id: {
+                date: { $dateToString: { format: "%Y-%m-%d", date: "$fecha" } },
+                category: "$categoria"
+              },
+              totalAmount: { $sum: "$monto" }
+            }
+          },
+          { $sort: { "_id.date": 1, "_id.category": 1 } },
+          {
+            $project: {
+              _id: 0,
+              date: "$_id.date",
+              category: "$_id.category",
+              totalAmount: "$totalAmount"
+            }
           }
-        },
-        { $sort: { _id: 1 } },
-        {
-          $project: {
-            _id: 0,
-            date: "$_id",
-            totalAmount: "$totalAmount"
+        );
+      } else {
+        pipeline.push(
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m-%d", date: "$fecha" } },
+              totalAmount: { $sum: "$monto" }
+            }
+          },
+          { $sort: { _id: 1 } },
+          {
+            $project: {
+              _id: 0,
+              date: "$_id",
+              totalAmount: "$totalAmount"
+            }
           }
-        }
-      ];
+        );
+      }
 
       return Expense.aggregate(pipeline);
     }
