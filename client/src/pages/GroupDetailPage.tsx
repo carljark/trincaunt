@@ -75,6 +75,7 @@ const GroupDetailPage: React.FC = () => {
   const [payerFilter, setPayerFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [allCategories, setAllCategories] = useState<string[]>([]);
+  const [categoryAliases, setCategoryAliases] = useState<{ [alias: string]: string[] }>({});
   const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
   const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
@@ -85,6 +86,49 @@ const GroupDetailPage: React.FC = () => {
   
   // Usamos useRef para controlar si ya hemos inicializado las categorías
   const hasInitializedCategories = useRef(false);
+
+  const fetchAllCategories = useCallback(async () => {
+    if (!token) return;
+    try {
+      const [categoriesRes, aliasesRes] = await Promise.all([
+        fetch(`${apiHost}${apiBaseUrl}/expenses/categories`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+
+      let allCats = new Set<string>();
+      let aliasesMap: { [alias: string]: string[] } = {};
+
+      if (categoriesRes.ok) {
+        const categoriesData = await categoriesRes.json();
+        if (Array.isArray(categoriesData.data)) {
+          categoriesData.data.forEach((item: any) => {
+            if (item && item.category) allCats.add(item.category);
+          });
+        }
+      }
+
+      if (aliasesRes.ok) {
+        const aliasesData = await aliasesRes.json();
+        aliasesData.data.forEach((alias: any) => {
+          aliasesMap[alias.alias] = alias.mainCategories;
+          alias.mainCategories.forEach((mc: string) => allCats.add(mc));
+        });
+      }
+
+      setCategoryAliases(aliasesMap);
+      const allCategoriesArray = Array.from(allCats).sort();
+      setAllCategories(allCategoriesArray);
+
+      // Inicializar categorías SOLO en la primera carga y si no hay filtros guardados
+      if (initialFiltersLoaded && allCategoriesArray.length > 0 && !hasInitializedCategories.current && categoryFilter.length === 0) {
+        console.log('Inicializando categorías desde fetchAllCategories');
+        setCategoryFilter(allCategoriesArray);
+        hasInitializedCategories.current = true;
+      }
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+    }
+  }, [token, initialFiltersLoaded, categoryFilter]);
 
   const setDatePreset = useCallback((preset: string | null) => {
     if (!preset) {
@@ -174,9 +218,19 @@ const GroupDetailPage: React.FC = () => {
   // CORREGIDO: La condición de filtrado ahora está dentro de la función filter
   const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
     // Filtrar por categoría
-    if (categoryFilter.length > 0 && !expense.categoria?.some((cat: string) => categoryFilter.includes(cat))) {
-      return false;
+    if (categoryFilter.length > 0) {
+      const matchesCategory = expense.categoria?.some((cat: string) => {
+        // Coincidencia directa
+        if (categoryFilter.includes(cat)) return true;
+        
+        // Coincidencia por alias (si la categoría del gasto es un alias de alguna seleccionada)
+        const mainCatsOfAlias = categoryAliases[cat] || [];
+        return mainCatsOfAlias.some(mc => categoryFilter.includes(mc));
+      });
+
+      if (!matchesCategory) return false;
     }
+    
     if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
       return false;
     }
@@ -311,21 +365,12 @@ const GroupDetailPage: React.FC = () => {
         expenseUrl.searchParams.append('category', categoryFilter.join(','));
       }
 
-      const [expensesRes, aliasesRes] = await Promise.all([
+      const [expensesRes] = await Promise.all([
         fetch(expenseUrl.toString(), { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       if (!expensesRes.ok) throw new Error('Failed to fetch global expenses');
       const expensesData = await expensesRes.json();
-
-      let allCats = new Set<string>();
-      if (aliasesRes.ok) {
-        const aliasesData = await aliasesRes.json();
-        aliasesData.data.forEach((alias: any) => {
-          alias.mainCategories.forEach((mc: string) => allCats.add(mc));
-        });
-      }
 
       setGroup({ _id: 'global', nombre: 'Global', miembros: [], creado_por: user?._id || '', fecha_creacion: new Date().toISOString() });
       setExpenses(expensesData.data);
@@ -334,18 +379,6 @@ const GroupDetailPage: React.FC = () => {
       setPaymentHistory([]);
       const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0);
       setTotalExpenses(calculatedTotalExpenses);
-
-      const expenseCategories = [...new Set(expensesData.data.flatMap((e: any) => e.categoria).filter(Boolean))];
-      expenseCategories.forEach(cat => allCats.add(cat as string));
-      const allCategoriesArray = Array.from(allCats).sort();
-      setAllCategories(allCategoriesArray);
-
-      // Inicializar categorías SOLO en la primera carga y si no hay filtros guardados
-      if (initialFiltersLoaded && allCategoriesArray.length > 0 && !hasInitializedCategories.current && categoryFilter.length === 0) {
-        console.log('Inicializando categorías desde fetchGlobalData');
-        setCategoryFilter(allCategoriesArray);
-        hasInitializedCategories.current = true;
-      }
 
       setInitialDataLoaded(true);
 
@@ -370,13 +403,12 @@ const GroupDetailPage: React.FC = () => {
         expenseUrl.searchParams.append('category', categoryFilter.join(','));
       }
 
-      const [groupRes, expenseRes, balanceRes, settlementRes, debtTransactionsRes, aliasesRes] = await Promise.all([
+      const [groupRes, expenseRes, balanceRes, settlementRes, debtTransactionsRes] = await Promise.all([
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(expenseUrl.toString(), { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/balance`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/settle`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/debt-transactions`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/debt-transactions`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       if (!groupRes.ok) throw new Error('Failed to fetch group details');
@@ -390,19 +422,6 @@ const GroupDetailPage: React.FC = () => {
       const balanceData = await balanceRes.json();
       const settlementData = await settlementRes.json();
       const debtTransactionsData = await debtTransactionsRes.json();
-
-      let allCats = new Set<string>();
-      if (aliasesRes.ok) {
-        const aliasesData = await aliasesRes.json();
-        aliasesData.data.forEach((alias: any) => {
-          alias.mainCategories.forEach((mc: string) => allCats.add(mc));
-        });
-      }
-
-      const expenseCategories = [...new Set(expensesData.data.flatMap(e => e.categoria).filter((c): c is string => !!c))];
-      expenseCategories.forEach(cat => allCats.add(cat));
-      const allCategoriesArray = Array.from(allCats).sort();
-      setAllCategories(allCategoriesArray);
 
       setPaymentHistory(debtTransactionsData.data);
 
@@ -431,13 +450,6 @@ const GroupDetailPage: React.FC = () => {
 
       setBalance(balanceData.data.balances);
       setSettlementTransactions(settlementData.data.transactions);
-
-      // Inicializar categorías SOLO en la primera carga y si no hay filtros guardados
-      if (initialFiltersLoaded && allCategoriesArray.length > 0 && !hasInitializedCategories.current && categoryFilter.length === 0) {
-        console.log('Inicializando categorías desde fetchGroupData');
-        setCategoryFilter(allCategoriesArray);
-        hasInitializedCategories.current = true;
-      }
 
       setInitialDataLoaded(true);
 
@@ -537,13 +549,14 @@ const GroupDetailPage: React.FC = () => {
   // Cargar datos iniciales
   useEffect(() => {
     if (initialFiltersLoaded) {
+      fetchAllCategories();
       if (isGlobal) {
         fetchGlobalData();
       } else {
         fetchGroupData();
       }
     }
-  }, [initialFiltersLoaded, isGlobal, fetchGlobalData, fetchGroupData]);
+  }, [initialFiltersLoaded, isGlobal, fetchGlobalData, fetchGroupData, fetchAllCategories]);
 
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';

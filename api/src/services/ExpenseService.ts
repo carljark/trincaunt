@@ -391,17 +391,63 @@ export class ExpenseService {
         };
       }
 
-      const pipeline: any[] = [{ $match: match }];
-
       if (categories && categories.length > 0) {
-        pipeline.push(
-          { $unwind: "$categoria" },
-          { $match: { categoria: { $in: categories } } },
+        // Fetch all aliases that belong to the selected main categories
+        const aliases = await CategoryAlias.find({ mainCategories: { $in: categories } }).lean();
+        
+        // Map: category/alias -> Array of selected main categories it belongs to
+        const catToSelected: Record<string, string[]> = {};
+        
+        // Every selected category belongs to itself
+        categories.forEach(c => {
+          catToSelected[c] = [c];
+        });
+        
+        // Every alias belongs to its selected main categories
+        aliases.forEach(a => {
+          const relatedSelected = a.mainCategories.filter(mc => categories.includes(mc));
+          if (relatedSelected.length > 0) {
+            catToSelected[a.alias] = [...new Set([...(catToSelected[a.alias] || []), ...relatedSelected])];
+          }
+        });
+
+        const allRelevantCategories = Object.keys(catToSelected);
+        match.categoria = { $in: allRelevantCategories };
+
+        const pipeline: any[] = [
+          { $match: match },
+          // Create a field 'matchedSelected' which is an array of unique selected main categories this expense belongs to
+          {
+            $addFields: {
+              matchedSelected: {
+                $reduce: {
+                  input: { $ifNull: ["$categoria", []] },
+                  initialValue: [],
+                  in: {
+                    $setUnion: [
+                      "$$value",
+                      {
+                        $switch: {
+                          branches: allRelevantCategories.map(cat => ({
+                            case: { $eq: ["$$this", cat] },
+                            then: catToSelected[cat]
+                          })),
+                          default: []
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          // Unwind the matched categories to create one entry per line in the chart
+          { $unwind: "$matchedSelected" },
           {
             $group: {
               _id: {
                 date: { $dateToString: { format: "%Y-%m-%d", date: "$fecha" } },
-                category: "$categoria"
+                category: "$matchedSelected"
               },
               totalAmount: { $sum: "$monto" }
             }
@@ -415,9 +461,11 @@ export class ExpenseService {
               totalAmount: "$totalAmount"
             }
           }
-        );
+        ];
+        return Expense.aggregate(pipeline);
       } else {
-        pipeline.push(
+        const pipeline: any[] = [
+          { $match: match },
           {
             $group: {
               _id: { $dateToString: { format: "%Y-%m-%d", date: "$fecha" } },
@@ -432,10 +480,9 @@ export class ExpenseService {
               totalAmount: "$totalAmount"
             }
           }
-        );
+        ];
+        return Expense.aggregate(pipeline);
       }
-
-      return Expense.aggregate(pipeline);
     }
 
 

@@ -235,6 +235,8 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
 
   const data = prepareChartData();
 
+  const totalFilteredAmount = chartData.reduce((sum, item) => sum + item.totalAmount, 0);
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -244,7 +246,7 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
       },
       title: {
         display: true,
-        text: 'Gastos del Grupo',
+        text: `Gastos del Grupo: ${totalFilteredAmount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€`,
       },
     },
     scales: {
