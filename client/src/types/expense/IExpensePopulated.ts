@@ -5,7 +5,7 @@ export interface IExpensePopulated {
   grupo_id: string;
   descripcion: string;
   monto: number;
-  pagado_por: IUserPopulated;
+  pagado_por: IUserPopulated[];
   participantes: IUserPopulated[];
   fecha: string;
   asume_gasto: boolean;

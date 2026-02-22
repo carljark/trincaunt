@@ -3,7 +3,7 @@ export interface IExpense {
   grupo_id: string;
   descripcion: string;
   monto: number;
-  pagado_por: string; // User ID
+  pagado_por: string[]; // User ID
   participantes: string[]; // Array of User IDs
   fecha: string; // ISO Date string
   asume_gasto: boolean;

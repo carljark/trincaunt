@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+interface Option {
+  value: string;
+  label: string;
+}
+
 interface MultiSelectProps {
-  options: string[];
+  options: Option[];
   selected: string[];
   onChange: (selected: string[]) => void;
   placeholder: string;
@@ -22,29 +27,34 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const addSelection = (item: string) => {
-    if (item && !selected.includes(item)) {
-      onChange([...selected, item]);
+  const addSelection = (value: string) => {
+    if (value && !selected.includes(value)) {
+      onChange([...selected, value]);
     }
     setInputValue('');
     setShowSuggestions(false);
   };
 
-  const removeSelection = (item: string) => {
-    onChange(selected.filter(i => i !== item));
+  const removeSelection = (value: string) => {
+    onChange(selected.filter(v => v !== value));
   };
 
   const filteredSuggestions = options.filter(
-    o => o.toLowerCase().includes(inputValue.toLowerCase()) && !selected.includes(o)
+    o => o.label.toLowerCase().includes(inputValue.toLowerCase()) && !selected.includes(o.value)
   );
+
+  const selectedLabels = selected.map(value => {
+    const option = options.find(o => o.value === value);
+    return option ? option.label : value;
+  });
 
   return (
     <div className="multi-select-container" ref={containerRef}>
       <div className="selected-items">
-        {selected.map(item => (
-          <div key={item} className="selected-item">
-            {item}
-            <button type="button" onClick={() => removeSelection(item)}>x</button>
+        {selectedLabels.map((label, index) => (
+          <div key={selected[index]} className="selected-item">
+            {label}
+            <button type="button" onClick={() => removeSelection(selected[index])}>x</button>
           </div>
         ))}
       </div>
@@ -56,18 +66,17 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
         onFocus={() => setShowSuggestions(true)}
         onKeyDown={e => {
           if (e.key === 'Enter') {
-            // Check if the input value is a valid option
-            if (options.includes(inputValue)) {
-              addSelection(inputValue);
+            if (filteredSuggestions.length > 0) {
+              addSelection(filteredSuggestions[0].value);
             }
           }
         }}
       />
       {showSuggestions && (
         <ul className="suggestions-list scrollable-list">
-          {filteredSuggestions.map(item => (
-            <li key={item} onClick={() => addSelection(item)}>
-              {item}
+          {filteredSuggestions.map(option => (
+            <li key={option.value} onClick={() => addSelection(option.value)}>
+              {option.label}
             </li>
           ))}
         </ul>

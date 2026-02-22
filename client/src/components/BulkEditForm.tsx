@@ -15,7 +15,7 @@ interface BulkEditFormProps {
 
 const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, token }) => {
   const [categories, setCategories] = useState<string[]>([]);
-  const [paidBy, setPaidBy] = useState<string>('');
+  const [paidByIds, setPaidByIds] = useState<string[]>([]);
   const [expenseDate, setExpenseDate] = useState<string>('');
   const [participants, setParticipants] = useState<string[]>([]);
   const [assumeExpense, setAssumeExpense] = useState<boolean | null>(null);
@@ -67,7 +67,7 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
   const handleUpdate = () => {
     const updateData: any = {};
     if (categories.length > 0) updateData.categoria = categories;
-    if (paidBy) updateData.pagado_por = paidBy;
+    if (paidByIds.length > 0) updateData.pagado_por = paidByIds;
     if (expenseDate) updateData.fecha = expenseDate;
     if (participants.length > 0) updateData.participantes = participants;
     if (assumeExpense !== null) updateData.asume_gasto = assumeExpense;
@@ -76,13 +76,7 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
     onBulkUpdate(updateData);
   };
 
-  const memberNames = members.map(m => m.nombre);
-  const selectedParticipantNames = members.filter(m => participants.includes(m._id)).map(m => m.nombre);
-
-  const handleParticipantChange = (selectedNames: string[]) => {
-    const selectedIds = members.filter(m => selectedNames.includes(m.nombre)).map(m => m._id);
-    setParticipants(selectedIds);
-  };
+  const memberOptions = members.map(m => ({ value: m._id, label: m.nombre }));
 
   return (
     <div className="bulk-edit-form">
@@ -143,12 +137,12 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
       </div>
       <div className="form-group">
         <label>Pagado por</label>
-        <select value={paidBy} onChange={e => setPaidBy(e.target.value)}>
-          <option value="">No cambiar</option>
-          {members.map(member => (
-            <option key={member._id} value={member._id}>{member.nombre}</option>
-          ))}
-        </select>
+        <MultiSelect
+          options={memberOptions}
+          selected={paidByIds}
+          onChange={setPaidByIds}
+          placeholder="Añadir pagadores..."
+        />
       </div>
       <div className="form-group">
         <label>Fecha del Gasto</label>
@@ -161,9 +155,9 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
       <div className="form-group">
         <label>Participantes</label>
         <MultiSelect
-          options={memberNames}
-          selected={selectedParticipantNames}
-          onChange={handleParticipantChange}
+          options={memberOptions}
+          selected={participants}
+          onChange={setParticipants}
           placeholder="Añadir participantes..."
         />
       </div>

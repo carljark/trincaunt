@@ -12,7 +12,7 @@ import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
 import { ITransaction, ISettleGroupDebtsTransaction, IDebtTransaction } from '../types/transaction';
-import { IUser } from '../types/user';
+import { IUser, IUserPopulated } from '../types/user';
 
 export const checkIfUserIsParticipant = (
   expense: IExpensePopulated,
@@ -87,6 +87,14 @@ const GroupDetailPage: React.FC = () => {
   
   // Usamos useRef para controlar si ya hemos inicializado las categorías
   const hasInitializedCategories = useRef(false);
+
+  const formatPayers = useCallback((pagadoPor: IExpensePopulated['pagado_por']) => {
+    // pagadoPor is always expected to be an array of IUserPopulated based on IExpensePopulated type
+    if (pagadoPor && pagadoPor.length > 0) {
+      return pagadoPor.map(p => p.nombre).join(', ');
+    }
+    return 'Nadie'; // Fallback if the array is empty
+  }, []);
 
   const fetchAllCategories = useCallback(async () => {
     if (!token) return;
@@ -246,7 +254,7 @@ const GroupDetailPage: React.FC = () => {
     if (dateToFilter && new Date(expense.fecha) > new Date(dateToFilter)) {
       return false;
     }
-    if (payerFilter !== 'all' && expense.pagado_por._id !== payerFilter) {
+    if (payerFilter !== 'all' && !(Array.isArray(expense.pagado_por) ? expense.pagado_por.some(p => p._id === payerFilter) : (expense.pagado_por as IUserPopulated)._id === payerFilter)) {
       return false;
     }
     return true;
@@ -452,7 +460,7 @@ const GroupDetailPage: React.FC = () => {
       setMyTotalExpenses(calculatedMyTotalExpensesParticipation);
 
       const calculatedMyTotalExpenses = expensesData.data
-        .filter((expense) => expense.pagado_por._id === user?._id)
+        .filter((expense) => (Array.isArray(expense.pagado_por) ? expense.pagado_por.some(p => p._id === user?._id) : (expense.pagado_por as IUserPopulated)._id === user?._id))
         .reduce((sum, expense) => sum + expense.monto, 0);
       setMyTotalExpensesPay(calculatedMyTotalExpenses);
 
@@ -741,7 +749,7 @@ const GroupDetailPage: React.FC = () => {
                     {!isGlobal && (
                       <div>
                         <span>
-                          {' '}({expense.pagado_por?.nombre || '...'}{expense.asume_gasto ? ' (invita)' : ''})
+                          {' '}({formatPayers(expense.pagado_por)}{expense.asume_gasto ? ' (invita)' : ''})
                         </span>
                       </div>
                     )}

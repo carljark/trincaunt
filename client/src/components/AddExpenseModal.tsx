@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { IExpense, IExpensePopulated } from '../types/expense';
 import { IUserPopulated } from '../types/user';
+import MultiSelect from './MultiSelect';
 
 interface AddExpenseModalProps {
   groupId: string;
@@ -25,7 +26,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>(expenseToEdit?.participantes.map((p: IUserPopulated) => p._id) || []);
   const [categories, setCategories] = useState<string[]>(expenseToEdit?.categoria || []);
   const [categoryInput, setCategoryInput] = useState('');
-  const [paidBy, setPaidBy] = useState<string>(paidByInitial); // New state for paidBy
+  const [paidByIds, setPaidByIds] = useState<string[]>([]);
   const [suggestedCategories, setSuggestedCategories] = useState<{ category: string, count: number }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,14 +38,21 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
 
   useEffect(() => {
     if (expenseToEdit) {
-      // If editing, set paidBy to the expense's payer
-      setPaidBy(expenseToEdit.pagado_por._id.toString());
-      setExpenseDate(expenseToEdit.fecha.split('T')[0]); // Set existing expense date
+      if (Array.isArray(expenseToEdit.pagado_por)) {
+        setPaidByIds(expenseToEdit.pagado_por.map((p: IUserPopulated) => p._id));
+      } else {
+        // This is for backward compatibility with old expenses
+        // @ts-ignore
+        setPaidByIds([expenseToEdit.pagado_por._id.toString()]);
+      }
+      setExpenseDate(expenseToEdit.fecha.split('T')[0]);
     } else if (members && members.length > 0) {
-      // If adding, initialize participants with all members
       setSelectedParticipants(members.map(m => m._id));
+      if (paidByInitial) {
+        setPaidByIds([paidByInitial]);
+      }
     }
-  }, [expenseToEdit, members]);
+  }, [expenseToEdit, members, paidByInitial]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -95,8 +103,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       return;
     }
 
-    // Use paidBy state variable
-    if (!paidBy) {
+    if (paidByIds.length === 0) {
       setError('Por favor, selecciona quién pagó el gasto.');
       setLoading(false);
       return;
@@ -106,7 +113,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       descripcion: expenseData.description,
       monto: Number.parseFloat(expenseData.amount),
       grupo_id: groupId,
-      pagado_por: paidBy,
+      pagado_por: paidByIds,
       asume_gasto: assumeExpense,
       categoria: categories,
       fecha: expenseDate, // Add the expense date here
@@ -121,8 +128,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       }
       expensePayload.participantes = selectedParticipants;
     } else {
-      // If assumeExpense is true, only the payer is the participant
-      expensePayload.participantes = [paidBy];
+      expensePayload.participantes = paidByIds;
     }
 
     try {
@@ -221,11 +227,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
 
           <div>
             <label htmlFor="paidBy">Pagado por:</label>
-            <select id="paidBy" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
-              {members.map((m: any) => (
-                <option key={m._id} value={m._id}>{m.nombre}</option>
-              ))}
-            </select>
+            <MultiSelect
+              options={members.map(m => ({ value: m._id, label: m.nombre }))}
+              selected={paidByIds}
+              onChange={setPaidByIds}
+              placeholder="Selecciona uno o más pagadores"
+            />
           </div>
           <div className="checkbox-container">
             <label>

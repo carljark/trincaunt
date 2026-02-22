@@ -11,11 +11,16 @@ export class ExpenseService {
     const group = await Group.findById(data.grupo_id);
     if (!group) throw new AppError('Grupo no encontrado', 404);
 
-    const payerId = data.pagado_por ? data.pagado_por.toString() : userId;
-
-    // Regla: Usuario que paga debe ser miembro
-    const isPayerMember = group.miembros.some(m => m.toString() === payerId);
-    if (!isPayerMember) throw new AppError('El usuario que paga no pertenece al grupo', 403);
+    const payerIds = data.pagado_por || [userId];
+    if (!Array.isArray(payerIds) || payerIds.length === 0) {
+      throw new AppError('El campo pagado_por debe ser un array de IDs de usuario y no puede estar vacío.', 400);
+    }
+  
+    // Regla: Todos los usuarios que pagan deben ser miembros
+    const allPayersAreMembers = payerIds.every(pId => group.miembros.some(m => m.toString() === pId.toString()));
+    if (!allPayersAreMembers) {
+      throw new AppError('Todos los usuarios que pagan deben pertenecer al grupo.', 403);
+    }
 
     // Regla: Monto > 0
     if (data.monto !== undefined && data.monto <= 0) throw new AppError('El monto debe ser mayor a 0', 400);
@@ -23,7 +28,7 @@ export class ExpenseService {
     let participantes;
     if (data.assumeExpense) {
       // El que paga asume el gasto completo, es el único participante.
-      participantes = [payerId];
+      participantes = payerIds;
     } else if (data.participantes && data.participantes.length > 0) {
       // Se han especificado participantes
       participantes = data.participantes;
@@ -34,7 +39,7 @@ export class ExpenseService {
 
     const expense = await Expense.create({
       ...data,
-      pagado_por: payerId,
+      pagado_por: payerIds,
       participantes,
       asume_gasto: data.assumeExpense || false
     });
@@ -80,19 +85,20 @@ export class ExpenseService {
     const expensesInUserGroups = await Expense.find(query)
       .populate('grupo_id', 'nombre')
       .populate('participantes', '_id')
-      .populate('pagado_por', '_id');
+      .populate('pagado_por', 'nombre _id');
 
     const globalExpenses = expensesInUserGroups.map(expense => {
       const expenseObject = expense.toObject();
       let userShare = 0;
 
-      const isPayer = expenseObject.pagado_por._id.toString() === userId;
-
+      const payers = (Array.isArray(expenseObject.pagado_por) ? expenseObject.pagado_por : [expenseObject.pagado_por]).map(p => (p as any)._id.toString());
+      const isPayer = payers.includes(userId);
+      
       if (expenseObject.asume_gasto) {
         if (isPayer) {
-          userShare = expenseObject.monto;
+          userShare = expenseObject.monto / payers.length;
         } else {
-          userShare = 0; // Not the payer, so their share is 0
+          userShare = 0; // Not a payer, so their share is 0
         }
       } else {
         userShare = expenseObject.monto / expenseObject.participantes.length;
@@ -137,7 +143,11 @@ export class ExpenseService {
 
     // Collect all users involved in expenses, even if they left the group
     for (const expense of expenses) {
-      allUserIds.add(expense.pagado_por.toString());
+      if (Array.isArray(expense.pagado_por)) {
+        expense.pagado_por.forEach(p => allUserIds.add(p.toString()));
+      } else {
+        allUserIds.add((expense.pagado_por as any).toString());
+      }
       expense.participantes.forEach(p => allUserIds.add(p.toString()));
     }
     
@@ -154,15 +164,33 @@ export class ExpenseService {
       if (expense.asume_gasto) {
         continue;
       }
-      const payerId = expense.pagado_por.toString();
+
       const amountInCents = Math.round(expense.monto * 100);
       const numParticipants = expense.participantes.length;
 
       if (numParticipants === 0) continue;
 
-      // Payer gets the full amount added to their balance
-      balances[payerId] += amountInCents;
-
+      if (Array.isArray(expense.pagado_por)) {
+        const numPayers = expense.pagado_por.length;
+        if (numPayers > 0) {
+          const amountPerPayer = Math.floor(amountInCents / numPayers);
+          let remainder = amountInCents % numPayers;
+          
+          expense.pagado_por.forEach((payerId, index) => {
+            let credit = amountPerPayer;
+            if (remainder > 0) {
+              credit += 1;
+              remainder--;
+            }
+            balances[payerId.toString()] += credit;
+          });
+        }
+      } else {
+        // Fallback for legacy expenses with a single payer
+        const payerId = (expense.pagado_por as any).toString();
+        balances[payerId] += amountInCents;
+      }
+      
       // Distribute the cost among participants
       const shareInCents = Math.floor(amountInCents / numParticipants);
       let remainder = amountInCents % numParticipants;
@@ -295,7 +323,7 @@ export class ExpenseService {
       expense.participantes = data.participantes;
     }
     if (data.pagado_por !== undefined) {
-      expense.pagado_por = data.pagado_por;
+      expense.pagado_por = Array.isArray(data.pagado_por) ? data.pagado_por : [data.pagado_por];
     }
     if (data.asume_gasto !== undefined) {
       expense.asume_gasto = data.asume_gasto;
