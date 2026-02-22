@@ -10,6 +10,13 @@
   color: red;
 }
 
+.error-message {
+  color: $danger-color;
+  text-align: center;
+  margin: 1rem 0;
+  font-weight: bold;
+}
+
 .group-detail-page {
   padding: 0; // Remove general padding
   font-family: $font-family;
@@ -432,6 +439,22 @@
         justify-self: center;
         width: fit-content;
     }
+    
+    .save-filters-btn {
+        grid-column: 1 / -1;
+        padding: 0.5rem 1rem;
+        border: none;
+        background-color: $primary-color;
+        color: white;
+        cursor: pointer;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+        justify-self: center;
+        width: fit-content;
+        &:hover {
+          background-color: color.scale($primary-color, $lightness: -10%);
+        }
+    }
 }
 
 .average-expense-display {
@@ -460,11 +483,18 @@
   text-align: left;
   cursor: pointer;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
   font-size: 1rem;
   font-weight: bold;
   color: $dark-color;
+
+  > .filtered {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+  }
 
   &:hover {
     background-color: color.scale($light-color, $lightness: -5%);
@@ -479,7 +509,8 @@
 .filter-title-with-presets {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
+  gap: 3rem;
 }
 
 .date-presets {

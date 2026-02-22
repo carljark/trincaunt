@@ -8,4 +8,5 @@ export interface IExpense {
   fecha: string; // ISO Date string
   asume_gasto: boolean;
   categoria?: string[];
+  localization?: string;
 }

@@ -19,6 +19,7 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
   const [expenseDate, setExpenseDate] = useState<string>('');
   const [participants, setParticipants] = useState<string[]>([]);
   const [assumeExpense, setAssumeExpense] = useState<boolean | null>(null);
+  const [localization, setLocalization] = useState<string>('');
   
   const [categoryInput, setCategoryInput] = useState('');
   const [suggestedCategories, setSuggestedCategories] = useState<{ category: string, count: number }[]>([]);
@@ -70,6 +71,7 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
     if (expenseDate) updateData.fecha = expenseDate;
     if (participants.length > 0) updateData.participantes = participants;
     if (assumeExpense !== null) updateData.asume_gasto = assumeExpense;
+    if (localization) updateData.localization = localization;
 
     onBulkUpdate(updateData);
   };
@@ -151,6 +153,10 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
       <div className="form-group">
         <label>Fecha del Gasto</label>
         <input type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} />
+      </div>
+      <div className="form-group">
+        <label>Lugar</label>
+        <input type="text" value={localization} onChange={e => setLocalization(e.target.value)} placeholder="Lugar del gasto" />
       </div>
       <div className="form-group">
         <label>Participantes</label>

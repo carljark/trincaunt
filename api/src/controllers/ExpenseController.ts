@@ -119,7 +119,7 @@ export const getGlobalExpenses = async (req: Request, res: Response, next: NextF
 export const getChartExpenses = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { groupId } = req.params;
-    const { startDate, endDate, weekdays, categories } = req.query;
+    const { startDate, endDate, weekdays, categories, localization } = req.query;
 
     const parsedWeekdays = typeof weekdays === 'string'
       ? weekdays.split(',').map(Number)
@@ -134,7 +134,8 @@ export const getChartExpenses = async (req: Request, res: Response, next: NextFu
       startDate as string | undefined,
       endDate as string | undefined,
       parsedWeekdays,
-      parsedCategories
+      parsedCategories,
+      localization as string | undefined
     );
     res.status(200).json({ status: 'success', data: chartData });
   } catch (error) {

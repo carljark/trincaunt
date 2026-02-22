@@ -47,6 +47,7 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [localizationFilter, setLocalizationFilter] = useState<string>('');
   const categoryInputRef = useRef<HTMLInputElement>(null);
 
   const weekdaysMap = [
@@ -128,6 +129,7 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
       if (endDate) url += `endDate=${endDate}&`;
       if (selectedWeekdays.length > 0) url += `weekdays=${selectedWeekdays.join(',')}&`;
       if (selectedCategories.length > 0) url += `categories=${selectedCategories.join(',')}&`;
+      if (localizationFilter) url += `localization=${localizationFilter}&`;
 
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -149,7 +151,7 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
     } finally {
       setLoading(false);
     }
-  }, [groupId, token, startDate, endDate, selectedWeekdays, selectedCategories]);
+  }, [groupId, token, startDate, endDate, selectedWeekdays, selectedCategories, localizationFilter]);
 
   useEffect(() => {
     fetchChartData();
@@ -373,6 +375,17 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="localization-filter" className="filter-label">Lugar:</label>
+          <input
+            id="localization-filter"
+            type="text"
+            placeholder="Filtrar por lugar..."
+            value={localizationFilter}
+            onChange={e => setLocalizationFilter(e.target.value)}
+          />
         </div>
 
         <div className="weekday-filters">

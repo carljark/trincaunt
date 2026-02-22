@@ -83,6 +83,7 @@ const GroupDetailPage: React.FC = () => {
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [dateFilterPreset, setDateFilterPreset] = useState<string | null>(null);
+  const [localizationFilter, setLocalizationFilter] = useState('');
   
   // Usamos useRef para controlar si ya hemos inicializado las categorías
   const hasInitializedCategories = useRef(false);
@@ -121,7 +122,6 @@ const GroupDetailPage: React.FC = () => {
 
       // Inicializar categorías SOLO en la primera carga y si no hay filtros guardados
       if (initialFiltersLoaded && allCategoriesArray.length > 0 && !hasInitializedCategories.current && categoryFilter.length === 0) {
-        console.log('Inicializando categorías desde fetchAllCategories');
         setCategoryFilter(allCategoriesArray);
         hasInitializedCategories.current = true;
       }
@@ -196,15 +196,18 @@ const GroupDetailPage: React.FC = () => {
 
         setCategoryFilter(filters.category || []);
         setDescriptionFilter(filters.description || '');
+        setLocalizationFilter(filters.localization || '');
         setPayerFilter(filters.payer || 'all');
+        hasInitializedCategories.current = true;
       }
     } catch (err) {
       // It's okay if it fails, it means the user has no saved preferences
+      hasInitializedCategories.current = true;
     } finally {
       setInitialFiltersLoaded(true);
     }
   }, [token, setDatePreset]);
-  
+
   const sortedExpenses = [...expenses].sort((a, b) => {
     const dateA = new Date(a.fecha).getTime();
     const dateB = new Date(b.fecha).getTime();
@@ -222,7 +225,7 @@ const GroupDetailPage: React.FC = () => {
       const matchesCategory = expense.categoria?.some((cat: string) => {
         // Coincidencia directa
         if (categoryFilter.includes(cat)) return true;
-        
+
         // Coincidencia por alias (si la categoría del gasto es un alias de alguna seleccionada)
         const mainCatsOfAlias = categoryAliases[cat] || [];
         return mainCatsOfAlias.some(mc => categoryFilter.includes(mc));
@@ -230,8 +233,11 @@ const GroupDetailPage: React.FC = () => {
 
       if (!matchesCategory) return false;
     }
-    
+
     if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
+      return false;
+    }
+    if (localizationFilter && !new RegExp(localizationFilter, 'i').test(expense.localization || '')) {
       return false;
     }
     if (dateFromFilter && new Date(expense.fecha) < new Date(dateFromFilter)) {
@@ -255,8 +261,9 @@ const GroupDetailPage: React.FC = () => {
     setDateToFilter('');
     setPayerFilter('all');
     setDateFilterPreset(null);
+    setLocalizationFilter('');
   };
-  
+
   const handleBulkUpdate = (updateData: any) => {
     if (Object.keys(updateData).length === 0) {
       alert('No hay cambios que aplicar.');
@@ -321,6 +328,7 @@ const GroupDetailPage: React.FC = () => {
       dateTo: dateFilterPreset ? '' : dateToFilter,
       payer: payerFilter,
       period: dateFilterPreset,
+      localization: localizationFilter,
     };
     try {
       const res = await fetch(`${apiHost}${apiBaseUrl}/user-preferences`, {
@@ -337,9 +345,12 @@ const GroupDetailPage: React.FC = () => {
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
+        alert('Error al guardar filtros: ' + err.message);
       } else {
         setError('An unknown error occurred');
+        alert('Error desconocido al guardar filtros');
       }
+      setTimeout(() => setError(''), 5000);
     }
   };
 
@@ -565,13 +576,14 @@ const GroupDetailPage: React.FC = () => {
   };
 
   if (loading && !initialDataLoaded) return <p>Cargando...</p>;
-  if (error) return <p className="error-message">Error: {error}</p>;
-  if (!group) return <p>Grupo no encontrado.</p>;
+  if (!group && !isGlobal) return <p>Grupo no encontrado.</p>;
 
   return (
     <div className="group-detail-page">
       <button onClick={() => navigate(-1)} className="back-button">Volver</button>
-      <h2>{group.nombre}</h2>
+      <h2>{isGlobal ? 'Resumen Global' : group?.nombre}</h2>
+      
+      {error && <p className="error-message">Error: {error}</p>}
 
       {!isGlobal && (
         <div className="tab-navigation">
@@ -644,7 +656,7 @@ const GroupDetailPage: React.FC = () => {
                   <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('year'); }} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
                 </div>
               </div>
-              <span>Gastos Filtrados: {formatCurrency(totalFilteredExpenses)}€</span>
+              <div className="filtered"><p>Filtrados: </p><p>{formatCurrency(totalFilteredExpenses)}€</p></div>
             </div>
             {showFilters && (
               <>
@@ -656,6 +668,10 @@ const GroupDetailPage: React.FC = () => {
                   <label>
                     Descripción:
                     <input type="text" placeholder="Filtrar..." value={descriptionFilter} onChange={e => setDescriptionFilter(e.target.value)} />
+                  </label>
+                  <label>
+                    Lugar:
+                    <input type="text" placeholder="Filtrar por lugar..." value={localizationFilter} onChange={e => setLocalizationFilter(e.target.value)} />
                   </label>
                   {!isGlobal && (
                     <label>
@@ -786,11 +802,11 @@ const GroupDetailPage: React.FC = () => {
           <hr/>
 
           <h4>Miembros:</h4>
-          <ul className="members-list">{group.miembros.map((m: IUser) => <li key={m._id}>{m.nombre}</li>)}</ul>
+          <ul className="members-list">{group?.miembros.map((m: IUser) => <li key={m._id}>{m.nombre}</li>)}</ul>
         </div>
       )}
 
-      {!isGlobal && (
+      {!isGlobal && activeTab === 'expenses' && (
         <div className="fixed-add-expense-button-container">
           <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
         </div>

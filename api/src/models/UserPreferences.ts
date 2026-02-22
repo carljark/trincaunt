@@ -9,6 +9,7 @@ export interface IUserPreferences extends Document {
         dateTo?: string;
         payer?: string;
         period?: string;
+        localization?: string;
     };
 }
 
@@ -21,6 +22,7 @@ const UserPreferencesSchema: Schema = new Schema({
         dateTo: { type: String },
         payer: { type: String },
         period: { type: String },
+        localization: { type: String },
     }
 });
 

@@ -368,7 +368,8 @@ export class ExpenseService {
       startDate?: string,
       endDate?: string,
       weekdays?: number[],
-      categories?: string[]
+      categories?: string[],
+      localization?: string
     ): Promise<{ date: string; totalAmount: number; category?: string }[]> {
       const match: any = { grupo_id: new mongoose.Types.ObjectId(groupId) };
 
@@ -389,6 +390,10 @@ export class ExpenseService {
         match.$expr = {
           $in: [{ $dayOfWeek: "$fecha" }, mongoWeekdays]
         };
+      }
+
+      if (localization) {
+        match.localization = { $regex: localization, $options: 'i' }; // Case-insensitive search
       }
 
       if (categories && categories.length > 0) {

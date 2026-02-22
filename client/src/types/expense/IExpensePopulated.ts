@@ -10,4 +10,5 @@ export interface IExpensePopulated {
   fecha: string;
   asume_gasto: boolean;
   categoria?: string[];
+  localization?: string;
 }

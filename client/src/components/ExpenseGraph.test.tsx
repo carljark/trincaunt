@@ -79,7 +79,7 @@ describe('ExpenseGraph', () => {
       expect(screen.queryByText('Cargando datos del gráfico...')).not.toBeInTheDocument();
     });
     
-    const startDateInput = screen.getByLabelText(/Fecha Inicio:/);
+    const startDateInput = screen.getByLabelText(/Desde:/);
     fireEvent.change(startDateInput, { target: { value: '2023-01-01' } });
 
     await waitFor(() => {
@@ -99,7 +99,7 @@ describe('ExpenseGraph', () => {
       expect(screen.queryByText('Cargando datos del gráfico...')).not.toBeInTheDocument();
     });
     
-    const endDateInput = screen.getByLabelText(/Fecha Fin:/);
+    const endDateInput = screen.getByLabelText(/Hasta:/);
     fireEvent.change(endDateInput, { target: { value: '2023-01-31' } });
 
     await waitFor(() => {

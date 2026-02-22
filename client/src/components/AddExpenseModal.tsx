@@ -18,7 +18,8 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, members, onClose, onExpenseAction, paidByInitial, expenseToEdit }) => {
   const [expenseData, setExpenseData] = useState({
     description: expenseToEdit?.descripcion || '',
-    amount: expenseToEdit?.monto.toString() || ''
+    amount: expenseToEdit?.monto.toString() || '',
+    localization: expenseToEdit?.localization || ''
   });
   const [assumeExpense, setAssumeExpense] = useState<boolean>(expenseToEdit?.asume_gasto || false);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>(expenseToEdit?.participantes.map((p: IUserPopulated) => p._id) || []);
@@ -109,6 +110,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       asume_gasto: assumeExpense,
       categoria: categories,
       fecha: expenseDate, // Add the expense date here
+      localization: expenseData.localization,
     };
 
     if (!assumeExpense) {
@@ -156,6 +158,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
         <form onSubmit={handleSubmitExpense}>
           <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
           <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
+          <input type="text" placeholder="Lugar" value={expenseData.localization} onChange={e => setExpenseData({ ...expenseData, localization: e.target.value })} />
           <div className="form-group">
             <label htmlFor="expense-date">Fecha del Gasto:</label>
             <input type="date" id="expense-date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} required />

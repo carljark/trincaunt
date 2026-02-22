@@ -9,6 +9,7 @@ export interface IExpense extends Document {
   fecha: Date;
   asume_gasto: boolean;
   categoria: string[];
+  localization?: string;
 }
 
 const ExpenseSchema: Schema = new Schema({
@@ -19,7 +20,8 @@ const ExpenseSchema: Schema = new Schema({
   participantes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   fecha: { type: Date, default: Date.now },
   asume_gasto: { type: Boolean, default: false },
-  categoria: { type: [String], required: false }
+  categoria: { type: [String], required: false },
+  localization: { type: String, required: false }
 });
 
 export default mongoose.model<IExpense>('Expense', ExpenseSchema);
