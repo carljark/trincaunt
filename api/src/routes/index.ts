@@ -5,6 +5,7 @@ import * as ExpenseController from '../controllers/ExpenseController';
 import * as DebtTransactionController from '../controllers/DebtTransactionController';
 import * as CategoryAliasController from '../controllers/CategoryAliasController';
 import * as UserPreferencesController from '../controllers/UserPreferencesController';
+import * as NoteController from '../controllers/NoteController'; // Import NoteController
 import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -47,5 +48,12 @@ router.delete('/debt-transactions/:transactionId', protect, DebtTransactionContr
 // User Preferences Routes (Protected)
 router.get('/user-preferences', protect, UserPreferencesController.getPreferences);
 router.post('/user-preferences', protect, UserPreferencesController.savePreferences);
+
+// Note Routes (Protected)
+router.post('/groups/:groupId/notes', protect, NoteController.createNote);
+router.get('/groups/:groupId/notes', protect, NoteController.getGroupNotes);
+router.put('/notes/:noteId', protect, NoteController.updateNote);
+router.delete('/notes/:noteId', protect, NoteController.deleteNote);
+
 
 export default router;

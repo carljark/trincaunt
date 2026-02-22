@@ -8,6 +8,7 @@ import CategoryModal from '../components/CategoryModal';
 import BulkEditForm from '../components/BulkEditForm';
 import ConfirmationModal from '../components/ConfirmationModal';
 import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
+import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes component
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -64,7 +65,7 @@ const GroupDetailPage: React.FC = () => {
   const [myTotalDebt, setMyTotalDebt] = useState<number>(0);
   const [myTotalSettledIncome, setMyTotalSettledIncome] = useState<number>(0);
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group' | 'graph'>('expenses');
+  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group' | 'graph' | 'notes'>('expenses');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false);
   const [expenseToEdit, setExpenseToEdit] = useState<IExpensePopulated | undefined>(undefined);
@@ -95,6 +96,10 @@ const GroupDetailPage: React.FC = () => {
     }
     return 'Nadie'; // Fallback if the array is empty
   }, []);
+
+
+
+
 
   const fetchAllCategories = useCallback(async () => {
     if (!token) return;
@@ -619,12 +624,24 @@ const GroupDetailPage: React.FC = () => {
           >
             Gráfico
           </button>
+          <button
+            className={activeTab === 'notes' ? 'active' : ''}
+            onClick={() => setActiveTab('notes')}
+          >
+            Notas
+          </button>
         </div>
       )}
 
       {activeTab === 'graph' && (
         <div className="graph-tab-content">
           {groupId && token && <ExpenseGraph groupId={groupId} token={token} />}
+        </div>
+      )}
+
+      {activeTab === 'notes' && (
+        <div className="notes-tab-content">
+          {groupId && group && <GroupNotes groupId={groupId} members={group.miembros} />}
         </div>
       )}
 
