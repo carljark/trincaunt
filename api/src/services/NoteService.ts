@@ -28,9 +28,26 @@ export class NoteService {
         data.lectores = [new mongoose.Types.ObjectId(userId)];
     }
 
+    // Ensure all editors are members of the group
+    if (data.editores && data.editores.length > 0) {
+        const allEditorsAreMembers = data.editores.every(editorId => 
+            group.miembros.some(member => member.toString() === editorId.toString())
+        );
+        if (!allEditorsAreMembers) {
+            throw new AppError('Alguno de los editores especificados no pertenece al grupo', 403);
+        }
+    }
+
+    // Ensure creator is always an editor
+    const finalEditors = data.editores ? [...data.editores.map(id => id.toString())] : [];
+    if (!finalEditors.includes(userId)) {
+        finalEditors.push(userId);
+    }
+
     const note = await Note.create({
       ...data,
       creado_por: new mongoose.Types.ObjectId(userId),
+      editores: finalEditors.map(id => new mongoose.Types.ObjectId(id)),
     });
 
     return note;
@@ -44,11 +61,13 @@ export class NoteService {
       grupo_id: groupObjectId,
       $or: [
         { creado_por: userObjectId }, // Creator can always see their notes
-        { lectores: userObjectId }    // User is in the readers list
+        { lectores: userObjectId },    // User is in the readers list
+        { editores: userObjectId }     // User is in the editors list
       ]
     })
     .populate('creado_por', 'nombre')
-    .populate('lectores', 'nombre');
+    .populate('lectores', 'nombre')
+    .populate('editores', 'nombre');
 
     return notes;
   }
@@ -60,8 +79,9 @@ export class NoteService {
       throw new AppError('Nota no encontrada', 404);
     }
 
-    // Only the creator can update the note
-    if (note.creado_por.toString() !== userId) {
+    // Only creator or editor can update the note
+    const canEdit = note.creado_por.toString() === userId || note.editores.some(editorId => editorId.toString() === userId);
+    if (!canEdit) {
       throw new AppError('No tienes permiso para actualizar esta nota', 403);
     }
 
@@ -78,11 +98,27 @@ export class NoteService {
         if (!allReadersAreMembers) {
             throw new AppError('Alguno de los lectores especificados no pertenece al grupo', 403);
         }
-    } else {
+    } else if (data.lectores && data.lectores.length === 0) {
         // If readers list is emptied, it becomes private to the creator
         data.lectores = [new mongoose.Types.ObjectId(userId)];
     }
+    
+    // Ensure all updated editors are members of the group
+    if (data.editores && data.editores.length > 0) {
+        const allEditorsAreMembers = data.editores.every(editorId => 
+            group.miembros.some(member => member.toString() === editorId.toString())
+        );
+        if (!allEditorsAreMembers) {
+            throw new AppError('Alguno de los editores especificados no pertenece al grupo', 403);
+        }
+    }
 
+    // Ensure creator is always an editor (even if they remove themselves from the list)
+    const finalEditors = data.editores ? [...data.editores.map(id => id.toString())] : note.editores.map(id => id.toString());
+    if (!finalEditors.includes(note.creado_por.toString())) {
+        finalEditors.push(note.creado_por.toString());
+    }
+    data.editores = finalEditors.map(id => new mongoose.Types.ObjectId(id));
 
     Object.assign(note, data);
     await note.save();
@@ -96,8 +132,9 @@ export class NoteService {
       throw new AppError('Nota no encontrada', 404);
     }
 
-    // Only the creator can delete the note
-    if (note.creado_por.toString() !== userId) {
+    // Only creator or editor can delete the note
+    const canDelete = note.creado_por.toString() === userId || note.editores.some(editorId => editorId.toString() === userId);
+    if (!canDelete) {
       throw new AppError('No tienes permiso para eliminar esta nota', 403);
     }
 

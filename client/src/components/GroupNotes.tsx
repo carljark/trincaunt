@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { IUser } from '../types/user';
 import MultiSelect from './MultiSelect'; // Assuming this MultiSelect is updated to handle {value, label}
+import './GroupNotes.scss';
 
 // Define the Note interface for the frontend
 interface INote {
@@ -10,6 +11,7 @@ interface INote {
   titulo?: string;
   contenido: string;
   lectores: IUser[]; // Populated user objects
+  editores: IUser[]; // Populated user objects
   creado_por: IUser; // Populated user object
   fecha_creacion: string;
   fecha_actualizacion: string;
@@ -39,6 +41,7 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
   const [noteTitle, setNoteTitle] = useState<string>('');
   const [noteContent, setNoteContent] = useState<string>('');
   const [selectedReaders, setSelectedReaders] = useState<string[]>([]);
+  const [selectedEditors, setSelectedEditors] = useState<string[]>([]);
 
   const memberOptions: Option[] = members.map(m => ({ value: m._id, label: m.nombre }));
 
@@ -75,6 +78,7 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
     setNoteTitle('');
     setNoteContent('');
     setSelectedReaders([]);
+    setSelectedEditors([]);
   };
 
   const handleEditNoteClick = (note: INote) => {
@@ -83,6 +87,7 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
     setNoteTitle(note.titulo || '');
     setNoteContent(note.contenido);
     setSelectedReaders(note.lectores.map(r => r._id));
+    setSelectedEditors(note.editores.map(e => e._id));
   };
 
   const handleCancelEdit = () => {
@@ -91,6 +96,7 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
     setNoteTitle('');
     setNoteContent('');
     setSelectedReaders([]);
+    setSelectedEditors([]);
   };
 
   const handleSaveNote = async (e: React.FormEvent) => {
@@ -104,6 +110,7 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
       titulo: noteTitle,
       contenido: noteContent,
       lectores: selectedReaders,
+      editores: selectedEditors,
       grupo_id: groupId,
     };
 
@@ -185,12 +192,21 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
             rows={6}
           ></textarea>
           <div className="form-group">
-            <label>Lectores (vacío = solo tú):</label>
+            <label>Ver (vacío = solo tú):</label>
             <MultiSelect
               options={memberOptions}
               selected={selectedReaders}
               onChange={setSelectedReaders}
-              placeholder="Selecciona lectores..."
+              placeholder="Selecciona quién puede ver..."
+            />
+          </div>
+          <div className="form-group">
+            <label>Editar (vacío = solo tú):</label>
+            <MultiSelect
+              options={memberOptions}
+              selected={selectedEditors}
+              onChange={setSelectedEditors}
+              placeholder="Selecciona quién puede editar..."
             />
           </div>
           <div className="note-form-actions">
@@ -205,27 +221,31 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
       {notes.length === 0 && !isAddingNote && <p>No hay notas en este grupo. ¡Sé el primero en añadir una!</p>}
 
       <ul className="notes-list">
-        {notes.map(note => (
-          <li key={note._id} className="note-item">
-            <div className="note-header">
-              <h4>{note.titulo || 'Sin título'}</h4>
-              <div className="note-actions">
-                {note.creado_por._id === user?._id && ( // Only creator can edit/delete
-                  <>
-                    <button onClick={() => handleEditNoteClick(note)} className="edit-btn" title="Editar">&#9998;</button>
-                    <button onClick={() => handleDeleteNote(note._id)} className="delete-btn" title="Borrar">&#10006;</button>
-                  </>
-                )}
+        {notes.map(note => {
+          const canEditOrDelete = note.creado_por._id === user?._id || note.editores.some(editor => editor._id === user?._id);
+          return (
+            <li key={note._id} className="note-item">
+              <div className="note-header">
+                <h4>{note.titulo || 'Sin título'}</h4>
+                <div className="note-actions">
+                  {canEditOrDelete && (
+                    <>
+                      <button onClick={() => handleEditNoteClick(note)} className="edit-btn" title="Editar">&#9998;</button>
+                      <button onClick={() => handleDeleteNote(note._id)} className="delete-btn" title="Borrar">&#10006;</button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-            <p className="note-content">{note.contenido}</p>
-            <div className="note-footer">
-              <span className="note-meta">Creado por: {note.creado_por.nombre}</span>
-              <span className="note-meta">Lectores: {note.lectores.map(r => r.nombre).join(', ') || 'Solo creador'}</span>
-              <span className="note-meta">Última actualización: {new Date(note.fecha_actualizacion).toLocaleDateString()}</span>
-            </div>
-          </li>
-        ))}
+              <p className="note-content">{note.contenido}</p>
+              <div className="note-footer">
+                <span className="note-meta">Creado por: {note.creado_por.nombre}</span>
+                <span className="note-meta">Ver: {note.lectores.map(r => r.nombre).join(', ') || 'Solo creador'}</span>
+                <span className="note-meta">Editar: {note.editores.map(e => e.nombre).join(', ') || 'Solo creador'}</span>
+                <span className="note-meta">Última actualización: {new Date(note.fecha_actualizacion).toLocaleDateString()}</span>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

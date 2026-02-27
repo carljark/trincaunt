@@ -24,8 +24,10 @@ router.delete('/category-aliases/:aliasId', protect, CategoryAliasController.del
 router.post('/groups', protect, GroupController.createGroup);
 router.get('/groups', protect, GroupController.getMyGroups);
 router.get('/groups/:groupId', protect, GroupController.getGroupById);
+router.put('/groups/:groupId', protect, GroupController.updateGroup); // New route for updating a group
 router.post('/groups/:groupId/members', protect, GroupController.addMember);
 router.delete('/groups/:groupId', protect, GroupController.deleteGroup); // New route for deleting a group
+router.delete('/groups/:groupId/members/:memberId', protect, GroupController.removeMember); // New route for removing a member
 
 // Expense Routes (Protected)
 router.post('/expenses', protect, ExpenseController.createExpense);

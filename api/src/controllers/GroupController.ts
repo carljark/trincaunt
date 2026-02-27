@@ -58,3 +58,29 @@ export const deleteGroup = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
+export const removeMember = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId, memberId } = req.params;
+    const requestingUserId = (req as any).user.id;
+    if (requestingUserId !== memberId) {
+        throw new AppError('No tienes permiso para eliminar a este miembro del grupo.', 403);
+    }
+
+    await groupService.removeMember(groupId, memberId);
+    res.status(204).json({ status: 'success', data: null });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateGroup = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const userId = (req as any).user.id;
+    const updatedGroup = await groupService.updateGroup(groupId, req.body, userId);
+    res.status(200).json({ status: 'success', data: updatedGroup });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -129,7 +129,6 @@ const HomePage: React.FC = () => {
                 <Link to={`/group/${g._id}`}>
                   <strong>{g.nombre}</strong> - {formatCurrency(g.totalExpenses)}€ ({formatCurrency(g.userShare)}€)
                 </Link>
-                <button onClick={() => handleDeleteGroup(g._id, g.nombre)} className="delete-group-button">Eliminar</button>
               </li>
             ))
           ) : (

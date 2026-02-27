@@ -9,6 +9,7 @@ import BulkEditForm from '../components/BulkEditForm';
 import ConfirmationModal from '../components/ConfirmationModal';
 import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
 import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes component
+import * as XLSX from 'xlsx-js-style'; // Import xlsx-js-style
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -85,9 +86,45 @@ const GroupDetailPage: React.FC = () => {
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [dateFilterPreset, setDateFilterPreset] = useState<string | null>(null);
   const [localizationFilter, setLocalizationFilter] = useState('');
+  // New states for group name editing
+  const [editableGroupName, setEditableGroupName] = useState<string>('');
+  const [isEditingGroupName, setIsEditingGroupName] = useState<boolean>(false);
   
   // Usamos useRef para controlar si ya hemos inicializado las categorías
   const hasInitializedCategories = useRef(false);
+
+  useEffect(() => {
+    if (group) {
+      setEditableGroupName(group.nombre);
+    }
+  }, [group]);
+
+  const handleUpdateGroupName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !groupId || !editableGroupName) return;
+
+    try {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ nombre: editableGroupName })
+      });
+      if (res.ok) {
+        fetchGroupData();
+        setIsEditingGroupName(false);
+        alert('Nombre del grupo actualizado con éxito');
+      } else {
+        const data = await res.json();
+        throw new Error(data.message || 'Error al actualizar el nombre del grupo');
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+    }
+  };
 
   const formatPayers = useCallback((pagadoPor: IExpensePopulated['pagado_por']) => {
     // pagadoPor is always expected to be an array of IUserPopulated based on IExpensePopulated type
@@ -96,9 +133,6 @@ const GroupDetailPage: React.FC = () => {
     }
     return 'Nadie'; // Fallback if the array is empty
   }, []);
-
-
-
 
 
   const fetchAllCategories = useCallback(async () => {
@@ -266,6 +300,32 @@ const GroupDetailPage: React.FC = () => {
   });
 
   const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
+
+
+  const handleExportXLSX = useCallback(() => {
+    if (filteredExpenses.length === 0) {
+      alert('No hay gastos para exportar.');
+      return;
+    }
+
+    const data = filteredExpenses.map(expense => ({
+      'ID Gasto': expense._id,
+      'Grupo': group?.nombre || '',
+      'Descripción': expense.descripcion,
+      'Monto': expense.monto,
+      'Pagado Por': formatPayers(expense.pagado_por), // Re-use formatPayers
+      'Participantes': expense.participantes.map(p => p.nombre).join(', '),
+      'Fecha': new Date(expense.fecha).toLocaleDateString(),
+      'Asume Gasto': expense.asume_gasto ? 'Sí' : 'No',
+      'Categoría': expense.categoria?.join(', ') || '',
+      'Localización': expense.localization || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Gastos");
+    XLSX.writeFile(wb, "gastos.xlsx");
+  }, [filteredExpenses, group?.nombre, formatPayers]);
 
   const clearAllFilters = () => {
     setCategoryFilter([]);
@@ -488,6 +548,36 @@ const GroupDetailPage: React.FC = () => {
     }
   }, [groupId, token, user?._id, initialFiltersLoaded, categoryFilter]);
 
+  const handleLeaveGroup = useCallback(async () => {
+    if (!token || !groupId || !user?._id) return;
+    if (!globalThis.confirm('¿Estás seguro de que quieres salir de este grupo? Esta acción es irreversible.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/members/${user._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (res.ok) {
+        alert('Has salido del grupo con éxito.');
+        navigate('/'); // Navigate to home page after leaving group
+      } else {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Error al salir del grupo');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error de red al salir del grupo');
+      console.error('Error leaving group:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, groupId, user?._id, navigate]);
+
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !groupId || !email) return;
@@ -593,7 +683,10 @@ const GroupDetailPage: React.FC = () => {
 
   return (
     <div className="group-detail-page">
-      <button onClick={() => navigate(-1)} className="back-button">Volver</button>
+      <div className="header-actions">
+        <button onClick={() => navigate(-1)} className="back-button">Volver</button>
+        <button onClick={handleExportXLSX} className="export-button">Exportar a XLSX</button>
+      </div>
       <h2>{isGlobal ? 'Resumen Global' : group?.nombre}</h2>
       
       {error && <p className="error-message">Error: {error}</p>}
@@ -816,6 +909,33 @@ const GroupDetailPage: React.FC = () => {
 
       {!isGlobal && activeTab === 'group' && (
         <div className="group-tab-content">
+          {group?.creado_por === user?._id && (
+            <div className="form-section">
+              <h4>Editar nombre del grupo</h4>
+              {isEditingGroupName ? (
+                <form onSubmit={handleUpdateGroupName} className="edit-group-name-form">
+                  <input
+                    type="text"
+                    value={editableGroupName}
+                    onChange={(e) => setEditableGroupName(e.target.value)}
+                    required
+                  />
+                  <div className="form-buttons">
+                    <button type="submit" className="save-button">Guardar</button>
+                    <button type="button" onClick={() => { setIsEditingGroupName(false); setEditableGroupName(group?.nombre || ''); }} className="cancel-button">Cancelar</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="group-name-display">
+                  <span className="current-group-name">{group?.nombre}</span>
+                  <button onClick={() => setIsEditingGroupName(true)} className="edit-button">Editar</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {group?.creado_por === user?._id && <hr/>}
+
           <div className="form-section">
             <h4>Añadir nuevo miembro</h4>
             <form onSubmit={handleAddMember}>
@@ -828,6 +948,9 @@ const GroupDetailPage: React.FC = () => {
 
           <h4>Miembros:</h4>
           <ul className="members-list">{group?.miembros.map((m: IUser) => <li key={m._id}>{m.nombre}</li>)}</ul>
+
+          <hr/>
+          <button onClick={handleLeaveGroup} className="leave-group-button danger-button">Salir del grupo</button>
         </div>
       )}
 
@@ -889,5 +1012,6 @@ const GroupDetailPage: React.FC = () => {
   );
 };
 
-// AÑADIDO: Exportación por defecto del componente
+
 export default GroupDetailPage;
+

@@ -22,16 +22,37 @@
   font-family: $font-family;
   position: relative; // Needed for absolute positioning of back-button
 
+  .header-actions {
+    display: flex;
+    justify-content: space-between; // Aligns items to the far left and far right
+    align-items: center; // Vertically centers items
+    padding: 1rem; // Add some padding around the buttons
+    width: 100%; // Ensure it takes full width
+  }
+  
   // Apply padding to elements that need it
-  h2, .tab-navigation, .expenses-tab-content, .balances-tab-content, .group-tab-content, .back-button {
+  h2, .tab-navigation, .expenses-tab-content, .balances-tab-content, .group-tab-content {
     padding-left: 1rem;
     padding-right: 1rem;
   }
   
+  .back-button, .export-button { // Apply common button styles here
+    background-color: $secondary-color; // Or any suitable color from your variables
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: $font-size-base;
+    &:hover {
+      background-color: color.scale($secondary-color, $lightness: -10%);
+    }
+  }
+
   .back-button {
-    top: 1rem;
-    left: 1rem;
-    padding: 0.5rem 1rem; // Restore original button padding
+    // position: absolute; // Remove absolute positioning to be managed by flexbox
+    // top: 1rem;
+    // left: 1rem;
   }
 
   .graph-tab-content {
@@ -54,22 +75,6 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-    }
-  }
-
-  .back-button {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    background-color: $secondary-color; // Or any suitable color from your variables
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: $font-size-base;
-    &:hover {
-      background-color: color.scale($secondary-color, $lightness: -10%);
     }
   }
 
@@ -112,6 +117,54 @@
       flex-direction: column;
       gap: 1rem;
       margin-bottom: 1.5rem;
+    }
+  }
+
+  .group-name-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+
+    .current-group-name {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .edit-button {
+      background-color: $secondary-color;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+
+      &:hover {
+        background-color: color.scale($secondary-color, $lightness: -10%);
+      }
+    }
+  }
+
+  .edit-group-name-form {
+    .form-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+
+      button {
+        flex: 1;
+        padding: 0.5rem;
+        font-size: 0.9rem;
+      }
+
+      .save-button {
+        background-color: $primary-color;
+      }
+
+      .cancel-button {
+        background-color: $secondary-color;
+      }
     }
   }
 

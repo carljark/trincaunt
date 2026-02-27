@@ -84,4 +84,54 @@ export class GroupService {
     // Finally, delete the group itself
     await Group.deleteOne({ _id: groupId });
   }
+
+  async removeMember(groupId: string, memberId: string): Promise<void> {
+    const group = await Group.findById(groupId);
+    if (!group) {
+      throw new AppError('Grupo no encontrado', 404);
+    }
+
+    const memberObjectId = new mongoose.Types.ObjectId(memberId);
+    
+    // Check if the member is in the group
+    const initialMemberCount = group.miembros.length;
+    group.miembros = group.miembros.filter(m => m.toString() !== memberId);
+
+    if (group.miembros.length === initialMemberCount) {
+      throw new AppError('El usuario no es miembro de este grupo', 400);
+    }
+
+    // If no members are left, delete the group
+    if (group.miembros.length === 0) {
+      await this.deleteGroup(groupId);
+      return;
+    }
+
+    // If the creator leaves, and there are other members, reassign creator or leave it as is
+    // For simplicity, we'll leave it as is for now. If this causes issues, a more complex logic
+    // to reassign or mark group as 'ownerless' would be needed.
+    // If the creator leaves and is the only member, the group would have been deleted above.
+
+    await group.save();
+  }
+
+  async updateGroup(groupId: string, data: Partial<IGroup>, userId: string): Promise<IGroup> {
+    const group = await Group.findById(groupId);
+    if (!group) {
+      throw new AppError('Grupo no encontrado', 404);
+    }
+
+    // Only the creator can update the group
+    if (group.creado_por.toString() !== userId) {
+      throw new AppError('Solo el creador del grupo puede actualizarlo', 403);
+    }
+
+    if (data.nombre) {
+      group.nombre = data.nombre;
+    }
+    // Add other updatable fields here as needed in the future
+
+    await group.save();
+    return group;
+  }
 }
