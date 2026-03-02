@@ -104,6 +104,15 @@ export const getExpenseCategories = async (req: Request, res: Response, next: Ne
 
 };
 
+export const getExpenseLocations = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const locations = await expenseService.getExpenseLocations();
+    res.status(200).json({ status: 'success', data: locations });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getGlobalExpenses = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;

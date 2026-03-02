@@ -35,6 +35,7 @@ router.patch('/expenses/bulk-update', protect, ExpenseController.bulkUpdate);
 router.put('/expenses/:expenseId', protect, ExpenseController.updateExpense);
 router.delete('/expenses/:expenseId', protect, ExpenseController.deleteExpense);
 router.get('/expenses/categories', protect, ExpenseController.getExpenseCategories);
+router.get('/expenses/locations', protect, ExpenseController.getExpenseLocations);
 router.get('/expenses/global', protect, ExpenseController.getGlobalExpenses);
 router.get('/groups/:groupId/expenses', protect, ExpenseController.getGroupExpenses);
 router.get('/groups/:groupId/expenses/chart', protect, ExpenseController.getChartExpenses);

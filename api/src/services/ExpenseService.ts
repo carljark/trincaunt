@@ -391,6 +391,16 @@ export class ExpenseService {
       return categories;
     }
 
+    async getExpenseLocations(): Promise<{ localization: string, count: number }[]> {
+      const locations = await Expense.aggregate([
+        { $match: { localization: { $nin: [null, ""] } } },
+        { $group: { _id: "$localization", count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+        { $project: { _id: 0, localization: "$_id", count: 1 } }
+      ]);
+      return locations;
+    }
+
     async getChartExpenses(
       groupId: string,
       startDate?: string,

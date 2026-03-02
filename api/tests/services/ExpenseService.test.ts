@@ -95,4 +95,39 @@ describe('ExpenseService Filtering', () => {
       }));
     });
   });
+
+  describe('Aggregation Methods', () => {
+    it('getExpenseCategories should aggregate unique categories with counts', async () => {
+      ExpenseMock.aggregate.mockResolvedValue([
+        { category: 'Food', count: 10 },
+        { category: 'Transport', count: 5 }
+      ]);
+
+      const result = await expenseService.getExpenseCategories();
+
+      expect(result).toHaveLength(2);
+      expect(result[0].category).toBe('Food');
+      expect(Expense.aggregate).toHaveBeenCalledWith(expect.arrayContaining([
+        { $unwind: "$categoria" },
+        { $match: { categoria: { $nin: [null, ""] } } },
+        { $group: { _id: "$categoria", count: { $sum: 1 } } },
+      ]));
+    });
+
+    it('getExpenseLocations should aggregate unique locations with counts', async () => {
+      ExpenseMock.aggregate.mockResolvedValue([
+        { localization: 'Supermarket', count: 5 },
+        { localization: 'Gas Station', count: 2 }
+      ]);
+
+      const result = await expenseService.getExpenseLocations();
+
+      expect(result).toHaveLength(2);
+      expect(result[0].localization).toBe('Supermarket');
+      expect(Expense.aggregate).toHaveBeenCalledWith(expect.arrayContaining([
+        { $match: { localization: { $nin: [null, ""] } } },
+        { $group: { _id: "$localization", count: { $sum: 1 } } },
+      ]));
+    });
+  });
 });

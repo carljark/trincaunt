@@ -28,7 +28,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   const [categoryInput, setCategoryInput] = useState('');
   const [paidByIds, setPaidByIds] = useState<string[]>([]);
   const [suggestedCategories, setSuggestedCategories] = useState<{ category: string, count: number }[]>([]);
+  const [suggestedLocations, setSuggestedLocations] = useState<{ localization: string, count: number }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const categoryInputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +74,25 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       }
     };
     fetchCategories();
+  }, [token]);
+
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/locations`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.data)) {
+            setSuggestedLocations(data.data);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching locations:', err);
+      }
+    };
+    fetchLocations();
   }, [token]);
 
   const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -164,7 +185,41 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
         <form onSubmit={handleSubmitExpense}>
           <input type="text" placeholder="Descripción" value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} required />
           <input type="number" placeholder="Monto" value={expenseData.amount} onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })} required />
-          <input type="text" placeholder="Lugar" value={expenseData.localization} onChange={e => setExpenseData({ ...expenseData, localization: e.target.value })} />
+          <div
+            className="localization-container"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setShowLocationSuggestions(false);
+              }
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Lugar"
+              value={expenseData.localization}
+              onChange={e => setExpenseData({ ...expenseData, localization: e.target.value })}
+              onFocus={() => setShowLocationSuggestions(true)}
+              autoComplete="off"
+            />
+            {showLocationSuggestions && (
+              <ul className="suggestions-list">
+                {suggestedLocations
+                  .filter(l => l.localization.toLowerCase().includes(expenseData.localization.toLowerCase()))
+                  .map(l => (
+                    <li
+                      key={l.localization}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setExpenseData({ ...expenseData, localization: l.localization });
+                        setShowLocationSuggestions(false);
+                      }}
+                    >
+                      {l.localization}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
           <div className="form-group">
             <label htmlFor="expense-date">Fecha del Gasto:</label>
             <input type="date" id="expense-date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} required />
