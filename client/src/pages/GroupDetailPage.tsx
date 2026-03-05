@@ -143,8 +143,8 @@ const GroupDetailPage: React.FC = () => {
         fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
-      let allCats = new Set<string>();
-      let aliasesMap: { [alias: string]: string[] } = {};
+      const allCats = new Set<string>();
+      const aliasesMap: { [alias: string]: string[] } = {};
 
       if (categoriesRes.ok) {
         const categoriesData = await categoriesRes.json();
@@ -833,6 +833,7 @@ const GroupDetailPage: React.FC = () => {
                   members={group?.miembros || []}
                   onBulkUpdate={handleBulkUpdate}
                   token={token!}
+                  groupId={groupId!}
                 />
               )}
             </div>

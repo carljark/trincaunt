@@ -340,8 +340,9 @@ export class ExpenseService {
 
     // We need to be careful about what we allow to be updated.
     // For example, we might not want to allow changing the group.
-    const allowedUpdates: (keyof IExpense)[] = ['categoria', 'pagado_por', 'fecha', 'participantes', 'asume_gasto'];
+    const allowedUpdates: (keyof IExpense)[] = ['categoria', 'pagado_por', 'fecha', 'participantes', 'asume_gasto', 'localization', 'grupo_id'];
     const finalUpdateData: Partial<IExpense> = {};
+
 
     for (const key of Object.keys(updateData)) {
         if (allowedUpdates.includes(key as keyof IExpense)) {

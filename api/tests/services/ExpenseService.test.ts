@@ -130,4 +130,38 @@ describe('ExpenseService Filtering', () => {
       ]));
     });
   });
+
+  describe('bulkUpdate', () => {
+    it('should update multiple expenses with allowed fields', async () => {
+      const expenseIds = ['exp-1', 'exp-2'];
+      const updateData = {
+        categoria: ['Food'],
+        grupo_id: 'new-group-id',
+        localization: 'New Place'
+      };
+
+      ExpenseMock.updateMany.mockResolvedValue({ modifiedCount: 2 } as any);
+
+      await expenseService.bulkUpdate(expenseIds, updateData as any);
+
+      expect(ExpenseMock.updateMany).toHaveBeenCalledWith(
+        { _id: { $in: expenseIds } },
+        { $set: {
+          categoria: ['Food'],
+          grupo_id: 'new-group-id',
+          localization: 'New Place'
+        }}
+      );
+    });
+
+    it('should ignore not allowed fields', async () => {
+      const expenseIds = ['exp-1'];
+      const updateData = {
+        monto: 100, // Not allowed
+        descripcion: 'New Desc' // Not allowed
+      };
+
+      await expect(expenseService.bulkUpdate(expenseIds, updateData)).rejects.toThrow('No hay datos válidos para actualizar.');
+    });
+  });
 });

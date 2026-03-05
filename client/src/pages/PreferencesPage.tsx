@@ -70,7 +70,7 @@ const PreferencesPage: React.FC = () => {
           fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } }),
         ]);
 
-        let allUniqueCategories = new Set<string>();
+        const allUniqueCategories = new Set<string>();
 
         if (expenseCatsRes.ok) {
           const expenseCategoriesData = await expenseCatsRes.json();

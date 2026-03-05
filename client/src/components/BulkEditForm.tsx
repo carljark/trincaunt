@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { IUser } from '../types/user';
+import { IGroup } from '../types/group';
 import MultiSelect from './MultiSelect';
 import './MultiSelect.scss';
 import './AddExpenseModal.scss';
@@ -7,19 +8,32 @@ import './AddExpenseModal.scss';
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-interface BulkEditFormProps {
-  members: IUser[];
-  onBulkUpdate: (updateData: any) => void;
-  token: string;
+interface IBulkUpdateData {
+  categoria?: string[];
+  pagado_por?: string[];
+  fecha?: string;
+  participantes?: string[];
+  asume_gasto?: boolean | null;
+  localization?: string;
+  grupo_id?: string;
 }
 
-const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, token }) => {
+interface BulkEditFormProps {
+  members: IUser[];
+  onBulkUpdate: (updateData: IBulkUpdateData) => void;
+  token: string;
+  groupId: string;
+}
+
+const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, token, groupId }) => {
   const [categories, setCategories] = useState<string[]>([]);
   const [paidByIds, setPaidByIds] = useState<string[]>([]);
   const [expenseDate, setExpenseDate] = useState<string>('');
   const [participants, setParticipants] = useState<string[]>([]);
   const [assumeExpense, setAssumeExpense] = useState<boolean | null>(null);
   const [localization, setLocalization] = useState<string>('');
+  const [groups, setGroups] = useState<IGroup[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
   
   const [categoryInput, setCategoryInput] = useState('');
   const [suggestedCategories, setSuggestedCategories] = useState<{ category: string, count: number }[]>([]);
@@ -35,7 +49,7 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.data)) {
-            const validCategories = data.data.filter((item: any) => item && typeof item.category === 'string');
+            const validCategories = data.data.filter((item: { category: string, count: number }) => item && typeof item.category === 'string');
             setSuggestedCategories(validCategories);
           }
         }
@@ -43,8 +57,26 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
         console.error('Error fetching categories:', err);
       }
     };
+    
+    const fetchGroups = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${apiHost}${apiBaseUrl}/groups`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Filter out the current group from the list
+          setGroups(data.data.filter((g: IGroup) => g._id !== groupId));
+        }
+      } catch (err) {
+        console.error('Error fetching groups:', err);
+      }
+    };
+
     fetchCategories();
-  }, [token]);
+    fetchGroups();
+  }, [token, groupId]);
   
   const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && categoryInput.trim() !== '') {
@@ -65,13 +97,14 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
   };
 
   const handleUpdate = () => {
-    const updateData: any = {};
+    const updateData: IBulkUpdateData = {};
     if (categories.length > 0) updateData.categoria = categories;
     if (paidByIds.length > 0) updateData.pagado_por = paidByIds;
     if (expenseDate) updateData.fecha = expenseDate;
     if (participants.length > 0) updateData.participantes = participants;
     if (assumeExpense !== null) updateData.asume_gasto = assumeExpense;
     if (localization) updateData.localization = localization;
+    if (selectedGroup) updateData.grupo_id = selectedGroup;
 
     onBulkUpdate(updateData);
   };
@@ -134,6 +167,15 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
             </div>
           ))}
         </div>
+      </div>
+      <div className="form-group">
+        <label>Mover al grupo</label>
+        <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}>
+          <option value="">No cambiar</option>
+          {groups.map(g => (
+            <option key={g._id} value={g._id}>{g.nombre}</option>
+          ))}
+        </select>
       </div>
       <div className="form-group">
         <label>Pagado por</label>
