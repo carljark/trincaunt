@@ -92,12 +92,50 @@ const GroupDetailPage: React.FC = () => {
   
   // Usamos useRef para controlar si ya hemos inicializado las categorías
   const hasInitializedCategories = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (group) {
       setEditableGroupName(group.nombre);
     }
   }, [group]);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`${apiHost}${apiBaseUrl}/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al subir la imagen');
+      }
+
+      const data = await response.json();
+      alert('Imagen subida correctamente: ' + data.filename);
+    } catch (err: any) {
+      console.error('Error uploading file:', err);
+      alert('Error al subir la imagen: ' + err.message);
+    } finally {
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
 
   const handleUpdateGroupName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -958,6 +996,16 @@ const GroupDetailPage: React.FC = () => {
       {!isGlobal && activeTab === 'expenses' && (
         <div className="fixed-add-expense-button-container">
           <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            accept="image/*"
+          />
+          <button onClick={handleUploadClick} className="upload-ticket-button" title="Subir ticket">
+            <img src="/subir_compra.png" alt="Subir ticket" />
+          </button>
         </div>
       )}
 

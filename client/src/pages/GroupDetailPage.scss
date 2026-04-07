@@ -388,6 +388,9 @@
   left: 50%;
   transform: translateX(-50%); /* Center horizontally */
   z-index: 999; /* Ensure it stays above other content */
+  display: flex;
+  gap: 1rem;
+  align-items: center;
 
   .add-expense-button {
     padding: 15px 30px;
@@ -402,6 +405,27 @@
 
     &:hover {
       background-color: color.scale($primary-color, $lightness: -10%);
+    }
+  }
+
+  .upload-ticket-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    img {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
     }
   }
 }
