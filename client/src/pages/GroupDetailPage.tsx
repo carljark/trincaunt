@@ -783,22 +783,15 @@ const GroupDetailPage: React.FC = () => {
 
       {(activeTab === 'expenses' || activeTab === 'edit') && (
         <div className="expenses-tab-content">
-          <div className="expenses-summary">
-            <div>
-              <p><strong>Total: {formatCurrency(totalExpenses)}€</strong></p>
-            </div>
-            {!isGlobal && (
+          {isGlobal && (
+            <div className="expenses-summary">
               <div>
-                <p><strong>Mi parte: {formatCurrency(myTotalExpenses)}€</strong></p>
-                <p><strong>Pagos: {formatCurrency(myTotalExpensesPay)}€</strong></p>
-                <p><strong>Saldado: {formatCurrency(myTotalSettledIncome)}€</strong></p>
-                {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
-                {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
+                <p><strong>Total: {formatCurrency(totalExpenses)}€</strong></p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          <hr/>
+          {isGlobal && <hr/>}
 
           {expenses.length > 0 && (
             <div className="average-expense-display">
@@ -923,6 +916,21 @@ const GroupDetailPage: React.FC = () => {
 
       {!isGlobal && activeTab === 'balances' && (
         <div className="balances-tab-content">
+          <div className="expenses-summary">
+            <div>
+              <p><strong>Total: {formatCurrency(totalExpenses)}€</strong></p>
+            </div>
+            <div>
+              <p><strong>Mi parte: {formatCurrency(myTotalExpenses)}€</strong></p>
+              <p><strong>Pagos: {formatCurrency(myTotalExpensesPay)}€</strong></p>
+              <p><strong>Saldado: {formatCurrency(myTotalSettledIncome)}€</strong></p>
+              {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
+              {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
+            </div>
+          </div>
+
+          <hr/>
+
           <h3>Balance del Grupo</h3>
           <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>{formatCurrency(m.balance)}€</strong></li>)}</ul>
 
