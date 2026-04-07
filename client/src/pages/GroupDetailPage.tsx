@@ -66,7 +66,7 @@ const GroupDetailPage: React.FC = () => {
   const [myTotalDebt, setMyTotalDebt] = useState<number>(0);
   const [myTotalSettledIncome, setMyTotalSettledIncome] = useState<number>(0);
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group' | 'graph' | 'notes'>('expenses');
+  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group' | 'graph' | 'notes' | 'edit'>('expenses');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false);
   const [expenseToEdit, setExpenseToEdit] = useState<IExpensePopulated | undefined>(undefined);
@@ -79,7 +79,6 @@ const GroupDetailPage: React.FC = () => {
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [categoryAliases, setCategoryAliases] = useState<{ [alias: string]: string[] }>({});
   const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
-  const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [bulkUpdateData, setBulkUpdateData] = useState<any>(null);
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
@@ -761,6 +760,12 @@ const GroupDetailPage: React.FC = () => {
           >
             Notas
           </button>
+          <button
+            className={activeTab === 'edit' ? 'active' : ''}
+            onClick={() => setActiveTab('edit')}
+          >
+            Edición
+          </button>
         </div>
       )}
 
@@ -776,7 +781,7 @@ const GroupDetailPage: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'expenses' && (
+      {(activeTab === 'expenses' || activeTab === 'edit') && (
         <div className="expenses-tab-content">
           <div className="expenses-summary">
             <div>
@@ -795,7 +800,7 @@ const GroupDetailPage: React.FC = () => {
 
           <hr/>
 
-          {activeTab === 'expenses' && expenses.length > 0 && (
+          {expenses.length > 0 && (
             <div className="average-expense-display">
               <p><strong>Media de gasto por día: {formatCurrency(averageExpense)}€</strong></p>
             </div>
@@ -861,58 +866,58 @@ const GroupDetailPage: React.FC = () => {
             )}
           </div>
 
-          {!isGlobal && (
-            <div className="filters-accordion-container">
-              <button className="filters-accordion-toggle" onClick={() => setShowBulkEdit(!showBulkEdit)}>
-                <h3>Edición Masiva {showBulkEdit ? '▲' : '▼'}</h3>
-              </button>
-              {showBulkEdit && (
-                <BulkEditForm
-                  members={group?.miembros || []}
-                  onBulkUpdate={handleBulkUpdate}
-                  token={token!}
-                  groupId={groupId!}
-                />
-              )}
+          {activeTab === 'edit' && !isGlobal && (
+            <div className="form-section">
+              <h3>Edición Masiva</h3>
+              <BulkEditForm
+                members={group?.miembros || []}
+                onBulkUpdate={handleBulkUpdate}
+                token={token!}
+                groupId={groupId!}
+              />
             </div>
           )}
 
-          <div className="expenses-header">
-            <h3>Gastos del Grupo</h3>
-            <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="sort-button">
-              Ordenar ({sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'})
-            </button>
-          </div>
-          <ul className="expenses-list">
-            {filteredExpenses.map((expense: any) => (
-              <li key={expense._id}>
-                <div className="expense-item">
-                  <div className="expense-info">
-                    <div>
-                      {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
-                      {expense.descripcion} ({expense.categoria?.join(', ')}):
-                      <strong> {formatCurrency(expense.monto)}€</strong>
-                      {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
-                    </div>
-                    <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
-                    {!isGlobal && (
-                      <div>
-                        <span>
-                          {' '}({formatPayers(expense.pagado_por)}{expense.asume_gasto ? ' (invita)' : ''})
-                        </span>
+          {activeTab === 'expenses' && (
+            <>
+              <div className="expenses-header">
+                <h3>Gastos del Grupo</h3>
+                <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="sort-button">
+                  Ordenar ({sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'})
+                </button>
+              </div>
+              <ul className="expenses-list">
+                {filteredExpenses.map((expense: any) => (
+                  <li key={expense._id}>
+                    <div className="expense-item">
+                      <div className="expense-info">
+                        <div>
+                          {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
+                          {expense.descripcion} ({expense.categoria?.join(', ')}):
+                          <strong> {formatCurrency(expense.monto)}€</strong>
+                          {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
+                        </div>
+                        <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
+                        {!isGlobal && (
+                          <div>
+                            <span>
+                              {' '}({formatPayers(expense.pagado_por)}{expense.asume_gasto ? ' (invita)' : ''})
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  {!isGlobal && (
-                    <div className="expense-actions">
-                      <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
-                      <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
+                      {!isGlobal && (
+                        <div className="expense-actions">
+                          <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
+                          <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
 
@@ -993,7 +998,7 @@ const GroupDetailPage: React.FC = () => {
         </div>
       )}
 
-      {!isGlobal && activeTab === 'expenses' && (
+      {!isGlobal && (activeTab === 'expenses' || activeTab === 'edit') && (
         <div className="fixed-add-expense-button-container">
           <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
           <input

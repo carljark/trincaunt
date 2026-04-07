@@ -220,4 +220,29 @@ describe('GroupDetailPage - AddExpenseModal paidByInitial prop', () => {
 
     expect(capturedPaidByInitial).toBe('');
   });
+
+  it('should show BulkEditForm when Edición tab is clicked', async () => {
+    const mockUser = { _id: 'user-1', nombre: 'User 1', email: 'test@test.com', fecha_registro: '2022-01-01T00:00:00.000Z' };
+    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+      token: 'test-token',
+      user: mockUser,
+      login: vi.fn(),
+      logout: vi.fn(),
+      isAuthenticated: true,
+    });
+
+    render(<GroupDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Group')).toBeInTheDocument();
+    });
+
+    const editTabButton = screen.getByText('Edición');
+    fireEvent.click(editTabButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('BulkEditForm')).toBeInTheDocument();
+      expect(screen.getByText('Edición Masiva')).toBeInTheDocument();
+    });
+  });
 });
