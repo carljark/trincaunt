@@ -8,6 +8,7 @@
   display: flex; /* Added display flex */
   flex-direction: column; /* Align items in a column */
   align-items: center; /* Center items horizontally */
+  position: relative; // Needed for UserMenu
 
   h2, h3 {
     color: $dark-color;

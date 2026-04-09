@@ -9,6 +9,7 @@ import BulkEditForm from '../components/BulkEditForm';
 import ConfirmationModal from '../components/ConfirmationModal';
 import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
 import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes component
+import UserMenu from '../components/UserMenu';
 import * as XLSX from 'xlsx-js-style'; // Import xlsx-js-style
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
@@ -720,9 +721,9 @@ const GroupDetailPage: React.FC = () => {
 
   return (
     <div className="group-detail-page">
+      <UserMenu onExportXLSX={handleExportXLSX} />
       <div className="header-actions">
         <button onClick={() => navigate(-1)} className="back-button">Volver</button>
-        <button onClick={handleExportXLSX} className="export-button">Exportar a XLSX</button>
       </div>
       <h2>{isGlobal ? 'Resumen Global' : group?.nombre}</h2>
       

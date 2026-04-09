@@ -7,6 +7,7 @@ import * as AuthContext from '../contexts/AuthContext';
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ groupId: 'test-group-id' }),
   useNavigate: () => vi.fn(),
+  Link: ({ children, to }: { children: React.ReactNode, to: string }) => <a href={to}>{children}</a>,
 }));
 
 // Mock AddExpenseModal to capture props

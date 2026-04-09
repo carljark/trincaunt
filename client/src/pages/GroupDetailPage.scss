@@ -24,10 +24,10 @@
 
   .header-actions {
     display: flex;
-    justify-content: space-between; // Aligns items to the far left and far right
-    align-items: center; // Vertically centers items
-    padding: 1rem; // Add some padding around the buttons
-    width: 100%; // Ensure it takes full width
+    justify-content: flex-start; // Align back button to the left
+    align-items: center;
+    padding: 1rem;
+    width: 100%;
   }
   
   // Apply padding to elements that need it
@@ -36,8 +36,8 @@
     padding-right: 1rem;
   }
   
-  .back-button, .export-button { // Apply common button styles here
-    background-color: $secondary-color; // Or any suitable color from your variables
+  .back-button { // Apply button styles here
+    background-color: $secondary-color;
     color: white;
     border: none;
     padding: 0.5rem 1rem;

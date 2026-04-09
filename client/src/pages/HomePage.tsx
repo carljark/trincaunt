@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import * as XLSX from 'xlsx-js-style';
+import UserMenu from '../components/UserMenu';
 
 import './HomePage.scss'; // Import the new SCSS file
 
@@ -94,6 +96,31 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const handleExportXLSX = useCallback(() => {
+    if (globalExpenses.length === 0) {
+      alert('No hay gastos para exportar.');
+      return;
+    }
+
+    const data = globalExpenses.map(expense => ({
+      'ID Gasto': expense._id,
+      'Grupo': expense.grupo?.nombre || 'Global',
+      'Descripción': expense.descripcion,
+      'Monto': expense.monto,
+      'Pagado Por': Array.isArray(expense.pagado_por) ? expense.pagado_por.map((p: any) => p.nombre).join(', ') : expense.pagado_por?.nombre || 'Nadie',
+      'Participantes': expense.participantes.map((p: any) => p.nombre).join(', '),
+      'Fecha': new Date(expense.fecha).toLocaleDateString(),
+      'Asume Gasto': expense.asume_gasto ? 'Sí' : 'No',
+      'Categoría': expense.categoria?.join(', ') || '',
+      'Localización': expense.localization || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Gastos Globales");
+    XLSX.writeFile(wb, "gastos_globales.xlsx");
+  }, [globalExpenses]);
+
   useEffect(() => {
     fetchGroups();
     fetchGlobalExpenses();
@@ -103,12 +130,9 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="home-page"> {/* Main container */}
+      <UserMenu onExportXLSX={handleExportXLSX} />
       <div className="user-info">
         <h1 className="welcome-message">Bienvenido, {user?.nombre}</h1>
-        <div className="header-buttons">
-          <Link to="/preferences" className="preferences-button">Preferencias</Link>
-          <button onClick={logout} className="logout-button">Logout</button>
-        </div>
       </div>
       
       <div className="create-group-section">
