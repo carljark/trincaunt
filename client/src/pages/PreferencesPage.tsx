@@ -20,9 +20,11 @@ interface IGroupedAliases {
 
 const PreferencesPage: React.FC = () => {
   const { token } = useAuth();
+  const [groups, setGroups] = useState<any[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [aliases, setAliases] = useState<ICategoryAlias[]>([]);
   const [groupedAliases, setGroupedAliases] = useState<IGroupedAliases>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form state
@@ -41,6 +43,25 @@ const PreferencesPage: React.FC = () => {
   // State for Main Categories input
   const [mainCategorySearchInput, setMainCategorySearchInput] = useState('');
   const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
+
+  // Effect to fetch groups
+  useEffect(() => {
+    const fetchGroups = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${apiHost}${apiBaseUrl}/groups`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setGroups(data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching groups:', err);
+      }
+    };
+    fetchGroups();
+  }, [token]);
 
   // Effect to group aliases whenever the 'aliases' state changes
   useEffect(() => {
@@ -64,11 +85,11 @@ const PreferencesPage: React.FC = () => {
   // Effect to fetch all possible categories for suggestions
   useEffect(() => {
     const fetchAllPossibleCategories = async () => {
-      if (!token) return;
+      if (!token || !selectedGroupId) return;
       try {
         const [expenseCatsRes, aliasRes] = await Promise.all([
-          fetch(`${apiHost}${apiBaseUrl}/expenses/categories`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${apiHost}${apiBaseUrl}/expenses/categories?groupId=${selectedGroupId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${apiHost}${apiBaseUrl}/category-aliases?groupId=${selectedGroupId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         ]);
 
         const allUniqueCategories = new Set<string>();
@@ -107,14 +128,17 @@ const PreferencesPage: React.FC = () => {
       }
     };
     fetchAllPossibleCategories();
-  }, [token]);
+  }, [token, selectedGroupId]);
 
 
   const fetchAliases = async () => {
-    if (!token) return;
+    if (!token || !selectedGroupId) {
+      setAliases([]);
+      return;
+    };
     try {
       setLoading(true);
-      const res = await fetch(`${apiHost}${apiBaseUrl}/category-aliases`, {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/category-aliases?groupId=${selectedGroupId}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (res.ok) {
@@ -136,7 +160,8 @@ const PreferencesPage: React.FC = () => {
 
   useEffect(() => {
     fetchAliases();
-  }, [token]);
+    resetForm();
+  }, [token, selectedGroupId]);
 
   // Handlers
   const handleSelectAliasSuggestion = (category: string) => {
@@ -163,6 +188,10 @@ const PreferencesPage: React.FC = () => {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedGroupId) {
+      setError('Please select a group first.');
+      return;
+    }
     if (!aliasInput || selectedMainCategories.length === 0) {
       setError('Alias and at least one main category are required.');
       return;
@@ -181,7 +210,7 @@ const PreferencesPage: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ alias: aliasInput, mainCategories }),
+        body: JSON.stringify({ alias: aliasInput, mainCategories, grupo_id: selectedGroupId }),
       });
 
       if (res.ok || res.status === 201) {
@@ -242,134 +271,157 @@ const PreferencesPage: React.FC = () => {
     <div className="preferences-page">
       <UserMenu />
       <h2>Category Aliases</h2>
-      <p>Map a specific category (alias) to one or more main categories.</p>
-
-      {error && <p className="error-message">{error}</p>}
-
-      <form onSubmit={handleFormSubmit} className="alias-form">
-        <div className="alias-form-content">
-          <div
-              className="category-input-container"
-              onBlur={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                      setShowAliasSuggestions(false);
-                  }
-              }}
-          >
-              <input
-                  type="text"
-                  placeholder="Specific Category (Alias)"
-                  value={aliasInput}
-                  onChange={(e) => setAliasInput(e.target.value)}
-                  onFocus={() => setShowAliasSuggestions(true)}
-                  ref={aliasInputRef}
-                  required
-              />
-              {showAliasSuggestions && (
-                  <div className="suggestions-list">
-                      {availableAllCategories
-                          .filter(cat => cat.toLowerCase().includes(aliasInput.toLowerCase()))
-                          .map((cat) => (
-                              <div key={cat} className="suggestion-item" onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  handleSelectAliasSuggestion(cat);
-                              }}>
-                                  {cat}
-                              </div>
-                          ))}
-                  </div>
-              )}
-          </div>
-          <div
-              className="main-categories-input-group"
-              onBlur={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                      setShowMainCatSuggestions(false);
-                  }
-              }}
-          >
-              <label htmlFor="main-categories-input">Main Categories:</label>
-              <input
-                  id="main-categories-input"
-                  type="text"
-                  placeholder="Type or select main categories"
-                  value={mainCategorySearchInput}
-                  onChange={(e) => setMainCategorySearchInput(e.target.value)}
-                  onKeyDown={handleMainCategoryInputKeyDown}
-                  onFocus={() => setShowMainCatSuggestions(true)}
-                  ref={mainCategoryInputRef}
-              />
-              <div className="selected-main-categories">
-                  {selectedMainCategories.map((cat) => (
-                      <span key={cat} className="selected-tag">
-                          {cat}
-                          <button type="button" onClick={() => handleRemoveMainCategory(cat)}>x</button>
-                      </span>
-                  ))}
-              </div>
-              {showMainCatSuggestions && (
-                  <div className="suggestions-list">
-                      {!availableAllCategories.includes(mainCategorySearchInput.trim()) && mainCategorySearchInput.trim() !== '' && (
-                          <div className="suggestion-item" onMouseDown={(e) => {
-                              e.preventDefault();
-                              handleAddMainCategory(mainCategorySearchInput.trim());
-                          }}>
-                              Add "{mainCategorySearchInput.trim()}"
-                          </div>
-                      )}
-                      {availableAllCategories
-                          .filter(cat => cat.toLowerCase().includes(mainCategorySearchInput.toLowerCase()) && !selectedMainCategories.includes(cat))
-                          .map((cat) => (
-                              <div key={cat} className="suggestion-item" onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  handleAddMainCategory(cat);
-                              }}>
-                                  {cat}
-                              </div>
-                          ))}
-                  </div>
-              )}
-          </div>
-          <div className="form-actions">
-            <button type="submit">{editingAlias ? 'Update Alias' : 'Create Alias'}</button>
-            {editingAlias && <button type="button" onClick={resetForm}>Cancel Edit</button>}
-          </div>
-        </div>
-      </form>
-
-      <div className="aliases-list">
-        <h3>Existing Aliases by Main Category</h3>
-        {Object.keys(groupedAliases).length === 0 ? (
-          <p>No aliases defined yet.</p>
-        ) : (
-          <div>
-            {Object.entries(groupedAliases).map(([mainCategory, aliasesInGroup]) => (
-              <div key={mainCategory} className="main-category-group">
-                <h4>{mainCategory}</h4>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Alias</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {aliasesInGroup.map((alias) => (
-                      <tr key={alias._id}>
-                        <td>{alias.alias}</td>
-                        <td className="alias-actions">
-                          <button onClick={() => handleEdit(alias)}>Edit</button>
-                          <button onClick={() => handleDelete(alias._id)}>Delete</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </div>
-        )}
+      
+      <div className="group-selector">
+        <label htmlFor="group-select">Select Group: </label>
+        <select 
+          id="group-select" 
+          value={selectedGroupId} 
+          onChange={(e) => setSelectedGroupId(e.target.value)}
+        >
+          <option value="">-- Choose a group --</option>
+          {groups.map(group => (
+            <option key={group._id} value={group._id}>{group.nombre}</option>
+          ))}
+        </select>
       </div>
+
+      {!selectedGroupId ? (
+        <div className="no-group-selected">
+          <p>Please select a group to manage its categories.</p>
+        </div>
+      ) : (
+        <>
+          <p>Map a specific category (alias) to one or more main categories for <strong>{groups.find(g => g._id === selectedGroupId)?.nombre}</strong>.</p>
+
+          {error && <p className="error-message">{error}</p>}
+
+          <form onSubmit={handleFormSubmit} className="alias-form">
+            <div className="alias-form-content">
+              <div
+                  className="category-input-container"
+                  onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                          setShowAliasSuggestions(false);
+                      }
+                  }}
+              >
+                  <input
+                      type="text"
+                      placeholder="Specific Category (Alias)"
+                      value={aliasInput}
+                      onChange={(e) => setAliasInput(e.target.value)}
+                      onFocus={() => setShowAliasSuggestions(true)}
+                      ref={aliasInputRef}
+                      required
+                  />
+                  {showAliasSuggestions && (
+                      <div className="suggestions-list">
+                          {availableAllCategories
+                              .filter(cat => cat.toLowerCase().includes(aliasInput.toLowerCase()))
+                              .map((cat) => (
+                                  <div key={cat} className="suggestion-item" onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      handleSelectAliasSuggestion(cat);
+                                  }}>
+                                      {cat}
+                                  </div>
+                              ))}
+                      </div>
+                  )}
+              </div>
+              <div
+                  className="main-categories-input-group"
+                  onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                          setShowMainCatSuggestions(false);
+                      }
+                  }}
+              >
+                  <label htmlFor="main-categories-input">Main Categories:</label>
+                  <input
+                      id="main-categories-input"
+                      type="text"
+                      placeholder="Type or select main categories"
+                      value={mainCategorySearchInput}
+                      onChange={(e) => setMainCategorySearchInput(e.target.value)}
+                      onKeyDown={handleMainCategoryInputKeyDown}
+                      onFocus={() => setShowMainCatSuggestions(true)}
+                      ref={mainCategoryInputRef}
+                  />
+                  <div className="selected-main-categories">
+                      {selectedMainCategories.map((cat) => (
+                          <span key={cat} className="selected-tag">
+                              {cat}
+                              <button type="button" onClick={() => handleRemoveMainCategory(cat)}>x</button>
+                          </span>
+                      ))}
+                  </div>
+                  {showMainCatSuggestions && (
+                      <div className="suggestions-list">
+                          {!availableAllCategories.includes(mainCategorySearchInput.trim()) && mainCategorySearchInput.trim() !== '' && (
+                              <div className="suggestion-item" onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleAddMainCategory(mainCategorySearchInput.trim());
+                              }}>
+                                  Add "{mainCategorySearchInput.trim()}"
+                              </div>
+                          )}
+                          {availableAllCategories
+                              .filter(cat => cat.toLowerCase().includes(mainCategorySearchInput.toLowerCase()) && !selectedMainCategories.includes(cat))
+                              .map((cat) => (
+                                  <div key={cat} className="suggestion-item" onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      handleAddMainCategory(cat);
+                                  }}>
+                                      {cat}
+                                  </div>
+                              ))}
+                      </div>
+                  )}
+              </div>
+              <div className="form-actions">
+                <button type="submit">{editingAlias ? 'Update Alias' : 'Create Alias'}</button>
+                {editingAlias && <button type="button" onClick={resetForm}>Cancel Edit</button>}
+              </div>
+            </div>
+          </form>
+
+          <div className="aliases-list">
+            <h3>Existing Aliases by Main Category</h3>
+            {Object.keys(groupedAliases).length === 0 ? (
+              <p>No aliases defined yet for this group.</p>
+            ) : (
+              <div>
+                {Object.entries(groupedAliases).map(([mainCategory, aliasesInGroup]) => (
+                  <div key={mainCategory} className="main-category-group">
+                    <h4>{mainCategory}</h4>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Alias</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {aliasesInGroup.map((alias) => (
+                          <tr key={alias._id}>
+                            <td>{alias.alias}</td>
+                            <td className="alias-actions">
+                              <button onClick={() => handleEdit(alias)}>Edit</button>
+                              <button onClick={() => handleDelete(alias._id)}>Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

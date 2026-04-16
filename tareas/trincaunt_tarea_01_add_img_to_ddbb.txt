@@ -1,0 +1,9 @@
+Se deberá extraer de la imagen importada (normalmente un ticket de compra de un supermercado) los gastos para añadirlos a la base de datos del grupo desde el que se haga la subida de la imagen.
+
+Los datos que se extraerán serán los conceptos, el gasto (precio), la fecha del gasto y el lugar en donde se realizó la compra.
+
+La categoría de cada concepto se deducirá del concepto. Por ejemplo: si el concepto es pan la categoría será comida.
+
+Se asumirá que el pagador es el usuario que ha subido la imagen.
+
+Crea un MPC si es necesario para la manipulación de la base de datos local de la aplicación (trincaunt en mongodb local).

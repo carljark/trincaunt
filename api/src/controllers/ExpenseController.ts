@@ -89,19 +89,13 @@ export const settleGroupDebts = async (req: Request, res: Response, next: NextFu
 
 
 export const getExpenseCategories = async (req: Request, res: Response, next: NextFunction) => {
-
   try {
-
-    const categories = await expenseService.getExpenseCategories();
-
+    const { groupId } = req.query;
+    const categories = await expenseService.getExpenseCategories(groupId as string);
     res.status(200).json({ status: 'success', data: categories });
-
   } catch (error) {
-
     next(error);
-
   }
-
 };
 
 export const getExpenseLocations = async (req: Request, res: Response, next: NextFunction) => {

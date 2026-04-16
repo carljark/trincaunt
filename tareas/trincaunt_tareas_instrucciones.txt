@@ -1,0 +1,15 @@
+Para realizar las tareas se deberán tener en cuenta las siguientes instrucciones:
+
+Las tareas se encuentran cada una en un archivo que empieza por trincaunt_tarea.
+
+Las tareas se realizarán por orden de la numeración que se encuentra en el nombre del archivo de la tarea.
+
+Cada tarea se realizará en una rama totalmente independiente partiendo desde la rama main. El nombre de la rama para cada tarea tendrá el siguiente nombre: feat/[número de la tarea]_[descripción de la tarea] (por ejemplo: Si el archivo de la tarea tiene el nombre trincaunt_tarea_01_add_comparation_tab.txt, la descripción de la tarea será "add_comparation_tab".
+
+Antes de realizar cada tarea se deberá generar un archivo en esta carpeta con la documentación funcional. El archivo deberá empezar por trincaunt_tarea_[número de la tarea]_documentacion_funcional.md.
+
+Tras realizar la documentación funcional de la tarea se deberá generar un diagrama de diseño técnico con mermaid. El nombre del archivo con el diagrama deberá empezar también con el nombre trincaunt_tarea_[número de la tarea]_diagrama_funcional.[extensión de mermaid].
+
+Después de generar la documentación funcional y el diagrama de diseño técnico de la tarea se deberá manipular el código del proyecto en la rama creada para la tarea incluyendo tests unitarios que deberán ser probados para que pasen todos satisfactoriamente.
+
+Si pasan los tests se hará un comit con los cambios y se volverá a la rama base (main) para crear otra rama a partir de ella para crear la rama para la siguiente tarea.

@@ -381,8 +381,14 @@ export class ExpenseService {
 
   
 
-    async getExpenseCategories(): Promise<{ category: string, count: number }[]> {
+    async getExpenseCategories(groupId?: string): Promise<{ category: string, count: number }[]> {
+      const matchStage: any = {};
+      if (groupId) {
+        matchStage.grupo_id = new mongoose.Types.ObjectId(groupId);
+      }
+
       const categories = await Expense.aggregate([
+        { $match: matchStage },
         { $unwind: "$categoria" },
         { $match: { categoria: { $nin: [null, ""] } } },
         { $group: { _id: "$categoria", count: { $sum: 1 } } },

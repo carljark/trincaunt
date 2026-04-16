@@ -18,7 +18,9 @@ describe('ExpenseGraph', () => {
     vi.clearAllMocks();
     (Line as Mock).mockClear(); // Clear calls on our mocked Line component
     // Mock global.fetch for API calls
-    global.fetch = vi.fn((url: RequestInfo | URL) => {      if (url.toString().includes(`${apiBaseUrl}/groups/${mockGroupId}/expenses/chart`)) {
+    global.fetch = vi.fn((url: RequestInfo | URL) => {
+      const urlString = url.toString();
+      if (urlString.includes(`${apiBaseUrl}/groups/${mockGroupId}/expenses/chart`)) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -30,6 +32,15 @@ describe('ExpenseGraph', () => {
           }),
         });
       }
+      if (urlString.includes(`${apiBaseUrl}/expenses/categories`)) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            status: 'success',
+            data: [{ category: 'Food', count: 5 }, { category: 'Rent', count: 1 }],
+          }),
+        });
+      }
       return Promise.resolve({
         ok: false,
         status: 404,
@@ -38,9 +49,14 @@ describe('ExpenseGraph', () => {
     }) as Mock;
   });
 
-  it('should render loading state initially', () => {
+  it('should render loading state initially and then settle', async () => {
     render(<ExpenseGraph groupId={mockGroupId} token={mockToken} />);
     expect(screen.getByText('Cargando datos del gráfico...')).toBeInTheDocument();
+    
+    // Wait for it to settle to avoid act() warnings
+    await waitFor(() => {
+      expect(screen.queryByText('Cargando datos del gráfico...')).not.toBeInTheDocument();
+    });
   });
 
   it('should fetch chart data on initial render', async () => {

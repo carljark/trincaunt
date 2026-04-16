@@ -6,7 +6,8 @@ const aliasService = new CategoryAliasService();
 
 export const getAllAliases = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const aliases = await aliasService.getAllAliases();
+    const { groupId } = req.query;
+    const aliases = await aliasService.getAllAliases(groupId as string);
     res.status(200).json({ status: 'success', data: aliases });
   } catch (error) {
     next(error);

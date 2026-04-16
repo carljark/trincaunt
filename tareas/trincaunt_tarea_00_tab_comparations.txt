@@ -1,0 +1,5 @@
+Me gustaría que se añadiera una pestaña adicional en la que se muestre un gráfico de barras comparando las categorías de 2 meses (por ejemplo: de comida, ocio y facturas).
+
+Se podrá elegir el mes (y el año) a comparar en 2 selects.
+
+Las categorías también se deberán seleccionar en un select de selección múltiple.

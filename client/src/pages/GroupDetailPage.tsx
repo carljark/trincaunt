@@ -176,9 +176,17 @@ const GroupDetailPage: React.FC = () => {
   const fetchAllCategories = useCallback(async () => {
     if (!token) return;
     try {
+      const categoriesUrl = isGlobal 
+        ? `${apiHost}${apiBaseUrl}/expenses/categories` 
+        : `${apiHost}${apiBaseUrl}/expenses/categories?groupId=${groupId}`;
+      
+      const aliasesUrl = isGlobal
+        ? `${apiHost}${apiBaseUrl}/category-aliases`
+        : `${apiHost}${apiBaseUrl}/category-aliases?groupId=${groupId}`;
+
       const [categoriesRes, aliasesRes] = await Promise.all([
-        fetch(`${apiHost}${apiBaseUrl}/expenses/categories`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${apiHost}${apiBaseUrl}/category-aliases`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(aliasesUrl, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       const allCats = new Set<string>();
