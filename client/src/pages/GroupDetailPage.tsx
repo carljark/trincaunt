@@ -476,14 +476,18 @@ const GroupDetailPage: React.FC = () => {
   useEffect(() => {
     if (filteredExpenses.length > 0) {
       const dates = filteredExpenses.map(expense => new Date(expense.fecha).getTime());
-      const minDate = new Date(Math.min(...dates));
-      const maxDate = new Date(Math.max(...dates));
-      const numberOfDays = Math.ceil(Math.abs(maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const minDateObj = dateFromFilter ? new Date(dateFromFilter) : new Date(Math.min(...dates));
+      const maxDateObj = dateToFilter ? new Date(dateToFilter) : new Date(Math.max(...dates));
+      
+      const start = new Date(minDateObj.getFullYear(), minDateObj.getMonth(), minDateObj.getDate());
+      const end = new Date(maxDateObj.getFullYear(), maxDateObj.getMonth(), maxDateObj.getDate());
+      const numberOfDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
       setAverageExpense(numberOfDays > 0 ? totalFilteredExpenses / numberOfDays : 0);
     } else {
       setAverageExpense(0);
     }
-  }, [filteredExpenses, totalFilteredExpenses]);
+  }, [filteredExpenses, totalFilteredExpenses, dateFromFilter, dateToFilter]);
 
   const fetchGlobalData = useCallback(async () => {
     if (!token) return;
