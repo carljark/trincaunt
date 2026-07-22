@@ -10,7 +10,6 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
 import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes component
 import UserMenu from '../components/UserMenu';
-import * as XLSX from 'xlsx-js-style'; // Import xlsx-js-style
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -348,7 +347,7 @@ const GroupDetailPage: React.FC = () => {
   const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
 
 
-  const handleExportXLSX = useCallback(() => {
+  const handleExportXLSX = useCallback(async () => {
     if (filteredExpenses.length === 0) {
       alert('No hay gastos para exportar.');
       return;
@@ -367,6 +366,7 @@ const GroupDetailPage: React.FC = () => {
       'Localización': expense.localization || '',
     }));
 
+    const XLSX = await import('xlsx-js-style');
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Gastos");

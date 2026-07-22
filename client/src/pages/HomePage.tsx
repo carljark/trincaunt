@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import * as XLSX from 'xlsx-js-style';
 import UserMenu from '../components/UserMenu';
 
 import './HomePage.scss'; // Import the new SCSS file
@@ -96,7 +95,7 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const handleExportXLSX = useCallback(() => {
+  const handleExportXLSX = useCallback(async () => {
     if (globalExpenses.length === 0) {
       alert('No hay gastos para exportar.');
       return;
@@ -115,6 +114,7 @@ const HomePage: React.FC = () => {
       'Localización': expense.localization || '',
     }));
 
+    const XLSX = await import('xlsx-js-style');
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Gastos Globales");

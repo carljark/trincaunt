@@ -7,5 +7,17 @@ export default defineConfig({
   server: {
     port: 5173,
     allowedHosts: ['carlosalbertogodoy.ddns.net']
+  },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          chart: ['chart.js', 'react-chartjs-2'],
+          xlsx: ['xlsx-js-style']
+        }
+      }
+    }
   }
 })
