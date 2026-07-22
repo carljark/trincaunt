@@ -1,0 +1,13 @@
+Se deben tener en cuenta todos los días entre el primer día y el último del periodo seleccionado al calcular la media de gastos.
+
+Ejemplo:
+
+El periodo seleccionado es el mes actual.
+
+El día de hoy el día 3 de ese mes.
+
+El día 1 hubo un gasto de 20 euros.
+
+El día 3 (el día actual) ha habido un gasto de 10 euros.
+
+La media debería ser de 10 euros.

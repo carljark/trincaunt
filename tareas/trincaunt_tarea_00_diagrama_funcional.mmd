@@ -1,0 +1,13 @@
+graph TD
+    A[GroupDetailPage] --> B[Tabs]
+    B --> C[ActiveTab: 'comparison']
+    C --> D[ExpenseComparison Component]
+    D --> E[Period 1 Selectors (Month, Year)]
+    D --> F[Period 2 Selectors (Month, Year)]
+    D --> G[Category MultiSelect]
+    D --> H[Fetch Data for Period 1]
+    D --> I[Fetch Data for Period 2]
+    H --> J[Process Comparison Data]
+    I --> J
+    J --> K[Bar Chart (Chart.js)]
+    K --> L[Display Chart]

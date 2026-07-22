@@ -1,0 +1,15 @@
+graph TD
+    A[Cliente: GroupDetailPage] -->|Sube Imagen con groupId| B[API: UploadController]
+    B -->|Llama a| C[OcrService: processTicketImage]
+    C -->|Usa| D[Tesseract.js OCR]
+    D -->|Extrae Texto| C
+    C -->|Parsea Texto| E[TicketData: Lugar, Fecha, Gastos]
+    B -->|Obtiene Grupo| F[MongoDB: Group]
+    F -->|Lista de Miembros| B
+    B -->|Para cada Gasto extraído| G[Crea Gasto]
+    G -->|Asigna Payer: Usuario actual| H[MongoDB: Expense]
+    G -->|Asigna Participantes: Todos los miembros| H
+    G -->|Asigna Categoría: Deducción por concepto| H
+    G -->|Asigna Lugar y Fecha| H
+    H -->|Devuelve Confirmación| B
+    B -->|Responde Éxito al Cliente| A
