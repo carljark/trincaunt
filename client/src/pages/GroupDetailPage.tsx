@@ -476,11 +476,24 @@ const GroupDetailPage: React.FC = () => {
   useEffect(() => {
     if (filteredExpenses.length > 0) {
       const dates = filteredExpenses.map(expense => new Date(expense.fecha).getTime());
-      const minDateObj = dateFromFilter ? new Date(dateFromFilter) : new Date(Math.min(...dates));
-      const maxDateObj = dateToFilter ? new Date(dateToFilter) : new Date(Math.max(...dates));
+      let start: Date;
+      if (dateFromFilter) {
+        const [y, m, d] = dateFromFilter.split('-');
+        start = new Date(Number(y), Number(m) - 1, Number(d));
+      } else {
+        const minD = new Date(Math.min(...dates));
+        start = new Date(minD.getFullYear(), minD.getMonth(), minD.getDate());
+      }
+
+      let end: Date;
+      if (dateToFilter) {
+        const [y, m, d] = dateToFilter.split('-');
+        end = new Date(Number(y), Number(m) - 1, Number(d));
+      } else {
+        const maxD = new Date(Math.max(...dates));
+        end = new Date(maxD.getFullYear(), maxD.getMonth(), maxD.getDate());
+      }
       
-      const start = new Date(minDateObj.getFullYear(), minDateObj.getMonth(), minDateObj.getDate());
-      const end = new Date(maxDateObj.getFullYear(), maxDateObj.getMonth(), maxDateObj.getDate());
       const numberOfDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       
       setAverageExpense(numberOfDays > 0 ? totalFilteredExpenses / numberOfDays : 0);

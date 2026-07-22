@@ -74,3 +74,13 @@ npm run cy:open
 ```bash
 npm run cy:run
 ```
+
+## Despliegue en Producción
+
+La aplicación está preparada para ser servida íntegramente (frontend y backend) a través del servidor Node.js (API) cuando se ejecuta en entorno de producción.
+
+El servidor de producción utiliza **Nginx** como proxy inverso y **PM2** como gestor de procesos.
+
+Para conocer los pasos detallados sobre cómo compilar y desplegar el proyecto (especialmente diseñado para un servidor local con Arch Linux), consulta las guías dedicadas:
+- [Guía de Despliegue Básico (HTTP)](./README_DEPLOY.md)
+- [Guía de Despliegue Seguro (HTTPS con Let's Encrypt)](./README_DEPLOY_HTTPS.md)
