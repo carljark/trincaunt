@@ -7,9 +7,15 @@ import * as CategoryAliasController from '../controllers/CategoryAliasController
 import * as UserPreferencesController from '../controllers/UserPreferencesController';
 import * as NoteController from '../controllers/NoteController'; // Import NoteController
 import * as UploadController from '../controllers/UploadController';
+import * as DbController from '../controllers/DbController';
 import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
+
+// DB Routes
+router.get('/db/export', protect, DbController.exportDB);
+router.post('/db/import', protect, DbController.importDB);
+
 
 // User Routes
 router.post('/users/register', UserController.register);
