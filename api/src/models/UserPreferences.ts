@@ -11,6 +11,10 @@ export interface IUserPreferences extends Document {
         period?: string;
         localization?: string;
     };
+    quickExpense?: {
+        lastIcon?: string;
+        prices?: Map<string, number>;
+    };
 }
 
 const UserPreferencesSchema: Schema = new Schema({
@@ -23,6 +27,10 @@ const UserPreferencesSchema: Schema = new Schema({
         payer: { type: String },
         period: { type: String },
         localization: { type: String },
+    },
+    quickExpense: {
+        lastIcon: { type: String },
+        prices: { type: Map, of: Number }
     }
 });
 

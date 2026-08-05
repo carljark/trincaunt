@@ -10,6 +10,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
 import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes component
 import UserMenu from '../components/UserMenu';
+import QuickExpenseFAB from '../components/QuickExpenseFAB';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -1040,7 +1041,14 @@ const GroupDetailPage: React.FC = () => {
       )}
 
       {!isGlobal && (activeTab === 'expenses' || activeTab === 'edit') && (
-        <div className="fixed-add-expense-button-container">
+        <>
+          <QuickExpenseFAB 
+            groupId={groupId!} 
+            token={token!} 
+            members={group?.miembros || []} 
+            onExpenseAdded={fetchGroupData} 
+          />
+          <div className="fixed-add-expense-button-container">
           <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
           <input
             type="file"
@@ -1053,6 +1061,7 @@ const GroupDetailPage: React.FC = () => {
             <img src="/subir_compra.png" alt="Subir ticket" />
           </button>
         </div>
+        </>
       )}
 
       {!isGlobal && showRecordPaymentModal && (

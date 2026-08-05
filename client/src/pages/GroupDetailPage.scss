@@ -384,9 +384,11 @@
 
 .fixed-add-expense-button-container {
   position: fixed;
-  bottom: 20px; /* Distance from the bottom */
-  left: 50%;
-  transform: translateX(-50%); /* Center horizontally */
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px)); /* Distance from the bottom */
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   z-index: 999; /* Ensure it stays above other content */
   display: flex;
   gap: 1rem;

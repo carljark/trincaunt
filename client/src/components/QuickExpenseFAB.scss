@@ -1,0 +1,115 @@
+@import '../styles/variables';
+
+.quick-expense-fab-container {
+  position: fixed;
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px)); /* Above the standard FAB */
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1000;
+
+  .icon-selector {
+    display: flex;
+    flex-direction: column-reverse;
+    margin-bottom: 15px;
+    background: white;
+    border-radius: 20px;
+    padding: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+
+    button {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 50%;
+      transition: background 0.2s;
+
+      &:hover, &.active {
+        background: rgba($primary-color, 0.2);
+      }
+    }
+  }
+
+  .fab-button {
+    border: none;
+    background: $primary-color;
+    color: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.3s;
+    outline: none;
+    user-select: none;
+    touch-action: none; // Important for pointer events
+
+    &.round {
+      width: 56px;
+      height: 56px;
+      border-radius: 28px;
+      font-size: 1.8rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      &:hover {
+        transform: scale(1.05);
+      }
+    }
+
+    &.pill {
+      height: 60px;
+      width: 220px; /* Expanded width */
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      padding: 0 15px;
+      overflow: hidden;
+      
+      .pill-content {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        
+        .icon-part {
+          font-size: 1.8rem;
+          padding: 5px;
+          cursor: pointer;
+          background: rgba(255,255,255,0.2);
+          border-radius: 50%;
+        }
+
+        .amount-part {
+          font-size: 1.4rem;
+          font-weight: bold;
+          flex-grow: 1;
+          text-align: center;
+          user-select: none;
+        }
+
+        .swipe-hint {
+          font-size: 1.2rem;
+          opacity: 0.5;
+          &.left { margin-right: 5px; }
+          &.right { margin-left: 5px; }
+        }
+
+        .spinner {
+          font-size: 1rem;
+          margin-left: 10px;
+          animation: blink 1s infinite;
+        }
+      }
+    }
+  }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
