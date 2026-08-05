@@ -1046,10 +1046,10 @@ const GroupDetailPage: React.FC = () => {
             groupId={groupId!} 
             token={token!} 
             members={group?.miembros || []} 
-            onExpenseAdded={fetchGroupData} 
+            onExpenseAdded={fetchGroupData}
+            onOpenManual={handleOpenAddExpenseModal}
+            onUploadTicket={handleUploadClick}
           />
-          <div className="fixed-add-expense-button-container">
-          <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
           <input
             type="file"
             ref={fileInputRef}
@@ -1057,10 +1057,6 @@ const GroupDetailPage: React.FC = () => {
             style={{ display: 'none' }}
             accept="image/*"
           />
-          <button onClick={handleUploadClick} className="upload-ticket-button" title="Subir ticket">
-            <img src="/subir_compra.png" alt="Subir ticket" />
-          </button>
-        </div>
         </>
       )}
 

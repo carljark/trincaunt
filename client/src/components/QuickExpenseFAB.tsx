@@ -8,6 +8,8 @@ interface QuickExpenseFABProps {
   token: string;
   members: IUser[];
   onExpenseAdded: () => void;
+  onOpenManual: () => void;
+  onUploadTicket: () => void;
 }
 
 const PREDEFINED_ICONS = [
@@ -15,12 +17,14 @@ const PREDEFINED_ICONS = [
   { id: 'food', emoji: '🍽️', concept: 'Comida' },
   { id: 'coffee', emoji: '☕', concept: 'Café' },
   { id: 'transport', emoji: '🚕', concept: 'Transporte' },
+  { id: 'manual', emoji: '📝', concept: 'Manual' },
+  { id: 'ticket', emoji: '🧾', concept: 'Ticket' },
 ];
 
 const apiHost = import.meta.env.VITE_API_HOST || '';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, members, onExpenseAdded }) => {
+const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, members, onExpenseAdded, onOpenManual, onUploadTicket }) => {
   const { user } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeIcon, setActiveIcon] = useState('🍺');
@@ -192,6 +196,16 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, membe
   if (offsetX > 0) pillStyle = { transform: `translateX(${offsetX}px)`, backgroundColor: `rgba(46, 204, 113, ${Math.min(offsetX/100, 1)})` };
   if (offsetX < 0) pillStyle = { transform: `translateX(${offsetX}px)`, backgroundColor: `rgba(231, 76, 60, ${Math.min(Math.abs(offsetX)/100, 1)})` };
 
+  const handleMainClick = () => {
+    if (activeIcon === '📝') {
+      onOpenManual();
+    } else if (activeIcon === '🧾') {
+      onUploadTicket();
+    } else {
+      setIsExpanded(true);
+    }
+  };
+
   return (
     <div className={`quick-expense-fab-container ${isExpanded ? 'expanded' : ''}`} ref={containerRef}>
       {showIconSelector && (
@@ -201,6 +215,7 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, membe
               key={i.id} 
               onClick={() => { setActiveIcon(i.emoji); setShowIconSelector(false); }}
               className={activeIcon === i.emoji ? 'active' : ''}
+              title={i.concept}
             >
               {i.emoji}
             </button>
@@ -211,8 +226,9 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, membe
       {!isExpanded ? (
         <button 
           className="fab-button round" 
-          onClick={() => setIsExpanded(true)}
-          title="Gasto rápido"
+          onClick={handleMainClick}
+          onContextMenu={handleIconLongPress}
+          title="Gasto rápido (Mantener para opciones)"
         >
           {activeIcon}
         </button>

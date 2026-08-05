@@ -2,7 +2,7 @@
 
 .quick-expense-fab-container {
   position: fixed;
-  bottom: calc(100px + env(safe-area-inset-bottom, 0px)); /* Above the standard FAB */
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px)); /* Moved to bottom */
   left: 0;
   right: 0;
   margin: 0 auto;
