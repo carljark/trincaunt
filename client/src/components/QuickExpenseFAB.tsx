@@ -96,7 +96,7 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, membe
     }
 
     const payload = {
-      grupo: groupId,
+      grupo_id: groupId,
       descripcion: activeConcept,
       monto: amount,
       pagado_por: [user?._id],
