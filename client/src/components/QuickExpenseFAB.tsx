@@ -17,7 +17,7 @@ const PREDEFINED_ICONS = [
   { id: 'food', emoji: '🍽️', concept: 'Comida' },
   { id: 'coffee', emoji: '☕', concept: 'Café' },
   { id: 'transport', emoji: '🚕', concept: 'Transporte' },
-  { id: 'manual', emoji: '📝', concept: 'Manual' },
+  { id: 'manual', emoji: '➕', concept: 'Manual' },
   { id: 'ticket', emoji: '🧾', concept: 'Ticket' },
 ];
 
@@ -143,14 +143,14 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, membe
   const [offsetY, setOffsetY] = useState(0);
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (!isExpanded) return;
+    // Remove !isExpanded check so unexpanded FAB can be dragged
     setStartX(e.clientX);
     setStartY(e.clientY);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isExpanded || startX === 0) return;
+    if (startX === 0) return;
     const dx = e.clientX - startX;
     const dy = startY - e.clientY; // Up is positive
     
@@ -159,7 +159,9 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, membe
       setOffsetX(dx);
       setOffsetY(0);
     } else {
-      // Si se arrastra verticalmente (ajuste precio)
+      // Si se arrastra verticalmente (ajuste precio) - solo si está expandido o no?
+      // Mejor permitir el ajuste vertical siempre también, o restringirlo a expanded.
+      // Lo dejamos siempre disponible por consistencia.
       setOffsetY(dy);
       setOffsetX(0);
       
@@ -172,15 +174,16 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, membe
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isExpanded || startX === 0) return;
+    if (startX === 0) return;
     setStartX(0);
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     
+    // Threshold para confirmar el swipe.
     if (offsetX > 80) {
       // Swiped right -> confirm
       handleDragSubmit();
     } else if (offsetX < -80) {
-      // Swiped left -> cancel
+      // Swiped left -> cancel (only relevant if expanded, or just snaps back)
       setIsExpanded(false);
     }
     setOffsetX(0);
@@ -197,7 +200,10 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, membe
   if (offsetX < 0) pillStyle = { transform: `translateX(${offsetX}px)`, backgroundColor: `rgba(231, 76, 60, ${Math.min(Math.abs(offsetX)/100, 1)})` };
 
   const handleMainClick = () => {
-    if (activeIcon === '📝') {
+    // Si hubo un arrastre significativo, ignoramos el click
+    if (Math.abs(offsetX) > 10 || Math.abs(offsetY) > 10) return;
+
+    if (activeIcon === '➕') {
       onOpenManual();
     } else if (activeIcon === '🧾') {
       onUploadTicket();
@@ -228,6 +234,11 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, membe
           className="fab-button round" 
           onClick={handleMainClick}
           onContextMenu={handleIconLongPress}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={pillStyle}
           title="Gasto rápido (Mantener para opciones)"
         >
           {activeIcon}
