@@ -937,36 +937,53 @@ const GroupDetailPage: React.FC = () => {
                   Ordenar ({sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'})
                 </button>
               </div>
-              <ul className="expenses-list">
-                {filteredExpenses.map((expense: any) => (
-                  <li key={expense._id}>
-                    <div className="expense-item">
-                      <div className="expense-info">
-                        <div>
-                          {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
-                          {expense.descripcion} ({expense.categoria?.join(', ')}):
-                          <strong> {formatCurrency(expense.monto)}€</strong>
-                          {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
-                        </div>
-                        <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
-                        {!isGlobal && (
-                          <div>
-                            <span>
-                              {' '}({formatPayers(expense.pagado_por)}{expense.asume_gasto ? ' (invita)' : ''})
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      {!isGlobal && (
-                        <div className="expense-actions">
-                          <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
-                          <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              
+              {(() => {
+                const groupedExpenses: { date: string; items: any[] }[] = [];
+                let currentGroup: { date: string; items: any[] } | null = null;
+                
+                filteredExpenses.forEach((expense: any) => {
+                  const dateStr = new Date(expense.fecha).toLocaleDateString();
+                  if (!currentGroup || currentGroup.date !== dateStr) {
+                    currentGroup = { date: dateStr, items: [] };
+                    groupedExpenses.push(currentGroup);
+                  }
+                  currentGroup.items.push(expense);
+                });
+
+                return groupedExpenses.map(group => (
+                  <div key={group.date} className="expense-date-group">
+                    <h4 className="expense-date-header">{group.date}</h4>
+                    <ul className="expenses-list">
+                      {group.items.map((expense: any) => (
+                        <li key={expense._id}>
+                            <div className="expense-item">
+                              <div className="expense-info">
+                                <div className="expense-details-row">
+                                  <div className="expense-description" title={expense.descripcion}>
+                                    {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
+                                    {expense.descripcion}
+                                  </div>
+                                  <div className="expense-dots"></div>
+                                  <div className="expense-amount">
+                                    <strong>{formatCurrency(expense.monto)}€</strong>
+                                    {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
+                                  </div>
+                                </div>
+                              </div>
+                              {!isGlobal && (
+                                <div className="expense-actions">
+                                  <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
+                                  <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
+                                </div>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                ));
+              })()}
             </>
           )}
         </div>
