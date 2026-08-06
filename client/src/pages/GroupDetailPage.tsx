@@ -90,6 +90,24 @@ const GroupDetailPage: React.FC = () => {
   const [editableGroupName, setEditableGroupName] = useState<string>('');
   const [isEditingGroupName, setIsEditingGroupName] = useState<boolean>(false);
   
+  const tabRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTabScroll = () => {
+    if (tabRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
+    }
+  };
+
+  useEffect(() => {
+    checkTabScroll();
+    window.addEventListener('resize', checkTabScroll);
+    return () => window.removeEventListener('resize', checkTabScroll);
+  }, [group, activeTab]);
+
   // Usamos useRef para controlar si ya hemos inicializado las categorías
   const hasInitializedCategories = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -763,43 +781,49 @@ const GroupDetailPage: React.FC = () => {
       {error && <p className="error-message">Error: {error}</p>}
 
       {!isGlobal && (
-        <div className="tab-navigation">
-          <button
-            className={activeTab === 'expenses' ? 'active' : ''}
-            onClick={() => setActiveTab('expenses')}
-          >
-            Gastos
-          </button>
-          <button
-            className={activeTab === 'balances' ? 'active' : ''}
-            onClick={() => setActiveTab('balances')}
-          >
-            Saldos
-          </button>
-          <button
-            className={activeTab === 'group' ? 'active' : ''}
-            onClick={() => setActiveTab('group')}
-          >
-            Grupo
-          </button>
-          <button
-            className={activeTab === 'graph' ? 'active' : ''}
-            onClick={() => setActiveTab('graph')}
-          >
-            Gráfico
-          </button>
-          <button
-            className={activeTab === 'notes' ? 'active' : ''}
-            onClick={() => setActiveTab('notes')}
-          >
-            Notas
-          </button>
-          <button
-            className={activeTab === 'edit' ? 'active' : ''}
-            onClick={() => setActiveTab('edit')}
-          >
-            Edición
-          </button>
+        <div className="tab-navigation-wrapper">
+          {canScrollLeft && <div className="scroll-arrow left" onClick={() => tabRef.current?.scrollBy({ left: -100, behavior: 'smooth' })}>❮</div>}
+          <div className="tab-navigation" ref={tabRef} onScroll={checkTabScroll}>
+            <button
+              className={activeTab === 'expenses' ? 'active' : ''}
+              onClick={() => setActiveTab('expenses')}
+            >
+              Gastos
+            </button>
+            <button
+              className={activeTab === 'balances' ? 'active' : ''}
+              onClick={() => setActiveTab('balances')}
+            >
+              Saldos
+            </button>
+            <button
+              className={activeTab === 'group' ? 'active' : ''}
+              onClick={() => setActiveTab('group')}
+            >
+              Grupo
+            </button>
+            <button
+              className={activeTab === 'graph' ? 'active' : ''}
+              onClick={() => setActiveTab('graph')}
+            >
+              Gráfico
+            </button>
+            <button
+              className={activeTab === 'notes' ? 'active' : ''}
+              onClick={() => setActiveTab('notes')}
+            >
+              Notas
+            </button>
+            {user?._id === group?.creado_por && (
+              <button
+                className={activeTab === 'edit' ? 'active' : ''}
+                onClick={() => setActiveTab('edit')}
+              >
+                Edición Múltiple
+              </button>
+            )}
+          </div>
+          {canScrollRight && <div className="scroll-arrow right" onClick={() => tabRef.current?.scrollBy({ left: 100, behavior: 'smooth' })}>❯</div>}
         </div>
       )}
 
