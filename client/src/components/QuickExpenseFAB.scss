@@ -2,7 +2,7 @@
 
 .quick-expense-fab-container {
   position: fixed;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px)); /* Moved to bottom */
+  bottom: calc(40px + env(safe-area-inset-bottom, 0px)); /* Moved higher to ensure visibility on mobile */
   left: 0;
   right: 0;
   margin: 0 auto;
