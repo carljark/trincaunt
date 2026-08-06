@@ -1086,6 +1086,7 @@ const GroupDetailPage: React.FC = () => {
           <QuickExpenseFAB 
             groupId={groupId!} 
             token={token!} 
+            userId={user?._id || ''}
             members={group?.miembros || []} 
             onExpenseAdded={fetchGroupData}
             onOpenManual={handleOpenAddExpenseModal}
