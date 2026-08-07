@@ -159,28 +159,42 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
   const [offsetX, setOffsetX] = useState(0);
   const [offsetY, setOffsetY] = useState(0);
 
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const wasLongPressRef = useRef(false);
+
   const handlePointerDown = (e: React.PointerEvent) => {
     setStartX(e.clientX);
     setStartY(e.clientY);
+    wasLongPressRef.current = false;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
 
     if (!isExpanded) {
-      moveTimerRef.current = setTimeout(() => {
-        setIsMoveMode(true);
-        // Vibrate to feedback mode entry
+      longPressTimerRef.current = setTimeout(() => {
+        wasLongPressRef.current = true;
+        setShowIconSelector(true);
         if (navigator.vibrate) navigator.vibrate(50);
-      }, 500); // 500ms is a standard long press
+      }, 1000);
     }
+  };
+
+  const handleDragHandlePointerDown = (e: React.PointerEvent) => {
+    setIsMoveMode(true);
+    setStartX(e.clientX);
+    setStartY(e.clientY);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.stopPropagation();
+    e.preventDefault();
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (startX === 0) return;
     const dx = e.clientX - startX;
+    const dy = startY - e.clientY;
     
-    if (Math.abs(dx) > 10 || Math.abs(startY - e.clientY) > 10) {
-      if (moveTimerRef.current && !isMoveMode) {
-        clearTimeout(moveTimerRef.current);
-        moveTimerRef.current = null;
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
       }
     }
 
@@ -189,8 +203,6 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
       setOffsetY(e.clientY - startY);
       return;
     }
-
-    const dy = startY - e.clientY; // Up is positive
     
     // Si se arrastra horizontalmente (confirm/cancel)
     if (Math.abs(dx) > Math.abs(dy)) {
@@ -209,9 +221,9 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (moveTimerRef.current) {
-      clearTimeout(moveTimerRef.current);
-      moveTimerRef.current = null;
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
 
     if (isMoveMode) {
@@ -219,13 +231,13 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
       setStartX(0);
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
 
-      // Calculamos nueva posición absoluta basada en el div padre
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        const newX = rect.left + offsetX;
-        const newY = rect.top + offsetY;
+        // Calculate relative position to screen size (vw / vh) based on center
+        const percentX = ((rect.left + rect.width / 2) / window.innerWidth) * 100;
+        const percentY = ((rect.top + rect.height / 2) / window.innerHeight) * 100;
         
-        const pos = { x: newX, y: newY };
+        const pos = { x: percentX, y: percentY };
         setFabPosition(pos);
         if (userId) {
           localStorage.setItem(`fab-pos-${userId}`, JSON.stringify(pos));
@@ -252,27 +264,40 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
 
   const handleIconLongPress = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
-    setShowIconSelector(!showIconSelector);
+    setShowIconSelector(true);
   };
 
   let pillStyle: any = {};
-  if (isMoveMode) {
-    pillStyle = { transform: `translate(${offsetX}px, ${offsetY}px)`, backgroundColor: 'rgba(52, 152, 219, 0.9)', boxShadow: '0 8px 16px rgba(0,0,0,0.3)' };
-  } else if (offsetX > 0) {
-    pillStyle = { transform: `translateX(${offsetX}px)`, backgroundColor: `rgba(46, 204, 113, ${Math.min(offsetX/100, 1)})` };
-  } else if (offsetX < 0) {
-    pillStyle = { transform: `translateX(${offsetX}px)`, backgroundColor: `rgba(231, 76, 60, ${Math.min(Math.abs(offsetX)/100, 1)})` };
+  if (!isMoveMode) {
+    if (offsetX > 0) {
+      pillStyle = { transform: `translateX(${offsetX}px)`, backgroundColor: `rgba(46, 204, 113, ${Math.min(offsetX/100, 1)})` };
+    } else if (offsetX < 0) {
+      pillStyle = { transform: `translateX(${offsetX}px)`, backgroundColor: `rgba(231, 76, 60, ${Math.min(Math.abs(offsetX)/100, 1)})` };
+    }
   }
 
-  const containerStyle = fabPosition.x !== null ? {
-    left: `${fabPosition.x}px`,
-    top: `${fabPosition.y}px`,
+  const containerStyle: any = fabPosition.x !== null && fabPosition.y !== null ? {
+    left: `${Math.max(0, Math.min(fabPosition.x || 0, 100))}vw`,
+    top: `${Math.max(0, Math.min(fabPosition.y || 0, 100))}vh`,
     right: 'auto',
     bottom: 'auto',
-    margin: 0
+    margin: 0,
+    transform: 'translate(-50%, -50%)'
   } : {};
+  if (isMoveMode) {
+    if (fabPosition.x !== null) {
+      containerStyle.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
+    } else {
+      containerStyle.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    }
+    containerStyle.zIndex = 1001;
+  }
 
   const handleMainClick = () => {
+    if (wasLongPressRef.current) {
+      wasLongPressRef.current = false;
+      return;
+    }
     // Si hubo un arrastre significativo, ignoramos el click
     if (Math.abs(offsetX) > 10 || Math.abs(offsetY) > 10) return;
 
@@ -286,8 +311,10 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
     }
   };
 
+  const isTopHalf = fabPosition.y !== null && fabPosition.y < 50;
+
   return (
-    <div className={`quick-expense-fab-container ${isExpanded ? 'expanded' : ''} ${isMoveMode ? 'moving' : ''}`} ref={containerRef} style={containerStyle}>
+    <div className={`quick-expense-fab-container ${isExpanded ? 'expanded' : ''} ${isMoveMode ? 'moving' : ''} ${isTopHalf ? 'icons-below' : ''}`} ref={containerRef} style={containerStyle}>
       {showIconSelector && (
         <div className="icon-selector">
           {PREDEFINED_ICONS.map(i => (
@@ -302,21 +329,32 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
           ))}
         </div>
       )}
-      
       {!isExpanded ? (
-        <button 
-          className="fab-button round" 
-          onClick={handleMainClick}
-          onContextMenu={handleIconLongPress}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          style={pillStyle}
-          title="Gasto rápido (Mantener para opciones)"
-        >
-          {activeIcon}
-        </button>
+        <div className="fab-wrapper" style={{ position: 'relative' }}>
+          <div 
+            className="drag-handle" 
+            onPointerDown={handleDragHandlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            title="Arrastra para mover"
+          >
+            <div className="drag-dots"></div>
+          </div>
+          <button 
+            className="fab-button round" 
+            onClick={handleMainClick}
+            onContextMenu={handleIconLongPress}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            style={pillStyle}
+            title="Gasto rápido (Mantener para opciones)"
+          >
+            {activeIcon}
+          </button>
+        </div>
       ) : (
         <div 
           className="fab-button pill" 
@@ -331,7 +369,7 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
             <div 
               className="icon-part"
               onContextMenu={handleIconLongPress}
-              onClick={(e) => { e.stopPropagation(); setShowIconSelector(!showIconSelector); }}
+              onClick={(e) => { e.stopPropagation(); setShowIconSelector(prev => !prev); }}
             >
               {activeIcon}
             </div>
