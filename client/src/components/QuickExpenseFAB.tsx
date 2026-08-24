@@ -460,8 +460,7 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
           }} title="Hacer foto">📸 Cámara</button>
           
           <button onClick={() => {
-            if (isMobileDevice()) aiAudioRef.current?.click();
-            else { setShowAiOptions(false); setShowAudioModal(true); }
+            setShowAiOptions(false); setShowAudioModal(true);
           }} title="Grabar audio">🎤 Audio</button>
           
           <button onClick={() => {
