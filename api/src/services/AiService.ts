@@ -57,7 +57,20 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
       const responseText = response.text || '';
       if (!responseText) throw new Error('Respuesta vacía');
 
-      const parsedData = JSON.parse(responseText);
+      let cleanedText = responseText.trim();
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+      
+      let parsedData;
+      try {
+        parsedData = JSON.parse(cleanedText);
+      } catch (parseError) {
+        console.error('Raw AI Response:', responseText);
+        throw parseError;
+      }
       
       if (!Array.isArray(parsedData)) {
         throw new Error('Formato JSON inválido devuelto por la IA (no es un array)');
@@ -73,7 +86,7 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
 
     } catch (error) {
       console.error('Error procesando archivo con IA:', error);
-      throw new AppError('No se pudo interpretar la respuesta de la IA', 500);
+      throw new AppError(`No se pudo interpretar la respuesta de la IA: ${(error as any).message || 'Error desconocido'}`, 500);
     }
   }
 }
