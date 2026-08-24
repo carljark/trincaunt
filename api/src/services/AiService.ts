@@ -86,7 +86,8 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
 
     } catch (error) {
       console.error('Error procesando archivo con IA:', error);
-      throw new AppError(`No se pudo interpretar la respuesta de la IA: ${(error as any).message || 'Error desconocido'}`, 500);
+      const errorStr = error instanceof Error ? error.message : String(error);
+      throw new AppError(`FALLO IA: ${errorStr}`, 500);
     }
   }
 }
