@@ -31,9 +31,9 @@ El JSON debe ser un ARRAY de objetos con exactamente esta estructura:
   }
 ]
 
-Si puedes deducir la categoría del gasto, añádela como un array de strings en el campo "categoria".
-Intenta usar UNA de estas categorías ya existentes (Alias o Categorías principales) en el grupo si encaja bien: ${existingCategories.length > 0 ? existingCategories.join(' | ') : 'Alimentación, Transporte, Ocio, etc'}.
-Si ninguna encaja bien o la lista está vacía, puedes inventar una nueva (ej: Alcohol, Restaurante, Hogar). Si no estás seguro, omite el campo o usa ["Varios"].
+Deduce la categoría del gasto y añádela como un array de strings en el campo "categoria".
+Queremos que seas muy preciso con la categoría (por ejemplo, si es Cerveza, usa ["Alcohol"] o ["Bebidas"] en lugar del genérico ["Ocio"]; si es un billete de tren, usa ["Tren"] en lugar de ["Transporte"]). 
+No te ciñas a categorías genéricas preexistentes, sé lo más descriptivo y exacto posible.
 
 Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es lógico o devuélvelos como elementos separados en el array, según lo que parezca más un 'gasto individual'. Si el archivo no contiene información sobre un gasto, devuelve un array vacío [].`;
 
