@@ -108,10 +108,15 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
     let locString = '';
     try {
       const getPosition = () => new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+        if (!navigator.geolocation) return reject(new Error('No geolocation'));
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 0 });
       });
-      const pos = await getPosition();
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Geolocalización expirada')), 4000));
+      const pos = await Promise.race([getPosition(), timeoutPromise]) as GeolocationPosition;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         locString = data.address?.road ? `${data.address.road}, ${data.address.city || data.address.town || ''}` : data.display_name;
@@ -201,10 +206,16 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
         try {
           // Obtener localización con un timeout estricto de 5s para no hacer esperar
           const getPosition = () => new Promise<GeolocationPosition>((resolve, reject) => {
+            if (!navigator.geolocation) return reject(new Error('No geolocation'));
             navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 0 });
           });
-          const pos = await getPosition();
-          const resLoc = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+          // Forzamos un timeout real por si el navegador ignora el de getCurrentPosition (muy común en iOS/HTTP)
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Geolocalización expirada (timeout manual)')), 4000));
+          const pos = await Promise.race([getPosition(), timeoutPromise]) as GeolocationPosition;
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const resLoc = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`, { signal: controller.signal });
+          clearTimeout(timeoutId);
           if (resLoc.ok) {
             const dataLoc = await resLoc.json();
             locString = dataLoc.address?.road ? `${dataLoc.address.road}, ${dataLoc.address.city || dataLoc.address.town || ''}` : dataLoc.display_name;
