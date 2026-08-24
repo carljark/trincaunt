@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import './AudioRecorderModal.scss';
 
 interface AudioRecorderModalProps {
@@ -67,7 +68,7 @@ const AudioRecorderModal: React.FC<AudioRecorderModalProps> = ({ onClose, onCapt
     }
   };
 
-  return (
+  const modalContent = (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content audio-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
@@ -97,6 +98,8 @@ const AudioRecorderModal: React.FC<AudioRecorderModalProps> = ({ onClose, onCapt
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default AudioRecorderModal;

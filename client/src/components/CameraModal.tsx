@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import './CameraModal.scss';
 
 interface CameraModalProps {
@@ -59,7 +60,7 @@ const CameraModal: React.FC<CameraModalProps> = ({ onClose, onCapture }) => {
     }
   };
 
-  return (
+  const modalContent = (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content camera-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
@@ -83,6 +84,8 @@ const CameraModal: React.FC<CameraModalProps> = ({ onClose, onCapture }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default CameraModal;
