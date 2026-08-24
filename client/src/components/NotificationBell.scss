@@ -1,12 +1,12 @@
 .notification-bell-container {
-  position: relative;
+  position: fixed; top: 1rem; right: 1rem; z-index: 9999;
   
   .bell-button {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    position: relative;
+    position: fixed; top: 1rem; right: 1rem; z-index: 9999;
     padding: 0.5rem;
     
     .badge {
@@ -65,7 +65,7 @@
         border-bottom: 1px solid #eee;
         display: flex;
         flex-direction: column;
-        position: relative;
+        position: fixed; top: 1rem; right: 1rem; z-index: 9999;
         
         &.loading { border-left: 4px solid #f39c12; }
         &.success { border-left: 4px solid #2ecc71; }

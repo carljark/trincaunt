@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  trincaunt-app:
+    build: .
+    container_name: trincaunt-app
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGO_URI=mongodb://mongo:27017/trincaunt
+      # Lee las claves desde el archivo .env donde lances el docker-compose
+      - JWT_SECRET=${JWT_SECRET:-trincaunt_secret_key}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:4.4
+    container_name: trincaunt-mongo
+    restart: unless-stopped
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
