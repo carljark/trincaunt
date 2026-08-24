@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './QuickExpenseFAB.scss';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { IUser } from '../types/user';
+import { isMobileDevice } from '../utils/deviceUtils';
+import CameraModal from './CameraModal';
+import AudioRecorderModal from './AudioRecorderModal';
 
 interface QuickExpenseFABProps {
   groupId: string;
@@ -10,7 +14,6 @@ interface QuickExpenseFABProps {
   members: IUser[];
   onExpenseAdded: () => void;
   onOpenManual: () => void;
-  onUploadTicket: () => void;
 }
 
 const PREDEFINED_ICONS = [
@@ -19,13 +22,13 @@ const PREDEFINED_ICONS = [
   { id: 'coffee', emoji: '☕', concept: 'Café' },
   { id: 'transport', emoji: '🚕', concept: 'Transporte' },
   { id: 'manual', emoji: '➕', concept: 'Manual' },
-  { id: 'ticket', emoji: '🧾', concept: 'Ticket' },
+  { id: 'ai', emoji: '✨', concept: 'IA (Foto/Audio)' }
 ];
 
 const apiHost = import.meta.env.VITE_API_HOST || '';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userId, members, onExpenseAdded, onOpenManual, onUploadTicket }) => {
+const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userId, members, onExpenseAdded, onOpenManual }) => {
   const { user } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeIcon, setActiveIcon] = useState('🍺');
@@ -88,6 +91,7 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsExpanded(false);
         setShowIconSelector(false);
+        setShowAiOptions(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -161,6 +165,101 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const wasLongPressRef = useRef(false);
+  const [showAiOptions, setShowAiOptions] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showAudioModal, setShowAudioModal] = useState(false);
+  const aiCameraRef = useRef<HTMLInputElement>(null);
+  const aiAudioRef = useRef<HTMLInputElement>(null);
+  const aiFileRef = useRef<HTMLInputElement>(null);
+
+  const { addJob, updateJob } = useNotifications();
+
+  const handleAiFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processAiFile(file);
+  };
+
+  const processAiFile = (file: File) => {
+    if (aiCameraRef.current) aiCameraRef.current.value = '';
+    if (aiAudioRef.current) aiAudioRef.current.value = '';
+    if (aiFileRef.current) aiFileRef.current.value = '';
+    setShowAiOptions(false);
+    setIsExpanded(false);
+
+    // 2. Crear trabajo en el NotificationContext
+    const jobId = addJob({
+      title: 'Procesando Inteligencia Artificial',
+      status: 'loading',
+      message: 'Analizando gastos y ubicación...'
+    });
+
+    // 3. Ejecutar asíncronamente (sin await) para liberar el hilo principal del componente
+    (async () => {
+      try {
+        let locString = '';
+        try {
+          // Obtener localización con un timeout estricto de 5s para no hacer esperar
+          const getPosition = () => new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 0 });
+          });
+          const pos = await getPosition();
+          const resLoc = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+          if (resLoc.ok) {
+            const dataLoc = await resLoc.json();
+            locString = dataLoc.address?.road ? `${dataLoc.address.road}, ${dataLoc.address.city || dataLoc.address.town || ''}` : dataLoc.display_name;
+          }
+        } catch (e) {
+          console.log('No se pudo obtener localización en 5s o denegado', e);
+        }
+
+        const formData = new FormData();
+        formData.append('media', file);
+        formData.append('grupo_id', groupId);
+        formData.append('participantes', JSON.stringify(members.map(m => m._id)));
+        if (locString) formData.append('localization', locString);
+
+        updateJob(jobId, { message: 'Insertando gastos en el servidor...' });
+
+        const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/ai-parse`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          const numGastos = result.data?.length || 0;
+          if (numGastos > 0) {
+            updateJob(jobId, { status: 'success', message: `¡Se insertaron ${numGastos} gasto(s) con éxito!` });
+          } else {
+            updateJob(jobId, { status: 'error', message: 'No se detectaron gastos en el archivo provisto.' });
+          }
+          onExpenseAdded(); // Refrescar el detalle del grupo
+        } else {
+          const result = await res.json();
+          updateJob(jobId, { status: 'error', message: result.message || 'Error procesando el archivo con la IA' });
+        }
+      } catch (error) {
+        console.error('Error enviando archivo a IA:', error);
+        updateJob(jobId, { status: 'error', message: 'Error de red o de servidor.' });
+      }
+    })();
+  };
+
+  const handleIconSelect = async (emoji: string) => {
+    setActiveIcon(emoji);
+    setShowIconSelector(false);
+    try {
+      await fetch(`${apiHost}${apiBaseUrl}/user-preferences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ quickExpense: { lastIcon: emoji, prices } })
+      });
+    } catch (e) {
+      console.error('Error saving preference', e);
+    }
+  };
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setStartX(e.clientX);
@@ -304,8 +403,8 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
     if (isMoveMode) return;
     if (activeIcon === '➕') {
       onOpenManual();
-    } else if (activeIcon === '🧾') {
-      onUploadTicket();
+    } else if (activeIcon === '✨') {
+      setShowAiOptions(true);
     } else {
       setIsExpanded(true);
     }
@@ -315,12 +414,62 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
 
   return (
     <div className={`quick-expense-fab-container ${isExpanded ? 'expanded' : ''} ${isMoveMode ? 'moving' : ''} ${isTopHalf ? 'icons-below' : ''}`} ref={containerRef} style={containerStyle}>
+      <input 
+        type="file" 
+        accept="image/*" 
+        capture="environment"
+        style={{ display: 'none' }} 
+        ref={aiCameraRef} 
+        onChange={handleAiFileSelect}
+        data-testid="ai-camera-input"
+      />
+      <input 
+        type="file" 
+        accept="audio/*" 
+        capture="environment"
+        style={{ display: 'none' }} 
+        ref={aiAudioRef} 
+        onChange={handleAiFileSelect}
+        data-testid="ai-audio-input"
+      />
+      <input 
+        type="file" 
+        accept="image/*,audio/*" 
+        style={{ display: 'none' }} 
+        ref={aiFileRef} 
+        onChange={handleAiFileSelect}
+        data-testid="ai-file-input"
+      />
+      
+      {showAiOptions && (
+        <div className="icon-selector ai-options-menu">
+          <button onClick={() => {
+            if (isMobileDevice()) aiCameraRef.current?.click();
+            else { setShowAiOptions(false); setShowCameraModal(true); }
+          }} title="Hacer foto">📸 Cámara</button>
+          
+          <button onClick={() => {
+            if (isMobileDevice()) aiAudioRef.current?.click();
+            else { setShowAiOptions(false); setShowAudioModal(true); }
+          }} title="Grabar audio">🎤 Audio</button>
+          
+          <button onClick={() => {
+            aiFileRef.current?.click();
+          }} title="Subir archivo">📎 Archivo</button>
+        </div>
+      )}
+
       {showIconSelector && (
         <div className="icon-selector">
-          {PREDEFINED_ICONS.map(i => (
+          {PREDEFINED_ICONS.filter(i => {
+            if (i.id === 'ai') {
+              return user?.role === 'admin' || user?.aiEnabled;
+            }
+            return true;
+          }).map(i => (
             <button 
               key={i.id} 
-              onClick={() => { setActiveIcon(i.emoji); setShowIconSelector(false); }}
+              onClick={() => handleIconSelect(i.emoji)}
               className={activeIcon === i.emoji ? 'active' : ''}
               title={i.concept}
             >
@@ -380,6 +529,26 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
             <span className="swipe-hint right">»</span>
           </div>
         </div>
+      )}
+      
+      {showCameraModal && (
+        <CameraModal 
+          onClose={() => setShowCameraModal(false)}
+          onCapture={(file) => {
+            setShowCameraModal(false);
+            processAiFile(file);
+          }}
+        />
+      )}
+
+      {showAudioModal && (
+        <AudioRecorderModal
+          onClose={() => setShowAudioModal(false)}
+          onCapture={(file) => {
+            setShowAudioModal(false);
+            processAiFile(file);
+          }}
+        />
       )}
     </div>
   );

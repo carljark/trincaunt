@@ -33,6 +33,19 @@
     padding: 5px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 
+      &.ai-options-menu {
+        flex-direction: column;
+        width: 160px;
+        left: -170px;
+        button {
+          width: 100%;
+          justify-content: flex-start;
+          padding: 0.8rem 1rem;
+          font-size: 1rem;
+          white-space: nowrap;
+        }
+      }
+
     button {
       background: none;
       border: none;

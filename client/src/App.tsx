@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import GroupDetailPage from './pages/GroupDetailPage';
 import PreferencesPage from './pages/PreferencesPage';
+import AdminPage from './pages/AdminPage';
 
 // Componente para proteger rutas
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -44,6 +45,14 @@ const AppContent: React.FC = () => {
           </PrivateRoute>
         } 
       />
+      <Route 
+        path="/admin" 
+        element={
+          <PrivateRoute>
+            <AdminPage />
+          </PrivateRoute>
+        } 
+      />
       {/* Redirección por defecto */}
       <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} />} />
     </Routes>
@@ -51,12 +60,18 @@ const AppContent: React.FC = () => {
 };
 
 
+import { NotificationProvider } from './contexts/NotificationContext';
+import NotificationBell from './components/NotificationBell';
+
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <NotificationBell />
+          <AppContent />
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 };

@@ -145,3 +145,52 @@ export const getChartExpenses = async (req: Request, res: Response, next: NextFu
     next(error);
   }
 };
+
+import AiService from '../services/AiService';
+import { AppError } from '../utils/AppError';
+
+export const parseExpenseWithAI = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    if (user.role !== 'admin' && !user.aiEnabled) {
+      throw new AppError('Acceso denegado a las funciones de IA. Contacta con el administrador.', 403);
+    }
+
+    if (!req.file) {
+      throw new AppError('No se proporcionó ningún archivo de audio o imagen', 400);
+    }
+    
+    // El frontend debe mandar grupo_id, participantes y opcionalmente localization en el body
+    const { grupo_id, participantes, localization } = req.body;
+    if (!grupo_id || !participantes) {
+      throw new AppError('Faltan datos requeridos (grupo_id o participantes) para asociar el gasto', 400);
+    }
+    
+    const parsedExpenses = await AiService.parseExpenseFromMedia(req.file.buffer, req.file.mimetype);
+    const userId = (req as any).user.id;
+    
+    const createdExpenses = [];
+    
+    // Insertamos cada gasto detectado
+    for (const exp of parsedExpenses) {
+      const expenseData = {
+        grupo_id,
+        descripcion: exp.descripcion,
+        monto: exp.monto,
+        pagado_por: [userId],
+        participantes: Array.isArray(participantes) ? participantes : JSON.parse(participantes),
+        fecha: new Date(),
+        asume_gasto: false,
+        categoria: ['IA'],
+        localization: localization || ''
+      };
+      
+      const savedExpense = await expenseService.createExpense(expenseData, userId);
+      createdExpenses.push(savedExpense);
+    }
+    
+    res.status(200).json({ status: 'success', data: createdExpenses });
+  } catch (error) {
+    next(error);
+  }
+};

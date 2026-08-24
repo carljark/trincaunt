@@ -48,6 +48,16 @@ vi.mock('../components/GroupNotes', () => ({
   default: () => <div>GroupNotes</div>,
 }));
 
+// Mock NotificationContext
+vi.mock('../contexts/NotificationContext', () => ({
+  useNotifications: () => ({
+    addJob: vi.fn(),
+    updateJob: vi.fn(),
+    jobs: []
+  }),
+  NotificationProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}));
+
 const mockGroupResponse = {
   data: {
     _id: 'test-group-id',
