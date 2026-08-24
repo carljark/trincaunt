@@ -34,6 +34,7 @@ export const sumTransactionsToMe = (
 }
 
 import './GroupDetailPage.scss';
+import SwipeableExpenseItem from '../components/SwipeableExpenseItem';
 import '../components/AddExpenseModal.scss';
 import '../components/CategoryModal.scss';
 import '../components/BulkEditForm.scss';
@@ -957,27 +958,12 @@ const GroupDetailPage: React.FC = () => {
                     <ul className="expenses-list">
                       {group.items.map((expense: any) => (
                         <li key={expense._id}>
-                            <div className="expense-item">
-                              <div className="expense-info">
-                                <div className="expense-details-row">
-                                  <div className="expense-description" title={expense.descripcion}>
-                                    {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
-                                    {expense.descripcion}
-                                  </div>
-                                  <div className="expense-dots"></div>
-                                  <div className="expense-amount">
-                                    <strong>{formatCurrency(expense.monto)}€</strong>
-                                    {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
-                                  </div>
-                                </div>
-                              </div>
-                              {!isGlobal && (
-                                <div className="expense-actions">
-                                  <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
-                                  <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
-                                </div>
-                              )}
-                            </div>
+                            <SwipeableExpenseItem 
+                              expense={expense} 
+                              isGlobal={isGlobal} 
+                              onEdit={handleEdit} 
+                              onDelete={handleDeleteExpense} 
+                            />
                           </li>
                         ))}
                     </ul>

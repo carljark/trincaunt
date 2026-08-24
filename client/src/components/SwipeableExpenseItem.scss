@@ -1,0 +1,133 @@
+.swipeable-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden; // Prevent horizontal scrolling
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #ccc;
+  
+  .swipe-action {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    color: white;
+    font-weight: bold;
+    padding: 0 1rem;
+    z-index: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .swipe-action-left {
+    left: 0;
+    background-color: #4CAF50; // Green for edit
+    width: 50%;
+    justify-content: flex-start;
+  }
+
+  .swipe-action-right {
+    right: 0;
+    background-color: #F44336; // Red for delete
+    width: 50%;
+    justify-content: flex-end;
+  }
+
+  .expense-item-content {
+    position: relative;
+    z-index: 1;
+    background-color: white; // Cover the actions underneath
+    width: 100%;
+  }
+
+  .expense-item {
+    width: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    gap: 0.5rem;
+    
+    .expense-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-width: 0;
+      
+      .expense-details-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+
+      .expense-description {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 0 1 auto;
+      }
+      
+      .expense-dots {
+        flex: 1;
+        border-bottom: 1px dotted #999;
+        margin: 0 5px;
+        position: relative;
+        top: -4px;
+        min-width: 20px;
+      }
+
+      .expense-amount {
+        white-space: nowrap;
+        flex: 0 0 auto;
+      }
+    }
+
+    // Default: hide desktop actions
+    .desktop-actions {
+      display: none;
+    }
+  }
+}
+
+// Media query for desktop: hide swipe actions, show desktop actions
+@media (min-width: 768px) {
+  .swipeable-container {
+    .swipe-action {
+      display: none; // Disable swipe actions on desktop entirely
+    }
+    
+    .expense-item-content {
+      transform: none !important; // Prevent any leftover transform
+    }
+
+    .expense-item {
+      .desktop-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+
+        button {
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 1.2rem;
+          padding: 5px;
+          color: #555;
+          transition: color 0.2s ease;
+          
+          &:hover {
+            color: #000;
+          }
+
+          &.desktop-edit-btn:hover {
+            color: #4CAF50;
+          }
+
+          &.desktop-delete-btn:hover {
+            color: #F44336;
+          }
+        }
+      }
+    }
+  }
+}

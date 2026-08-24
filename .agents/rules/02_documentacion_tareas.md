@@ -1,10 +1,5 @@
-# Reglas Globales del Asistente (Antigravity)
+# Documentación de Tareas y Diseño Técnico
 
-## 1. Control de Versiones
-- **NUNCA** hagas commits automáticamente en el repositorio (Git).
-- Limítate a escribir o modificar el código localmente. Si se requiere un commit, el usuario lo hará manualmente.
-
-## 2. Documentación de Tareas y Diseño Técnico
 - A partir de ahora, todo lo que implementes o desarrolles debe documentarse obligatoriamente en una carpeta llamada `tareas` en la raíz del proyecto.
 - Si la carpeta `tareas` no existe, debes crearla.
 - Por cada tarea importante que finalices, debes crear un archivo Markdown dentro de `tareas/`.
