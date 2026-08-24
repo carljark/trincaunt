@@ -277,8 +277,8 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
   }
 
   const containerStyle: any = fabPosition.x !== null && fabPosition.y !== null ? {
-    left: `${Math.max(5, Math.min(fabPosition.x || 0, 95))}vw`,
-    top: `${Math.max(5, Math.min(fabPosition.y || 0, 95))}vh`,
+    left: `${Math.max(5, Math.min(fabPosition.x || 0, 95))}dvw`,
+    top: `${Math.max(5, Math.min(fabPosition.y || 0, 85))}dvh`,
     right: 'auto',
     bottom: 'auto',
     margin: 0,
