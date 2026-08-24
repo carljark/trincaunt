@@ -5,21 +5,21 @@ import Expense from '../../src/models/Expense';
 import { AppError } from '../../src/utils/AppError';
 import mongoose from 'mongoose';
 
-jest.mock('../../src/models/Group');
-jest.mock('../../src/models/User');
-jest.mock('../../src/models/Expense');
+vi.mock('../../src/models/Group');
+vi.mock('../../src/models/User');
+vi.mock('../../src/models/Expense');
 
-const GroupMock = Group as jest.Mocked<typeof Group>;
-const UserMock = User as jest.Mocked<typeof User>;
-const ExpenseMock = Expense as jest.Mocked<typeof Expense>;
+const GroupMock = Group as vi.Mocked<typeof Group>;
+const UserMock = User as vi.Mocked<typeof User>;
+const ExpenseMock = Expense as vi.Mocked<typeof Expense>;
 
 // Mocking the save method on the document instance
-const mockGroupSave = jest.fn().mockResolvedValue(undefined);
+const mockGroupSave = vi.fn().mockResolvedValue(undefined);
 const mockGroupInstance = {
   _id: 'group-123',
   miembros: [] as any[],
   save: mockGroupSave,
-  populate: jest.fn().mockReturnThis(),
+  populate: vi.fn().mockReturnThis(),
 };
 
 describe('GroupService', () => {
@@ -27,19 +27,19 @@ describe('GroupService', () => {
 
   beforeEach(() => {
     groupService = new GroupService();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset mocks on the instance
     mockGroupInstance.miembros = [];
     mockGroupSave.mockClear();
-    (mockGroupInstance.populate as jest.Mock).mockClear();
+    (mockGroupInstance.populate as vi.Mock).mockClear();
     
     // Setup default mock implementations
     GroupMock.create.mockImplementation((data: any) => Promise.resolve({ ...data, _id: 'group-123' } as any));
     GroupMock.findById.mockResolvedValue(mockGroupInstance as any);
     GroupMock.find.mockReturnValue({
-      populate: jest.fn().mockReturnValue({
-        lean: jest.fn().mockResolvedValue([]),
+      populate: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue([]),
       }),
     } as any);
     UserMock.findOne.mockResolvedValue({ _id: 'user-456', id: 'user-456' } as any);
@@ -114,9 +114,9 @@ describe('GroupService', () => {
       const group1 = { _id: 'group-1', nombre: 'Group 1', miembros: [userId] };
       const groups = [group1];
   
-      (Group.find as jest.Mock).mockReturnValue({
-          populate: jest.fn().mockReturnValue({
-              lean: jest.fn().mockResolvedValue(groups),
+      (Group.find as vi.Mock).mockReturnValue({
+          populate: vi.fn().mockReturnValue({
+              lean: vi.fn().mockResolvedValue(groups),
           }),
       });
   
@@ -128,7 +128,7 @@ describe('GroupService', () => {
           asume_gasto: false,
           pagado_por: userId
       };
-      (Expense.find as jest.Mock).mockResolvedValue([expense1] as any);
+      (Expense.find as vi.Mock).mockResolvedValue([expense1] as any);
   
       const result = await groupService.getGroupsForUser(userId);
   

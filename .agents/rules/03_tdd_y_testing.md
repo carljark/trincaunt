@@ -9,5 +9,5 @@
 
 ## Tecnologías de Testing en el Proyecto
 - **Frontend (Client):** Los tests unitarios y de integración se ejecutarán con **Vitest** (configurado mediante Vite).
-- **Backend (API):** Los tests unitarios y de integración se ejecutarán con **Jest** (según la configuración en `api/jest.config.js`).
+- **Backend (API):** Los tests unitarios y de integración se ejecutarán con **Vitest** (reemplazó a Jest en todo el stack).
 - **Tests End-to-End (E2E):** Para las pruebas de flujo completo (simulando interacciones reales del usuario en el navegador), se utilizará **Cypress** (próxima integración). Las reglas de TDD también aplican a los flujos E2E cuando corresponda.

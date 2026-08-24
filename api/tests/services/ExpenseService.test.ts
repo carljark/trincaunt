@@ -3,20 +3,20 @@ import Expense from '../../src/models/Expense';
 import CategoryAlias from '../../src/models/CategoryAlias';
 import Group from '../../src/models/Group';
 
-jest.mock('../../src/models/Expense');
-jest.mock('../../src/models/CategoryAlias');
-jest.mock('../../src/models/Group');
+vi.mock('../../src/models/Expense');
+vi.mock('../../src/models/CategoryAlias');
+vi.mock('../../src/models/Group');
 
-const ExpenseMock = Expense as jest.Mocked<typeof Expense>;
-const CategoryAliasMock = CategoryAlias as jest.Mocked<typeof CategoryAlias>;
-const GroupMock = Group as jest.Mocked<typeof Group>;
+const ExpenseMock = Expense as vi.Mocked<typeof Expense>;
+const CategoryAliasMock = CategoryAlias as vi.Mocked<typeof CategoryAlias>;
+const GroupMock = Group as vi.Mocked<typeof Group>;
 
 describe('ExpenseService Filtering', () => {
   let expenseService: ExpenseService;
 
   beforeEach(() => {
     expenseService = new ExpenseService();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('getExpensesByGroup', () => {
@@ -26,7 +26,7 @@ describe('ExpenseService Filtering', () => {
       
       // Mock related aliases
       CategoryAliasMock.find.mockReturnValue({
-        select: jest.fn().mockResolvedValue([
+        select: vi.fn().mockResolvedValue([
           { alias: 'Restaurant' },
           { alias: 'Supermarket' }
         ])
@@ -34,7 +34,7 @@ describe('ExpenseService Filtering', () => {
 
       // Mock Expense.find chain
       ExpenseMock.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
+        populate: vi.fn().mockReturnThis(),
       } as any);
 
       await expenseService.getExpensesByGroup(groupId, categories);
@@ -53,7 +53,7 @@ describe('ExpenseService Filtering', () => {
       const groupId = 'group-123';
 
       ExpenseMock.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
+        populate: vi.fn().mockReturnThis(),
       } as any);
 
       await expenseService.getExpensesByGroup(groupId);
@@ -71,11 +71,11 @@ describe('ExpenseService Filtering', () => {
       GroupMock.find.mockResolvedValue([{ _id: 'group-1' }] as any);
       
       CategoryAliasMock.find.mockReturnValue({
-        select: jest.fn().mockResolvedValue([{ alias: 'Cinema' }])
+        select: vi.fn().mockResolvedValue([{ alias: 'Cinema' }])
       } as any);
 
       // Mock Expense.find chain with multiple populates
-      const mockPopulate = jest.fn().mockReturnThis();
+      const mockPopulate = vi.fn().mockReturnThis();
       ExpenseMock.find.mockReturnValue({
         populate: mockPopulate,
       } as any);
