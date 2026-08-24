@@ -32,12 +32,21 @@ if [ "$CURRENT_IP" != "$LAST_IP" ]; then
     MENSAJE="El router de O2 ha cambiado de IP.\n\nAntigua IP: $LAST_IP\nNueva IP: $CURRENT_IP\n\nUsa esta nueva IP para conectarte por SSH."
 
     # ==========================================================================
-    # AQUI DEBES INYECTAR TU SCRIPT DE GMAIL
-    # Reemplaza la siguiente línea con la forma en la que llamas a tu script
-    # Ejemplo: /home/tuusuario/scripts/enviar_gmail.sh "$ASUNTO" "$MENSAJE"
+    # Llama a tu script de envío de email
     # ==========================================================================
     
-    echo -e "$MENSAJE" | mail -s "$ASUNTO" tu_correo@gmail.com # Reemplaza por tu comando real
+    # Asumimos que tu correo de destino es elcal.lico@gmail.com
+    DESTINO="elcal.lico@gmail.com"
+    
+    # Llamada a tu script (ajusta la ruta si check_ip.sh y enviar_email.sh no están en la misma estructura relativa)
+    # Por defecto, asumo que ambos scripts están en el mismo repositorio /dev/trincaunt/
+    SCRIPT_EMAIL="$(dirname "$0")/../enviar_email.sh"
+    
+    if [ -f "$SCRIPT_EMAIL" ]; then
+        "$SCRIPT_EMAIL" "$ASUNTO" "$MENSAJE" "$DESTINO"
+    else
+        echo "Error: No se encontró el script $SCRIPT_EMAIL"
+    fi
     
     # Actualizar el archivo con la nueva IP para que no envíe correos repetidos
     echo "$CURRENT_IP" > "$IP_FILE"
