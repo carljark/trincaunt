@@ -38,9 +38,8 @@ if [ "$CURRENT_IP" != "$LAST_IP" ]; then
     # Asumimos que tu correo de destino es elcal.lico@gmail.com
     DESTINO="elcal.lico@gmail.com"
     
-    # Llamada a tu script (ajusta la ruta si check_ip.sh y enviar_email.sh no están en la misma estructura relativa)
-    # Por defecto, asumo que ambos scripts están en el mismo repositorio /dev/trincaunt/
-    SCRIPT_EMAIL="$(dirname "$0")/../enviar_email.sh"
+    # Llamada a tu script con la ruta exacta que indicaste
+    SCRIPT_EMAIL="/home/godoy/bin/enviar_email.sh"
     
     if [ -f "$SCRIPT_EMAIL" ]; then
         "$SCRIPT_EMAIL" "$ASUNTO" "$MENSAJE" "$DESTINO"

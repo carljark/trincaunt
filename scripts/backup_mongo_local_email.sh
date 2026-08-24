@@ -15,7 +15,7 @@ BACKUP_DIR="${HOME}/trincaunt_backups"
 
 # Configuración de email
 EMAIL_DESTINO="elcal.lico@gmail.com"
-SCRIPT_EMAIL="$(dirname "$0")/../enviar_email.sh"
+SCRIPT_EMAIL="/home/godoy/bin/enviar_email.sh"
 
 # Crear el directorio de backups local en el servidor si no existe
 mkdir -p "$BACKUP_DIR"
