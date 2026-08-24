@@ -8,11 +8,11 @@ export interface ParsedExpense {
 }
 
 class AiService {
-  private ai: GoogleGenAI;
-
-  constructor() {
-    this.ai = new GoogleGenAI({});
+  private get ai(): GoogleGenAI {
+    return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
+
+  constructor() {}
 
   public async parseExpenseFromMedia(buffer: Buffer, mimeType: string, existingCategories: string[] = []): Promise<ParsedExpense[]> {
     if (mimeType.startsWith('video/')) {
