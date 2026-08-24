@@ -183,3 +183,32 @@
     }
   }
 }
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-start !important;
+    padding-top: calc(env(safe-area-inset-top, 20px) + 10px) !important;
+  }
+  .modal-content {
+    width: 95%;
+    max-height: calc(100vh - env(safe-area-inset-top, 20px) - env(safe-area-inset-bottom, 20px) - 20px) !important;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+
+    form {
+      flex: 1;
+      overflow-y: auto;
+      
+      .modal-actions {
+        margin-top: auto;
+        padding-top: 15px;
+        padding-bottom: 15px;
+        position: sticky;
+        bottom: 0;
+        background: inherit;
+        z-index: 10;
+      }
+    }
+  }
+}

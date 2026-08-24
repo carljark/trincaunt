@@ -87,7 +87,7 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({ expense, is
           
           {/* Desktop actions (hidden on mobile via CSS) */}
           {!isGlobal && (
-            <div className="expense-actions desktop-actions">
+            <div className="desktop-actions">
               <button onClick={() => onEdit(expense)} className="desktop-edit-btn" title="Editar">&#9998;</button>
               <button onClick={() => onDelete(expense._id)} className="desktop-delete-btn" title="Borrar">&#10006;</button>
             </div>
