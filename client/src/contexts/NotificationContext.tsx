@@ -21,8 +21,23 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-  const [jobs, setJobs] = useState<BackgroundJob[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [jobs, setJobs] = useState<BackgroundJob[]>(() => {
+    const saved = localStorage.getItem('trincaunt_jobs');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [unreadCount, setUnreadCount] = useState(() => {
+    const saved = localStorage.getItem('trincaunt_unread');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  // Keep localStorage in sync
+  React.useEffect(() => {
+    localStorage.setItem('trincaunt_jobs', JSON.stringify(jobs));
+  }, [jobs]);
+
+  React.useEffect(() => {
+    localStorage.setItem('trincaunt_unread', unreadCount.toString());
+  }, [unreadCount]);
 
   const addJob = (job: Omit<BackgroundJob, 'id'>) => {
     const id = Math.random().toString(36).substr(2, 9);

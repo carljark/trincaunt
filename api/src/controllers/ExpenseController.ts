@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { ExpenseService } from '../services/ExpenseService';
+import { CategoryAliasService } from '../services/CategoryAliasService';
 
 const expenseService = new ExpenseService();
+const aliasService = new CategoryAliasService();
 
 export const createExpense = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -166,7 +168,11 @@ export const parseExpenseWithAI = async (req: Request, res: Response, next: Next
       throw new AppError('Faltan datos requeridos (grupo_id o participantes) para asociar el gasto', 400);
     }
     
-    const parsedExpenses = await AiService.parseExpenseFromMedia(req.file.buffer, req.file.mimetype);
+    // Obtener categorías existentes para ayudar a la IA
+    const existingAliases = await aliasService.getAllAliases(grupo_id);
+    const categoryNames = existingAliases.map(a => `${a.alias} (ej. ${a.mainCategories.join(', ')})`);
+    
+    const parsedExpenses = await AiService.parseExpenseFromMedia(req.file.buffer, req.file.mimetype, categoryNames);
     const userId = (req as any).user.id;
     
     const createdExpenses = [];
@@ -181,7 +187,7 @@ export const parseExpenseWithAI = async (req: Request, res: Response, next: Next
         participantes: Array.isArray(participantes) ? participantes : JSON.parse(participantes),
         fecha: new Date(),
         asume_gasto: false,
-        categoria: ['IA'],
+        categoria: exp.categoria || ['IA'],
         localization: localization || ''
       };
       

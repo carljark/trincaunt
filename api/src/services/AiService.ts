@@ -4,17 +4,20 @@ import { AppError } from '../utils/AppError';
 export interface ParsedExpense {
   descripcion: string;
   monto: number;
+  categoria?: string[];
 }
 
 class AiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    // Initialized automatically using process.env.GEMINI_API_KEY
     this.ai = new GoogleGenAI({});
   }
 
-  public async parseExpenseFromMedia(buffer: Buffer, mimeType: string): Promise<ParsedExpense[]> {
+  public async parseExpenseFromMedia(buffer: Buffer, mimeType: string, existingCategories: string[] = []): Promise<ParsedExpense[]> {
+    if (mimeType.startsWith('video/')) {
+      throw new AppError('Gemini no soporta vídeos. Por favor graba solo nota de voz o sube una foto.', 400);
+    }
     const prompt = `Eres un asistente financiero ultra-preciso. 
 Te voy a pasar un archivo (puede ser una imagen de un ticket/factura, o una grabación de voz mía diciéndote gastos).
 Tu única tarea es extraer la información de los gastos y devolverla ESTRICTAMENTE en formato JSON, sin texto adicional, sin markdown, solo el objeto JSON crudo.
@@ -23,15 +26,20 @@ El JSON debe ser un ARRAY de objetos con exactamente esta estructura:
 [
   {
     "descripcion": "Descripción concisa del gasto",
-    "monto": 0.00
+    "monto": 0.00,
+    "categoria": ["NombreCategoria"]
   }
 ]
+
+Si puedes deducir la categoría del gasto, añádela como un array de strings en el campo "categoria".
+Intenta usar UNA de estas categorías ya existentes (Alias o Categorías principales) en el grupo si encaja bien: ${existingCategories.length > 0 ? existingCategories.join(' | ') : 'Alimentación, Transporte, Ocio, etc'}.
+Si ninguna encaja bien o la lista está vacía, puedes inventar una nueva (ej: Alcohol, Restaurante, Hogar). Si no estás seguro, omite el campo o usa ["Varios"].
 
 Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es lógico o devuélvelos como elementos separados en el array, según lo que parezca más un 'gasto individual'. Si el archivo no contiene información sobre un gasto, devuelve un array vacío [].`;
 
     try {
       const response = await this.ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3.6-flash',
         contents: [
           prompt,
           {

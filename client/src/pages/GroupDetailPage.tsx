@@ -324,8 +324,12 @@ const GroupDetailPage: React.FC = () => {
     if (dateFromFilter && new Date(expense.fecha) < new Date(dateFromFilter)) {
       return false;
     }
-    if (dateToFilter && new Date(expense.fecha) > new Date(dateToFilter)) {
-      return false;
+    if (dateToFilter) {
+      const filterDate = new Date(dateToFilter);
+      filterDate.setUTCHours(23, 59, 59, 999);
+      if (new Date(expense.fecha) > filterDate) {
+        return false;
+      }
     }
     if (payerFilter !== 'all' && !(Array.isArray(expense.pagado_por) ? expense.pagado_por.some(p => p._id === payerFilter) : (expense.pagado_por as IUserPopulated)._id === payerFilter)) {
       return false;

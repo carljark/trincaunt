@@ -1,12 +1,15 @@
 .notification-bell-container {
-  position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+  position: fixed; 
+  top: 1rem; 
+  right: 4rem; /* Desplazado a la izquierda para no pisar el menú de puntos */
+  z-index: 9999;
   
   .bell-button {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+    position: relative;
     padding: 0.5rem;
     
     .badge {
@@ -65,7 +68,8 @@
         border-bottom: 1px solid #eee;
         display: flex;
         flex-direction: column;
-        position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+        position: relative;
+        word-wrap: break-word;
         
         &.loading { border-left: 4px solid #f39c12; }
         &.success { border-left: 4px solid #2ecc71; }
