@@ -41,7 +41,9 @@ if [ $? -eq 0 ]; then
     if [ -f "$SCRIPT_EMAIL" ]; then
         echo "📧 Enviando copia de seguridad por email a $EMAIL_DESTINO..."
         ASUNTO="[Trincaunt] Backup Automático $TIMESTAMP"
-        CUERPO="Adjunto copia de seguridad de la base de datos Trincaunt.\n\nTamaño del archivo: $TAMANO"
+        CUERPO="Adjunto copia de seguridad de la base de datos Trincaunt.
+
+Tamaño del archivo: $TAMANO"
         
         "$SCRIPT_EMAIL" "$ASUNTO" "$CUERPO" "$EMAIL_DESTINO" "$BACKUP_DIR/$BACKUP_FILE"
         

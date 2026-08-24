@@ -29,7 +29,12 @@ LAST_IP=$(cat "$IP_FILE")
 if [ "$CURRENT_IP" != "$LAST_IP" ]; then
     # La IP ha cambiado
     ASUNTO="[Trincaunt-Server] Cambio de IP detectado"
-    MENSAJE="El router de O2 ha cambiado de IP.\n\nAntigua IP: $LAST_IP\nNueva IP: $CURRENT_IP\n\nUsa esta nueva IP para conectarte por SSH."
+    MENSAJE="El router de O2 ha cambiado de IP.
+
+Antigua IP: $LAST_IP
+Nueva IP: $CURRENT_IP
+
+Usa esta nueva IP para conectarte por SSH."
 
     # ==========================================================================
     # Llama a tu script de envío de email
