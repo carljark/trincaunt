@@ -730,6 +730,27 @@ const GroupDetailPage: React.FC = () => {
     }
   }, [initialFiltersLoaded, isGlobal, fetchGlobalData, fetchGroupData, fetchAllCategories]);
 
+  
+  // Escuchar eventos en vivo del grupo
+  useEffect(() => {
+    if (!socket || !groupId || isGlobal) return;
+
+    socket.emit('join_group', groupId);
+
+    const handleExpensesUpdated = (data: any) => {
+      console.log('Gastos actualizados remotamente:', data);
+      fetchGroupData();
+    };
+
+    socket.on('expenses_updated', handleExpensesUpdated);
+
+    return () => {
+      socket.off('expenses_updated', handleExpensesUpdated);
+      socket.emit('leave_group', groupId);
+    };
+  }, [socket, groupId, isGlobal, fetchGroupData]);
+
+
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
     if (amount < 0) return 'red';
