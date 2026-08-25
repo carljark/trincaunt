@@ -11,6 +11,12 @@ vi.mock('../../src/services/AiService', () => {
   };
 });
 
+vi.mock('../../src/config/socket', () => ({
+  getIO: vi.fn().mockReturnValue({
+    to: vi.fn().mockReturnValue({ emit: vi.fn() })
+  })
+}));
+
 describe('ExpenseController (TDD)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -19,7 +25,7 @@ describe('ExpenseController (TDD)', () => {
   const mockRequest = (file?: any) => {
     const req: Partial<Request> = {
       file,
-      user: { id: 'user123', email: 'test@test.com' }
+      user: { id: 'user123', email: 'test@test.com', role: 'admin' }
     } as any;
     return req as Request;
   };
@@ -54,7 +60,6 @@ describe('ExpenseController (TDD)', () => {
       };
       
       const req = mockRequest(fakeFile);
-      // Simulamos que el frontend envía los datos básicos por body para poder crear el gasto
       req.body = {
         grupo_id: 'group123',
         participantes: ['user123', 'user456']
@@ -69,14 +74,12 @@ describe('ExpenseController (TDD)', () => {
       ];
       vi.mocked(AiService.parseExpenseFromMedia).mockResolvedValue(fakeParsedExpenses);
       
-      // Mock del createExpense (habrá que añadirlo al mock general o instanciarlo)
-      // Como ExpenseController instancia ExpenseService internamente, usaremos vi.spyOn
       const { ExpenseService } = await import('../../src/services/ExpenseService');
       const createSpy = vi.spyOn(ExpenseService.prototype, 'createExpense').mockResolvedValue({} as any);
 
       await ExpenseController.parseExpenseWithAI(req, res, next);
 
-      expect(AiService.parseExpenseFromMedia).toHaveBeenCalledWith(fakeFile.buffer, fakeFile.mimetype);
+      expect(AiService.parseExpenseFromMedia).toHaveBeenCalledWith(fakeFile.buffer, fakeFile.mimetype, []);
       expect(createSpy).toHaveBeenCalledTimes(2);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ status: 'success' }));

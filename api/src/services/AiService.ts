@@ -5,6 +5,8 @@ export interface ParsedExpense {
   descripcion: string;
   monto: number;
   categoria?: string[];
+  localization?: string;
+  fecha?: string;
 }
 
 class AiService {
@@ -27,7 +29,9 @@ El JSON debe ser un ARRAY de objetos con exactamente esta estructura:
   {
     "descripcion": "Descripción concisa del gasto",
     "monto": 0.00,
-    "categoria": ["NombreCategoria"]
+    "categoria": ["NombreCategoria"],
+    "localization": "Lugar o establecimiento (si se menciona o aparece en el ticket)",
+    "fecha": "Fecha en formato ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) si aparece o se menciona. Si no hay hora, asume 12:00:00Z"
   }
 ]
 

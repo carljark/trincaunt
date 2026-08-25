@@ -186,10 +186,10 @@ export const parseExpenseWithAI = async (req: Request, res: Response, next: Next
         monto: exp.monto,
         pagado_por: [userId],
         participantes: Array.isArray(participantes) ? participantes : JSON.parse(participantes),
-        fecha: new Date(),
+        fecha: exp.fecha ? new Date(exp.fecha) : new Date(),
         asume_gasto: false,
         categoria: exp.categoria || ['IA'],
-        localization: localization || ''
+        localization: exp.localization || localization || ''
       };
       
       const savedExpense = await expenseService.createExpense(expenseData, userId);
