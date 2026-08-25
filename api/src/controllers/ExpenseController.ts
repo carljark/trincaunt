@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { getIO } from '../config/socket';
 import { ExpenseService } from '../services/ExpenseService';
 import { CategoryAliasService } from '../services/CategoryAliasService';
 

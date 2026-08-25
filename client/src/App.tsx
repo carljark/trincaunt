@@ -61,17 +61,20 @@ const AppContent: React.FC = () => {
 
 
 import { NotificationProvider } from './contexts/NotificationContext';
+import { SocketProvider } from './contexts/SocketContext';
 import NotificationBell from './components/NotificationBell';
 
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <NotificationProvider>
+          <SocketProvider>
         <Router>
           <NotificationBell />
           <AppContent />
         </Router>
-      </NotificationProvider>
+                </SocketProvider>
+        </NotificationProvider>
     </AuthProvider>
   );
 };

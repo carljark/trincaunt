@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSocket } from '../contexts/SocketContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import AddExpenseModal from '../components/AddExpenseModal';
@@ -52,6 +53,7 @@ const GroupDetailPage: React.FC = () => {
   const isGlobal = groupId === 'global';
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  const { socket } = useSocket();
   const [group, setGroup] = useState<IGroup | null>(null);
   const [expenses, setExpenses] = useState<IExpensePopulated[]>([]);
   const [balance, setBalance] = useState<IBalance[]>([]);
