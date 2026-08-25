@@ -742,10 +742,18 @@ const GroupDetailPage: React.FC = () => {
       fetchGroupData();
     };
 
+    const handleConnect = () => {
+      console.log('Socket reconectado, uniéndose al grupo y recargando gastos...');
+      socket.emit('join_group', groupId);
+      fetchGroupData();
+    };
+
     socket.on('expenses_updated', handleExpensesUpdated);
+    socket.on('connect', handleConnect);
 
     return () => {
       socket.off('expenses_updated', handleExpensesUpdated);
+      socket.off('connect', handleConnect);
       socket.emit('leave_group', groupId);
     };
   }, [socket, groupId, isGlobal, fetchGroupData]);

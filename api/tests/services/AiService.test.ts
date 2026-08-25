@@ -47,7 +47,7 @@ describe('AiService (TDD)', () => {
     });
     
     // Forzamos a AiService a usar nuestra instancia rota
-    (AiService as any).ai = aiInstance;
+    vi.spyOn(AiService as any, 'ai', 'get').mockReturnValue(aiInstance);
 
     const fakeImageBuffer = Buffer.from('fake image content');
     

@@ -257,3 +257,10 @@ describe('GroupDetailPage - AddExpenseModal paidByInitial prop', () => {
     });
   });
 });
+
+describe('GroupDetailPage - Sockets', () => {
+  it('debe solicitar reconexión y fetch de datos cuando el socket emite connect', async () => {
+    // Aquí implementaremos el test TDD para la reconexión de sockets cuando
+    // limpiemos la suite de tests
+  });
+});
