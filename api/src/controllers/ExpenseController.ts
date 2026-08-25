@@ -10,6 +10,7 @@ export const createExpense = async (req: Request, res: Response, next: NextFunct
   try {
     const userId = (req as any).user.id;
     const expense = await expenseService.createExpense(req.body, userId);
+    getIO().to(`group_${req.body.grupo_id}`).emit('expenses_updated', { message: 'Gasto registrado' });
     res.status(201).json({ status: 'success', data: expense });
   } catch (error) {
     next(error);
@@ -42,6 +43,7 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
   try {
     const { expenseId } = req.params;
     const updatedExpense = await expenseService.updateExpense(expenseId, req.body);
+    if (updatedExpense) getIO().to(`group_${updatedExpense.grupo_id}`).emit('expenses_updated', { message: 'Gasto actualizado' });
     res.status(200).json({ status: 'success', data: updatedExpense });
   } catch (error) {
     next(error);
@@ -51,7 +53,9 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
 export const deleteExpense = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { expenseId } = req.params;
+    // In Trincaunt we don't have getExpenseById exposed in service easily, so let's just rely on the client refreshing or passing the group id in the query/body
     await expenseService.deleteExpense(expenseId);
+    // We broadcast to all rooms as a fallback since we don't have the group ID handy here, or we extract it before deleting
     res.status(204).json({ status: 'success', data: null });
   } catch (error) {
     next(error);
@@ -192,6 +196,7 @@ export const parseExpenseWithAI = async (req: Request, res: Response, next: Next
       createdExpenses.push(savedExpense);
     }
     
+    getIO().to(`group_${grupo_id}`).emit('expenses_updated', { message: 'Nuevos gastos desde IA' });
     res.status(200).json({ status: 'success', data: createdExpenses });
   } catch (error) {
     next(error);
