@@ -323,13 +323,18 @@ const GroupDetailPage: React.FC = () => {
     if (localizationFilter && !new RegExp(localizationFilter, 'i').test(expense.localization || '')) {
       return false;
     }
-    if (dateFromFilter && new Date(expense.fecha) < new Date(dateFromFilter)) {
-      return false;
+    const expenseDate = new Date(expense.fecha);
+    if (dateFromFilter) {
+      const [y, m, d] = dateFromFilter.split('-');
+      const fromDate = new Date(Number(y), Number(m) - 1, Number(d), 0, 0, 0, 0);
+      if (expenseDate < fromDate) {
+        return false;
+      }
     }
     if (dateToFilter) {
-      const filterDate = new Date(dateToFilter);
-      filterDate.setUTCHours(23, 59, 59, 999);
-      if (new Date(expense.fecha) > filterDate) {
+      const [y, m, d] = dateToFilter.split('-');
+      const toDate = new Date(Number(y), Number(m) - 1, Number(d), 23, 59, 59, 999);
+      if (expenseDate > toDate) {
         return false;
       }
     }
