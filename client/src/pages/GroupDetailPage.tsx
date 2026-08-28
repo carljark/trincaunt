@@ -934,14 +934,15 @@ const GroupDetailPage: React.FC = () => {
             <>
               <div className="expenses-header">
                 <h3>{formatCurrency(totalFilteredExpenses)}€</h3>
-                <button
+                <span
                   onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
                   className="sort-button"
+                  role="button"
                   aria-label={sortOrder === 'desc' ? 'Ordenar de más antiguos a más recientes' : 'Ordenar de más recientes a más antiguos'}
                   title={sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'}
                 >
                   {sortOrder === 'desc' ? '↓' : '↑'}
-                </button>
+                </span>
               </div>
               
               {(() => {
