@@ -869,7 +869,7 @@ const GroupDetailPage: React.FC = () => {
                 <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('month'); }} className={`preset-btn ${dateFilterPreset === 'month' ? 'active' : ''}`}>M</button>
                 <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('year'); }} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
               </div>
-              <div className="filtered"><p>Filtrados: </p><p>{formatCurrency(totalFilteredExpenses)}€</p></div>
+
             </div>
             {showFilters && (
               <>
@@ -933,9 +933,14 @@ const GroupDetailPage: React.FC = () => {
           {activeTab === 'expenses' && (
             <>
               <div className="expenses-header">
-                <h3>Gastos del Grupo</h3>
-                <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="sort-button">
-                  Ordenar ({sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'})
+                <h3>{formatCurrency(totalFilteredExpenses)}€</h3>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                  className="sort-button"
+                  aria-label={sortOrder === 'desc' ? 'Ordenar de más antiguos a más recientes' : 'Ordenar de más recientes a más antiguos'}
+                  title={sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'}
+                >
+                  {sortOrder === 'desc' ? '↓' : '↑'}
                 </button>
               </div>
               
