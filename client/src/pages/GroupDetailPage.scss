@@ -159,19 +159,44 @@
 
   .expenses-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
+    gap: map.get($spacing-scale, 2);
     margin-bottom: map.get($spacing-scale, 3);
-    
+
+    h3 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: map.get($font-weights, medium);
+      color: $color-primary;
+    }
+
+    .sort-button {
+      font-size: 1.5rem;
+      line-height: 1;
+      padding: 0 map.get($spacing-scale, 1);
+      min-width: auto;
+    }
+
     .expenses-title {
       h3 {
         margin: 0;
       }
     }
-    
+
     .filtered-total {
       font-weight: map.get($font-weights, medium);
       color: $color-primary;
+    }
+  }
+
+  .expense-date-group {
+    .expense-date-header {
+      text-align: center;
+      font-size: 1.25rem;
+      font-weight: map.get($font-weights, medium);
+      margin: map.get($spacing-scale, 3) 0 map.get($spacing-scale, 2);
+      color: $color-gray-700;
     }
   }
 
