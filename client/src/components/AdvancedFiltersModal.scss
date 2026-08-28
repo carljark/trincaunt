@@ -1,0 +1,110 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+@use 'components/buttons';
+@use 'components/forms';
+@use 'components/cards';
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: $color-overlay;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: $z-index-modal-backdrop;
+
+  .modal-content {
+    background-color: white;
+    padding: map.get($spacing-scale, 4);
+    @include component-border-radius();
+    @include component-shadow(lg);
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+
+    h3 {
+      margin-top: 0;
+      color: $color-primary;
+      margin-bottom: map.get($spacing-scale, 3);
+      text-align: center;
+    }
+
+    .filter-fields {
+      display: flex;
+      flex-direction: column;
+      gap: map.get($spacing-scale, 3);
+      margin-bottom: map.get($spacing-scale, 3);
+    }
+
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: map.get($spacing-scale, 1);
+
+      > span {
+        font-size: 0.875rem;
+        font-weight: map.get($font-weights, medium);
+        color: $color-gray-700;
+      }
+
+      input[type="text"],
+      input[type="date"],
+      select {
+        @extend .form-control;
+        margin: 0;
+      }
+
+      > button {
+        @extend .btn;
+        @extend .btn-outline-primary;
+        text-align: left;
+        border-width: 1px;
+      }
+    }
+
+    .date-filter-container {
+      display: flex;
+      align-items: center;
+      gap: map.get($spacing-scale, 1);
+
+      .clear-date-btn {
+        @extend .btn;
+        @extend .btn-sm;
+        padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
+        min-width: auto;
+        background-color: $color-gray-200;
+        color: $color-gray-700;
+        border: none;
+
+        &:hover {
+          background-color: $color-gray-300;
+        }
+      }
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: map.get($spacing-scale, 2);
+      flex-wrap: wrap;
+
+      button {
+        @extend .btn;
+      }
+
+      .clear-all-btn {
+        @extend .btn-secondary;
+        margin-right: auto;
+      }
+
+      .save-filters-btn {
+        @extend .btn-primary;
+      }
+    }
+  }
+}

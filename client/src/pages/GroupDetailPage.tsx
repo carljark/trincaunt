@@ -8,6 +8,7 @@ import AddExpenseModal from '../components/AddExpenseModal';
 import CategoryModal from '../components/CategoryModal';
 import BulkEditForm from '../components/BulkEditForm';
 import ConfirmationModal from '../components/ConfirmationModal';
+import AdvancedFiltersModal from '../components/AdvancedFiltersModal';
 import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
 import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes component
 import UserMenu from '../components/UserMenu';
@@ -40,6 +41,7 @@ import '../components/AddExpenseModal.scss';
 import '../components/CategoryModal.scss';
 import '../components/BulkEditForm.scss';
 import '../components/ConfirmationModal.scss';
+import '../components/AdvancedFiltersModal.scss';
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -79,7 +81,6 @@ const GroupDetailPage: React.FC = () => {
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
   const [payerFilter, setPayerFilter] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [categoryAliases, setCategoryAliases] = useState<{ [alias: string]: string[] }>({});
   const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
@@ -89,9 +90,11 @@ const GroupDetailPage: React.FC = () => {
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [dateFilterPreset, setDateFilterPreset] = useState<string | null>(null);
   const [localizationFilter, setLocalizationFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
   // New states for group name editing
   const [editableGroupName, setEditableGroupName] = useState<string>('');
   const [isEditingGroupName, setIsEditingGroupName] = useState<boolean>(false);
+  const [showAdvancedFiltersModal, setShowAdvancedFiltersModal] = useState(false);
   
   const tabRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -303,6 +306,14 @@ const GroupDetailPage: React.FC = () => {
 
   // CORREGIDO: La condición de filtrado ahora está dentro de la función filter
   const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
+    // Búsqueda global por descripción y/o categoría
+    if (searchFilter) {
+      const searchRegex = new RegExp(searchFilter, 'i');
+      const matchesDescription = searchRegex.test(expense.descripcion);
+      const matchesCategory = expense.categoria?.some(cat => searchRegex.test(cat)) ?? false;
+      if (!matchesDescription && !matchesCategory) return false;
+    }
+
     // Filtrar por categoría
     if (categoryFilter.length > 0) {
       const matchesCategory = expense.categoria?.some((cat: string) => {
@@ -381,6 +392,7 @@ const GroupDetailPage: React.FC = () => {
     setPayerFilter('all');
     setDateFilterPreset(null);
     setLocalizationFilter('');
+    setSearchFilter('');
   };
 
   const handleBulkUpdate = (updateData: any) => {
@@ -860,62 +872,29 @@ const GroupDetailPage: React.FC = () => {
             </div>
           )}
 
-          <div className="filters-accordion">
-            <div className="filter-title-with-presets" onClick={() => setShowFilters(!showFilters)}>
-              <h3 className="filter-title">Filtros {showFilters ? '▲' : '▼'}</h3>
-              <div className="date-presets">
-                <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('day'); }} className={`preset-btn ${dateFilterPreset === 'day' ? 'active' : ''}`}>D</button>
-                <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('week'); }} className={`preset-btn ${dateFilterPreset === 'week' ? 'active' : ''}`}>S</button>
-                <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('month'); }} className={`preset-btn ${dateFilterPreset === 'month' ? 'active' : ''}`}>M</button>
-                <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('year'); }} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
-              </div>
-
+          <div className="filters-row">
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Buscar por nombre o categoría..."
+              value={searchFilter}
+              onChange={e => setSearchFilter(e.target.value)}
+            />
+            <div className="date-presets">
+              <button onClick={() => handleDatePresetClick('day')} className={`preset-btn ${dateFilterPreset === 'day' ? 'active' : ''}`}>D</button>
+              <button onClick={() => handleDatePresetClick('week')} className={`preset-btn ${dateFilterPreset === 'week' ? 'active' : ''}`}>S</button>
+              <button onClick={() => handleDatePresetClick('month')} className={`preset-btn ${dateFilterPreset === 'month' ? 'active' : ''}`}>M</button>
+              <button onClick={() => handleDatePresetClick('year')} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
             </div>
-            {showFilters && (
-              <>
-                <div className="filters">
-                  <label>
-                    Categoría:
-                    <button onClick={() => setShowCategoryModal(true)}>Categorías</button>
-                  </label>
-                  <label>
-                    Descripción:
-                    <input type="text" placeholder="Filtrar..." value={descriptionFilter} onChange={e => setDescriptionFilter(e.target.value)} />
-                  </label>
-                  <label>
-                    Lugar:
-                    <input type="text" placeholder="Filtrar por lugar..." value={localizationFilter} onChange={e => setLocalizationFilter(e.target.value)} />
-                  </label>
-                  {!isGlobal && (
-                    <label>
-                      Pagado por:
-                      <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)}>
-                          <option value="all">Todos</option>
-                          {group?.miembros.map((member) => (
-                              <option key={member._id} value={member._id}>{member.nombre}</option>
-                          ))}
-                      </select>
-                    </label>
-                  )}
-                  <label>
-                    Desde:
-                    <div className="date-filter-container">
-                      <input type="date" value={dateFromFilter} disabled={!!dateFilterPreset} onChange={e => { setDateFromFilter(e.target.value); setDateFilterPreset(null); }} />
-                      <button onClick={() => { setDateFromFilter(''); setDateFilterPreset(null); }} className="clear-date-btn">X</button>
-                    </div>
-                  </label>
-                  <label>
-                    Hasta:
-                    <div className="date-filter-container">
-                      <input type="date" value={dateToFilter} disabled={!!dateFilterPreset} onChange={e => { setDateToFilter(e.target.value); setDateFilterPreset(null); }} />
-                      <button onClick={() => { setDateToFilter(''); setDateFilterPreset(null); }} className="clear-date-btn">X</button>
-                    </div>
-                  </label>
-                  <button onClick={clearAllFilters} className="clear-all-btn">Limpiar filtros</button>
-                  <button onClick={saveFilters} className="save-filters-btn">Guardar filtros</button>
-                </div>
-              </>
-            )}
+            <span
+              onClick={() => setShowAdvancedFiltersModal(true)}
+              className="advanced-filters-icon"
+              role="button"
+              aria-label="Abrir filtros avanzados"
+              title="Filtros avanzados"
+            >
+              🔍+
+            </span>
           </div>
 
           {activeTab === 'edit' && !isGlobal && (
@@ -1124,6 +1103,26 @@ const GroupDetailPage: React.FC = () => {
           selectedCategories={categoryFilter}
           onChange={setCategoryFilter}
           onClose={() => setShowCategoryModal(false)}
+        />
+      )}
+
+      {showAdvancedFiltersModal && (
+        <AdvancedFiltersModal
+          categoryFilter={categoryFilter}
+          localizationFilter={localizationFilter}
+          payerFilter={payerFilter}
+          dateFromFilter={dateFromFilter}
+          dateToFilter={dateToFilter}
+          isGlobal={isGlobal}
+          members={group?.miembros || []}
+          onLocalizationChange={setLocalizationFilter}
+          onPayerChange={setPayerFilter}
+          onDateFromChange={(val) => { setDateFromFilter(val); setDateFilterPreset(null); }}
+          onDateToChange={(val) => { setDateToFilter(val); setDateFilterPreset(null); }}
+          onClearAll={clearAllFilters}
+          onSave={() => setShowAdvancedFiltersModal(false)}
+          onClose={() => setShowAdvancedFiltersModal(false)}
+          onOpenCategoryModal={() => { setShowAdvancedFiltersModal(false); setShowCategoryModal(true); }}
         />
       )}
 

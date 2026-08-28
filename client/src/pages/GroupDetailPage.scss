@@ -107,17 +107,17 @@
     margin-bottom: map.get($spacing-scale, 4);
   }
 
-  .filter-title-with-presets {
+  .filters-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: map.get($spacing-scale, 2);
-    margin-bottom: map.get($spacing-scale, 2);
+    margin-bottom: map.get($spacing-scale, 3);
     padding: 0 map.get($spacing-scale, 3);
 
-    .filter-title {
-      font-weight: map.get($font-weights, medium);
-      margin: 0;
+    .search-input {
+      flex: 1;
+      min-width: 0;
+      @extend .form-control;
     }
 
     .date-presets {
@@ -135,25 +135,18 @@
         }
       }
     }
-  }
 
-  .filters-row {
-    display: flex;
-    align-items: center;
-    gap: map.get($spacing-scale, 2);
-    margin-bottom: map.get($spacing-scale, 4);
-    padding: 0 map.get($spacing-scale, 3);
+    .advanced-filters-icon {
+      font-size: 1.5rem;
+      line-height: 1;
+      padding: 0 map.get($spacing-scale, 1);
+      cursor: pointer;
+      color: $color-gray-600;
+      user-select: none;
 
-    .search-input {
-      flex: 1;
-      @extend .form-control;
-    }
-
-    .advanced-filters-btn {
-      @extend .btn;
-      @extend .btn-outline-primary;
-      padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
-      border-width: 1px;
+      &:hover {
+        color: $color-primary;
+      }
     }
   }
 
