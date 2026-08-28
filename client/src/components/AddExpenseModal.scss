@@ -1,183 +1,555 @@
 @use 'sass:map';
+@use 'sass:color';
 @use 'abstracts/variables' as *;
 @use 'abstracts/mixins' as *;
-@use 'components/buttons';
-@use 'components/forms';
 
+// ============================================
+// MODAL DE GASTOS - DISEÑO PASTEL PROFESIONAL
+// ============================================
+
+// Paleta de colores pastel
+$pastel-blue-light: #e3f2fd;
+$pastel-blue: #bbdefb;
+$pastel-blue-dark: #90caf9;
+$pastel-teal-light: #e0f2f1;
+$pastel-teal: #b2dfdb;
+$pastel-green-light: #e8f5e9;
+$pastel-green: #c8e6c9;
+$pastel-gray-light: #fafafa;
+$pastel-gray: #f5f5f5;
+
+// Overlay del modal
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba($color-gray-900, 0.5);
+  background: linear-gradient(135deg, rgba($pastel-blue-dark, 0.4) 0%, rgba($pastel-teal-light, 0.4) 100%);
+  backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: $z-index-modal-backdrop;
   padding: map.get($spacing-scale, 3);
+  animation: fadeIn 0.2s ease-out;
 
   @include respond-below(md) {
     align-items: flex-start;
-    padding-top: calc(env(safe-area-inset-top, 20px) + #{map.get($spacing-scale, 3)});
+    padding-top: calc(env(safe-area-inset-top, 20px) + #{map.get($spacing-scale, 4)});
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// Contenido del modal
 .modal-content {
-  background-color: white;
-  padding: map.get($spacing-scale, 4);
-  border-radius: $border-radius-lg;
-  box-shadow: $box-shadow-lg;
+  background: linear-gradient(180deg, white 0%, $pastel-gray-light 100%);
   width: 100%;
-  max-width: 500px;
-  max-height: 80vh;
+  max-width: 520px;
+  max-height: 90vh;
   overflow-y: auto;
+  border-radius: $border-radius-lg;
+  box-shadow: 
+    0 25px 50px -12px rgba($color-gray-900, 0.15),
+    0 0 0 1px rgba($pastel-blue, 0.3);
+  animation: slideUp 0.3s ease-out;
 
-  h3 {
-    color: $color-primary;
-    margin-bottom: map.get($spacing-scale, 3);
-    text-align: center;
-  }
-
-  .error-message {
-    color: $color-danger;
-    text-align: center;
-    margin-bottom: map.get($spacing-scale, 2);
-  }
-
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: map.get($spacing-scale, 3);
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: map.get($spacing-scale, 1);
-
-      label {
-        font-weight: map.get($font-weights, medium);
-        color: $color-gray-700;
-      }
-
-      input, select {
-        @extend .form-control;
-      }
-
-      input[type="date"] {
-        height: 2.5rem;
-      }
-    }
-
-    .checkbox-container {
-      display: flex;
-      align-items: center;
-      gap: map.get($spacing-scale, 2);
-
-      label {
-        display: flex;
-        align-items: center;
-        gap: map.get($spacing-scale, 2);
-        font-weight: map.get($font-weights, regular);
-      }
-    }
-
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: map.get($spacing-scale, 2);
-      margin-top: map.get($spacing-scale, 3);
-
-      button {
-        @extend .btn;
-
-        &[type="submit"] {
-          @extend .btn-primary;
-        }
-
-        &[type="button"] {
-          @extend .btn-secondary;
-        }
-
-        &:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-      }
-    }
+  // Header decorativo
+  &::before {
+    content: '';
+    display: block;
+    height: 6px;
+    background: linear-gradient(90deg, $pastel-blue-dark 0%, $pastel-teal 50%, $pastel-green 100%);
+    border-radius: $border-radius-lg $border-radius-lg 0 0;
   }
 
   @include respond-below(md) {
-    width: 95%;
-    max-height: calc(100vh - env(safe-area-inset-top, 20px) - env(safe-area-inset-bottom, 20px) - #{map.get($spacing-scale, 3)});
-    padding: map.get($spacing-scale, 3);
+    max-height: calc(100vh - env(safe-area-inset-top, 20px) - env(safe-area-inset-bottom, 20px) - #{map.get($spacing-scale, 4)});
+  }
+}
 
-    form {
-      .modal-actions {
-        position: sticky;
-        bottom: 0;
-        background: white;
-        padding-top: map.get($spacing-scale, 2);
-        padding-bottom: map.get($spacing-scale, 2);
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Header del modal
+.modal-header {
+  padding: map.get($spacing-scale, 4) map.get($spacing-scale, 4) map.get($spacing-scale, 2);
+  text-align: center;
+  border-bottom: 1px solid $pastel-gray;
+
+  h3 {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, $color-primary 0%, $color-info 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: map.get($spacing-scale, 2);
+
+    &::before {
+      content: '💰';
+      -webkit-text-fill-color: initial;
+    }
+  }
+}
+
+// Cuerpo del formulario
+.modal-body {
+  padding: map.get($spacing-scale, 4);
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 3);
+
+  // Mensaje de error
+  .error-message {
+    background: linear-gradient(135deg, rgba($color-danger, 0.1) 0%, rgba($color-danger, 0.05) 100%);
+    border: 1px solid rgba($color-danger, 0.2);
+    color: color.adjust($color-danger, $lightness: -15%);
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    border-radius: $border-radius;
+    font-size: 0.875rem;
+    text-align: center;
+    margin: 0;
+  }
+
+  // Grupos de formulario
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+
+    label {
+      font-weight: 500;
+      color: $color-gray-700;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: map.get($spacing-scale, 1);
+
+      &::before {
+        content: '';
+        width: 4px;
+        height: 4px;
+        background-color: $pastel-blue-dark;
+        border-radius: 50%;
+      }
+    }
+
+    input, select {
+      
+      background-color: white;
+      border: 1.5px solid $pastel-blue;
+      border-radius: $border-radius;
+      padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+      transition: all 0.2s ease;
+
+      &:focus {
+        border-color: $pastel-blue-dark;
+        box-shadow: 0 0 0 3px rgba($pastel-blue-dark, 0.2);
+        background-color: white;
+      }
+
+      &::placeholder {
+        color: $color-gray-400;
+      }
+    }
+
+    input[type="date"] {
+      height: 2.75rem;
+      cursor: pointer;
+    }
+
+    input[type="number"] {
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+  }
+
+  // Campo de descripción con icono
+  .description-input {
+    position: relative;
+
+    input {
+      padding-left: map.get($spacing-scale, 4);
+    }
+
+    &::before {
+      content: '📝';
+      position: absolute;
+      left: map.get($spacing-scale, 3);
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.9rem;
+      pointer-events: none;
+    }
+  }
+
+  // Campo de monto
+  .amount-input {
+    position: relative;
+
+    input {
+      padding-left: map.get($spacing-scale, 5);
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: color.adjust($color-primary, $lightness: -5%);
+    }
+
+    &::before {
+      content: '€';
+      position: absolute;
+      left: map.get($spacing-scale, 3);
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+      font-weight: 600;
+      color: $color-gray-500;
+      pointer-events: none;
+    }
+  }
+
+  // Contenedor de categoría
+  .category-container {
+    position: relative;
+
+    .suggestions-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1.5px solid $pastel-blue;
+      border-radius: $border-radius;
+      list-style: none;
+      padding: map.get($spacing-scale, 1) 0;
+      margin-top: map.get($spacing-scale, 1);
+      max-height: 160px;
+      overflow-y: auto;
+      z-index: $z-index-dropdown;
+      box-shadow: 0 10px 40px rgba($color-gray-900, 0.1);
+      animation: fadeIn 0.15s ease;
+
+      li {
+        padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        font-size: 0.9rem;
+
+        &:hover {
+          background-color: $pastel-blue-light;
+        }
+
+        &.add-new {
+          color: $color-primary;
+          font-weight: 500;
+          border-top: 1px dashed $pastel-blue;
+
+          &:hover {
+            background-color: $pastel-teal-light;
+          }
+        }
+      }
+    }
+
+    // Categorías seleccionadas
+    .selected-categories {
+      display: flex;
+      flex-wrap: wrap;
+      gap: map.get($spacing-scale, 2);
+      margin-top: map.get($spacing-scale, 2);
+    }
+
+    .selected-category {
+      display: inline-flex;
+      align-items: center;
+      gap: map.get($spacing-scale, 1);
+      padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
+      border-radius: $border-radius-pill;
+      font-size: 0.8rem;
+      font-weight: 500;
+      animation: popIn 0.2s ease;
+
+      // Colores pastel rotativos para categorías
+      &:nth-child(4n+1) {
+        background-color: $pastel-blue-light;
+        color: color.adjust($color-primary, $lightness: -10%);
+        border: 1px solid $pastel-blue;
+      }
+      &:nth-child(4n+2) {
+        background-color: $pastel-teal-light;
+        color: color.adjust(#26a69a, $lightness: -15%);
+        border: 1px solid $pastel-teal;
+      }
+      &:nth-child(4n+3) {
+        background-color: $pastel-green-light;
+        color: color.adjust($color-success-dark, $lightness: -15%);
+        border: 1px solid $pastel-green;
+      }
+      &:nth-child(4n+4) {
+        background-color: rgba($color-secondary, 0.1);
+        color: color.adjust($color-secondary, $lightness: -10%);
+        border: 1px solid rgba($color-secondary, 0.2);
+      }
+
+      button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        font-size: 0.75rem;
+        opacity: 0.6;
+        transition: opacity 0.15s ease;
+        line-height: 1;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+  }
+
+  // Contenedor de localización
+  .localization-container {
+    position: relative;
+
+    .suggestions-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1.5px solid $pastel-blue;
+      border-radius: $border-radius;
+      list-style: none;
+      padding: map.get($spacing-scale, 1) 0;
+      margin-top: map.get($spacing-scale, 1);
+      max-height: 140px;
+      overflow-y: auto;
+      z-index: $z-index-dropdown;
+      box-shadow: 0 10px 40px rgba($color-gray-900, 0.1);
+
+      li {
+        padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        font-size: 0.9rem;
+
+        &:hover {
+          background-color: $pastel-blue-light;
+        }
+      }
+    }
+  }
+
+  // Checkbox container
+  .checkbox-container {
+    background: linear-gradient(135deg, $pastel-teal-light 0%, $pastel-blue-light 100%);
+    padding: map.get($spacing-scale, 3);
+    border-radius: $border-radius;
+    border: 1px solid $pastel-teal;
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: map.get($spacing-scale, 2);
+      cursor: pointer;
+      font-weight: 500;
+      color: $color-gray-700;
+      margin: 0;
+
+      &::before {
+        display: none;
+      }
+
+      input[type="checkbox"] {
+        width: 1.1rem;
+        height: 1.1rem;
+        border-radius: 4px;
+        accent-color: $color-primary;
+        cursor: pointer;
+      }
+    }
+  }
+
+  // Select de participantes
+  .participants-select {
+    label {
+      display: block;
+      margin-bottom: map.get($spacing-scale, 2);
+      font-weight: 500;
+      color: $color-gray-700;
+
+      &::before {
+        content: '';
+        width: 4px;
+        height: 4px;
+        background-color: $pastel-teal;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: map.get($spacing-scale, 1);
+      }
+    }
+
+    select {
+      width: 100%;
+      min-height: 100px;
+      padding: map.get($spacing-scale, 2);
+      border: 1.5px solid $pastel-blue;
+      border-radius: $border-radius;
+      background-color: white;
+      font-size: 0.9rem;
+
+      &:focus {
+        border-color: $pastel-blue-dark;
+        box-shadow: 0 0 0 3px rgba($pastel-blue-dark, 0.2);
+      }
+
+      option {
+        padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
+
+        &:checked {
+          background-color: $pastel-blue-light;
+          font-weight: 500;
+        }
+      }
+
+      &:disabled {
+        background-color: $pastel-gray;
+        cursor: not-allowed;
       }
     }
   }
 }
 
-.category-container, .localization-container {
-  position: relative;
+@keyframes popIn {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
 
-  .suggestions-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background-color: white;
-    border: 1px solid $color-gray-300;
+// Footer con acciones
+.modal-footer {
+  padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
+  display: flex;
+  justify-content: flex-end;
+  gap: map.get($spacing-scale, 2);
+  background: linear-gradient(180deg, $pastel-gray-light 0%, $pastel-gray 100%);
+  border-top: 1px solid rgba($pastel-blue, 0.3);
+  border-radius: 0 0 $border-radius-lg $border-radius-lg;
+  position: sticky;
+  bottom: 0;
+
+  button {
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 4);
     border-radius: $border-radius;
-    list-style-type: none;
-    padding: 0;
-    margin-top: map.get($spacing-scale, 1);
-    max-height: 150px;
-    overflow-y: auto;
-    z-index: $z-index-dropdown;
-    box-shadow: $box-shadow;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
 
-    li {
-      padding: map.get($spacing-scale, 2);
-      cursor: pointer;
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
 
-      &:hover {
-        background-color: $color-gray-100;
+    &.btn-submit {
+      background: linear-gradient(135deg, $color-primary 0%, color.adjust($color-primary, $lightness: -5%) 100%);
+      color: white;
+      border: none;
+      box-shadow: 0 2px 8px rgba($color-primary, 0.3);
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, color.adjust($color-primary, $lightness: -3%) 0%, color.adjust($color-primary, $lightness: -8%) 100%);
+        box-shadow: 0 4px 12px rgba($color-primary, 0.4);
+        transform: translateY(-1px);
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(0);
+      }
+    }
+
+    &.btn-cancel {
+      background: white;
+      color: $color-gray-600;
+      border: 1.5px solid $pastel-gray;
+
+      &:hover:not(:disabled) {
+        background: $pastel-gray-light;
+        border-color: $color-gray-400;
+        color: $color-gray-700;
       }
     }
   }
+}
 
-  .selected-categories {
-    display: flex;
-    flex-wrap: wrap;
-    gap: map.get($spacing-scale, 2);
-    margin-top: map.get($spacing-scale, 2);
+// Responsive adjustments
+@include respond-below(md) {
+  .modal-content {
+    border-radius: $border-radius-lg $border-radius-lg 0 0;
+    margin-top: auto;
+
+    &::before {
+      border-radius: $border-radius-lg $border-radius-lg 0 0;
+    }
   }
 
-  .selected-category {
-    display: flex;
-    align-items: center;
-    background-color: $color-primary;
-    color: white;
-    padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
-    border-radius: $border-radius-sm;
-    font-size: 0.875rem;
-
+  .modal-footer {
+    border-radius: 0;
+    
     button {
-      background: none;
-      border: none;
-      color: white;
-      margin-left: map.get($spacing-scale, 1);
-      cursor: pointer;
-      font-size: 0.875rem;
-      padding: 0;
-      line-height: 1;
+      flex: 1;
+    }
+  }
+}
+
+// Scrollbar personalizado
+.modal-content {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $pastel-gray-light;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $pastel-blue;
+    border-radius: 3px;
+
+    &:hover {
+      background: $pastel-blue-dark;
     }
   }
 }
