@@ -1,0 +1,124 @@
+// Botones base
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+  border-radius: $border-radius;
+  font-weight: map-get($font-weights, medium);
+  transition: $transition-base;
+  cursor: pointer;
+  border: none;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  user-select: none;
+  line-height: 1.5;
+
+  &:focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba($color-primary, 0.25);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
+// Tamaños
+.btn-sm {
+  padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+  font-size: 0.875rem;
+}
+
+.btn-lg {
+  padding: map-get($spacing-scale, 3) map-get($spacing-scale, 4);
+  font-size: 1.25rem;
+}
+
+// Variantes de color
+.btn-primary {
+  @include button-variant($color-primary, white, $color-primary-dark);
+}
+
+.btn-secondary {
+  @include button-variant($color-secondary, white, $color-secondary-dark);
+}
+
+.btn-success {
+  @include button-variant($color-success, white, $color-success-dark);
+}
+
+.btn-danger {
+  @include button-variant($color-danger, white, $color-danger-dark);
+}
+
+.btn-warning {
+  @include button-variant($color-warning, white, $color-warning-dark);
+}
+
+.btn-info {
+  @include button-variant($color-info, white, $color-info-dark);
+}
+
+.btn-light {
+  @include button-variant($color-gray-200, $color-gray-900, $color-gray-300);
+}
+
+.btn-dark {
+  @include button-variant($color-gray-800, white, $color-gray-900);
+}
+
+.btn-link {
+  font-weight: map-get($font-weights, regular);
+  color: $color-primary;
+  text-decoration: underline;
+  background-color: transparent;
+
+  &:hover {
+    color: $color-primary-dark;
+    text-decoration: none;
+    background-color: transparent;
+    border-color: transparent;
+  }
+
+  &:focus {
+    box-shadow: none;
+  }
+}
+
+// Botones outline
+.btn-outline-primary {
+  color: $color-primary;
+  border: 1px solid $color-primary;
+  background-color: transparent;
+
+  &:hover {
+    color: white;
+    background-color: $color-primary;
+    border-color: $color-primary;
+  }
+}
+
+// Grupo de botones
+.btn-group {
+  display: inline-flex;
+  vertical-align: middle;
+
+  .btn {
+    position: relative;
+    flex: 1 1 auto;
+
+    &:not(:first-child) {
+      margin-left: -1px;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+
+    &:not(:last-child) {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+}

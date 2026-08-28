@@ -1,70 +1,35 @@
-@use 'sass:color';
-@use '../styles/variables' as *;
-@use "../components/ExpenseGraph.scss" as *;
-
-.positive-balance {
-  color: green;
-}
-
-.negative-balance {
-  color: red;
-}
-
-.error-message {
-  color: $danger-color;
-  text-align: center;
-  margin: 1rem 0;
-  font-weight: bold;
-}
+@use '../styles/abstracts/variables' as *;
+@use '../styles/abstracts/mixins' as *;
+@use '../components/ExpenseGraph.scss';
 
 .group-detail-page {
-  padding: 0; // Remove general padding
-  font-family: $font-family;
-  position: relative; // Needed for absolute positioning of back-button
+  padding: 0;
+  position: relative;
 
   .header-actions {
     display: flex;
-    justify-content: flex-start; // Align back button to the left
+    justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    padding: map-get($spacing-scale, 3);
     width: 100%;
-  }
-  
-  // Apply padding to elements that need it
-  h2, .tab-navigation, .expenses-tab-content, .balances-tab-content, .group-tab-content {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-  
-  .back-button { // Apply button styles here
-    background-color: $secondary-color;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: $font-size-base;
-    &:hover {
-      background-color: color.scale($secondary-color, $lightness: -10%);
+
+    .back-button {
+      @extend .btn;
+      @extend .btn-secondary;
     }
   }
 
-  .back-button {
-    // position: absolute; // Remove absolute positioning to be managed by flexbox
-    // top: 1rem;
-    // left: 1rem;
-  }
-
-  .graph-tab-content {
-    width: 100%;
+  h2, .tab-navigation, .expenses-tab-content, 
+  .balances-tab-content, .group-tab-content {
+    padding: 0 map-get($spacing-scale, 3);
   }
 
   .tab-navigation-wrapper {
     position: relative;
     display: flex;
     align-items: center;
-    margin-bottom: 1.5rem;
-    border-bottom: solid 2px $medium-color;
+    margin-bottom: map-get($spacing-scale, 4);
+    border-bottom: 2px solid $color-gray-300;
 
     .scroll-arrow {
       position: absolute;
@@ -77,20 +42,19 @@
       align-items: center;
       justify-content: flex-start;
       cursor: pointer;
-      color: $primary-color;
-      font-weight: bold;
+      color: $color-primary;
+      font-weight: map-get($font-weights, bold);
       z-index: 2;
 
       &.left {
         left: 0;
-        padding-left: 0.5rem;
-        background: linear-gradient(90deg, rgba(255,255,255,1) 40%, rgba(255,255,255,0));
+        padding-left: map-get($spacing-scale, 2);
       }
 
       &.right {
         right: 0;
         justify-content: flex-end;
-        padding-right: 0.5rem;
+        padding-right: map-get($spacing-scale, 2);
         background: linear-gradient(270deg, rgba(255,255,255,1) 40%, rgba(255,255,255,0));
       }
     }
@@ -99,619 +63,150 @@
   .tab-navigation {
     display: flex;
     justify-content: flex-start;
-    padding-bottom: 0.5rem;
+    padding-bottom: map-get($spacing-scale, 2);
     overflow-x: auto;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    gap: 0.5rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    gap: map-get($spacing-scale, 2);
+    padding: 0 map-get($spacing-scale, 3);
 
     &::-webkit-scrollbar {
       display: none;
     }
     scrollbar-width: none;
 
-    button.active {
-      background-color: $primary-color;
-      color: white;
-    }
     button {
+      @extend .btn;
       flex-shrink: 0;
-      padding: 0.7rem 1.2rem;
-      font-size: 1.1rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
       white-space: nowrap;
-    }
-  }
 
-  h2, h3, h4 {
-    color: $dark-color;
+      &.active {
+        @extend .btn-primary;
+      }
+    }
   }
 
   h2 {
     text-align: center;
-    margin-bottom: 1.5rem;
-  }
-
-  ul {
-    list-style: none;
-    padding: 0;
-  }
-
-  hr {
-    border: 0;
-    border-top: 1px solid $light-color;
-    margin: 1.5rem 0;
+    margin-bottom: map-get($spacing-scale, 4);
   }
 
   .expenses-summary {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid $light-color;
-
-    p {
-      margin: 0; /* Remove default paragraph margin */
-    }
+    margin-bottom: map-get($spacing-scale, 4);
+    padding: map-get($spacing-scale, 2) 0;
+    border-bottom: 1px solid $color-gray-200;
   }
 
-  .balances-tab-content {
-    .payment-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-  }
+  .expenses-list {
+    margin-bottom: map-get($spacing-scale, 4);
 
-  .group-name-display {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-
-    .current-group-name {
-      font-weight: bold;
-      font-size: 1.1rem;
-    }
-
-    .edit-button {
-      background-color: $secondary-color;
-      color: white;
-      border: none;
-      padding: 0.4rem 0.8rem;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.9rem;
-
-      &:hover {
-        background-color: color.scale($secondary-color, $lightness: -10%);
-      }
-    }
-  }
-
-  .edit-group-name-form {
-    .form-buttons {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-
-      button {
-        flex: 1;
-        padding: 0.5rem;
-        font-size: 0.9rem;
-      }
-
-      .save-button {
-        background-color: $primary-color;
-      }
-
-      .cancel-button {
-        background-color: $secondary-color;
-      }
-    }
-  }
-
-  .balance-list, .members-list, .expenses-list {
-    margin-bottom: 1.5rem;
     .expense-item {
       width: 100%;
       display: flex;
-      flex-wrap: nowrap; // Keep everything on the same line
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.5rem;
-      padding: 0.5rem;
-      border-bottom: 1px solid $light-color;
-      gap: 0.5rem;
-      
+      margin-bottom: map-get($spacing-scale, 2);
+      padding: map-get($spacing-scale, 2);
+      border-bottom: 1px solid $color-gray-200;
+      gap: map-get($spacing-scale, 2);
+
       .expense-info {
         display: flex;
         flex-direction: column;
-        flex: 1 1 auto; // Take available space, shrink if needed
-        min-width: 0; // Necessary for text-overflow to work on children
-        
+        flex: 1;
+        min-width: 0;
+
         .expense-details-row {
           display: flex;
           justify-content: space-between;
-          align-items: baseline; // Align text and dots to baseline
+          align-items: baseline;
           width: 100%;
           gap: 0;
           min-width: 0;
-          
+
           .expense-description {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            flex: 0 1 auto;
-            min-width: 0;
-            color: $dark-color;
+            @include truncate;
+            color: $color-gray-800;
           }
-          
+
           .expense-dots {
-            flex: 1 1 auto;
+            flex: 1;
             min-width: 10px;
-            border-bottom: 2px dotted $medium-color;
-            margin: 0 0.25rem;
+            border-bottom: 2px dotted $color-gray-400;
+            margin: 0 map-get($spacing-scale, 1);
             opacity: 0.7;
           }
-          
+
           .expense-amount {
             white-space: nowrap;
-            flex: 0 0 auto;
           }
         }
 
         .expense-date {
-          font-size: 0.8em;
-          color: #666;
+          font-size: 0.875rem;
+          color: $color-gray-600;
         }
       }
-    }
-    li {
-      padding: 0.5rem;
-      border-bottom: 1px solid $light-color;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-  }
 
-  .form-section {
-    background-color: #fff;
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-
-      input[type="text"],
-      input[type="number"],
-      input[type="email"],
-      select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: $font-size-base;
-      }
-
-      button {
-        padding: 0.75rem;
-        border: none;
-        border-radius: 4px;
-        background-color: $primary-color;
-        color: white;
-        font-size: $font-size-base;
-        cursor: pointer;
-        transition: background-color 0.3s;
-
-        &:hover {
-          background-color: color.scale($primary-color, $lightness: -10%);
-        }
-      }
-      
-      .checkbox-container {
+      .expense-actions {
         display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-    }
-  }
-  
-  .expense-date-group {
-    margin-bottom: 2rem;
-    
-    .expense-date-header {
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 2px solid $primary-color;
-      color: $primary-color;
-      font-size: 1.1rem;
-    }
-  }
+        justify-content: flex-end;
+        gap: map-get($spacing-scale, 2);
 
-  .expenses-list {
-    .expense-actions {
-      flex: 0 0 auto;
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.5rem;
+        button {
+          @extend .btn;
+          @extend .btn-sm;
+          padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
 
-      button {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.9rem;
-        color: white;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-        border: none;
-      }
-      .edit-btn {
-        background-color: $secondary-color;
-        &:hover {
-          background-color: color.scale($secondary-color, $lightness: -10%);
-        }
-      }
-      .delete-btn {
-        background-color: $danger-color;
-         &:hover {
-          background-color: color.scale($danger-color, $lightness: -10%);
+          &.edit-btn {
+            @extend .btn-secondary;
+          }
+
+          &.delete-btn {
+            @extend .btn-danger;
+          }
         }
       }
     }
   }
 
-  // Tablet and wider
-  @media (min-width: $breakpoint-tablet) {
+  .fixed-add-expense-button-container {
+    position: fixed;
+    bottom: calc(#{map-get($spacing-scale, 3)} + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: fit-content;
+    z-index: $z-index-fixed;
+    display: flex;
+    gap: map-get($spacing-scale, 3);
+    align-items: center;
+
+    .add-expense-button {
+      @extend .btn;
+      @extend .btn-primary;
+      @extend .btn-lg;
+      box-shadow: $box-shadow-lg;
+    }
+  }
+
+  @include respond-above(md) {
     max-width: 800px;
     margin: 0 auto;
-    
+
     .expenses-list {
       .expense-item {
         flex-wrap: nowrap;
-      }
-      .expense-actions {
-        flex-basis: auto;
-        margin-top: 0;
-      }
-    }
-  }
-}
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw; // Ensure it covers the entire viewport width
-  height: 100vh; // Ensure it covers the entire viewport height
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000; // Ensure it's above other content
-}
-
-.modal-content {
-  background-color: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  width: 90%;
-  max-width: 500px;
-  position: relative;
-
-  h3 {
-    margin-top: 0;
-    color: $dark-color;
-    text-align: center;
-    margin-bottom: 1.5rem;
-  }
-
-  .form-group {
-    margin-bottom: 1rem;
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: bold;
-      color: $dark-color;
-    }
-    input[type="number"],
-    select {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: $font-size-base;
-    }
-  }
-
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1.5rem;
-
-    button {
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: $font-size-base;
-      transition: background-color 0.3s;
-
-      &[type="submit"] {
-        background-color: $primary-color;
-        color: white;
-        &:hover {
-          background-color: color.scale($primary-color, $lightness: -10%);
-        }
-        &:disabled {
-          background-color: #cccccc;
-          cursor: not-allowed;
-        }
-      }
-
-      &[type="button"] { // Cancel button
-        background-color: $secondary-color;
-        color: white;
-        &:hover {
-          background-color: color.scale($secondary-color, $lightness: -10%);
+        .expense-actions {
+          flex-basis: auto;
+          margin-top: 0;
         }
       }
     }
   }
-  .error-message {
-    color: $danger-color;
-    text-align: center;
-    margin-bottom: 1rem;
-  }
 }
-
-.fixed-add-expense-button-container {
-  position: fixed;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px)); /* Distance from the bottom */
-  left: 0;
-  right: 0;
-  margin: 0 auto;
-  width: fit-content;
-  z-index: 999; /* Ensure it stays above other content */
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-
-  .add-expense-button {
-    padding: 15px 30px;
-    font-size: 1.2rem;
-    background-color: $primary-color;
-    color: white;
-    border: none;
-    border-radius: $border-radius;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-
-    &:hover {
-      background-color: color.scale($primary-color, $lightness: -10%);
-    }
-  }
-
-  .upload-ticket-button {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-
-    &:hover {
-      transform: scale(1.1);
-    }
-
-    img {
-      width: 50px;
-      height: 50px;
-      object-fit: contain;
-    }
-  }
-}
-
-
-
-
-.expenses-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-
-  .sort-button {
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--primary-color);
-    background-color: $primary-color;
-    color: white;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: var(--font-size-base);
-  }
-}
-
-.filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    background-color: #f7f7f7;
-    border-radius: 8px;
-
-    label {
-        display: flex;
-        flex-direction: column;
-        font-size: 0.9rem;
-        color: #333;
-    }
-
-    input, select {
-        width: 100%;
-        padding: 0.5rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        margin-top: 0.25rem;
-        box-sizing: border-box;
-        appearance: none;
-        -webkit-appearance: none;
-        height: 40px;
-        font-size: $font-size-base; // Ensure input text size is correct
-
-        &::placeholder { // Style for placeholder text
-          font-size: $font-size-base;
-          color: #888; // A slightly darker color for better visibility
-        }
-    }
-
-    .date-filter-container {
-        display: flex;
-        align-items: center;
-
-        input[type="date"] {
-            flex-grow: 1;
-        }
-    }
-
-    .clear-date-btn {
-        margin-left: 0.5rem;
-        padding: 0.2rem 0.5rem;
-        border: none;
-        background-color: #e0e0e0;
-        cursor: pointer;
-        border-radius: 4px;
-        font-weight: bold;
-        line-height: 1;
-    }
-    
-    .clear-all-btn {
-        grid-column: 1 / -1;
-        padding: 0.5rem;
-        border: none;
-        background-color: $secondary-color;
-        color: white;
-        cursor: pointer;
-        border-radius: 4px;
-        margin-top: 0.5rem;
-        justify-self: center;
-        width: fit-content;
-    }
-    
-    .save-filters-btn {
-        grid-column: 1 / -1;
-        padding: 0.5rem 1rem;
-        border: none;
-        background-color: $primary-color;
-        color: white;
-        cursor: pointer;
-        border-radius: 4px;
-        margin-top: 0.5rem;
-        justify-self: center;
-        width: fit-content;
-        &:hover {
-          background-color: color.scale($primary-color, $lightness: -10%);
-        }
-    }
-}
-
-.average-expense-display {
-  text-align: center;
-  margin-bottom: 1rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid $light-color;
-
-  p {
-    margin: 0;
-  }
-}
-
-.filters-accordion-container {
-  margin-bottom: 1.5rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.filters-accordion-toggle {
-  width: 100%;
-  padding: 0.8rem 1rem;
-  background-color: $light-color;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  font-size: 1rem;
-  font-weight: bold;
-  color: $dark-color;
-
-  > .filtered {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-  }
-
-  &:hover {
-    background-color: color.scale($light-color, $lightness: -5%);
-  }
-
-  h3 {
-    margin: 0;
-    font-size: 1rem;
-  }
-}
-
-.filter-title-with-presets {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 3rem;
-}
-
-.date-presets {
-  display: flex;
-  gap: 0.5rem;
-
-  .preset-btn {
-    padding: 0.3rem 0.6rem;
-    border: 1px solid $primary-color;
-    background-color: white;
-    color: $primary-color;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-
-    &.active {
-      background-color: $primary-color;
-      color: white;
-    }
-
-    &:hover:not(.active) {
-      background-color: color.scale($primary-color, $alpha: -90%);
-    }
-  }
-}
-
-input[type="date"]:disabled {
-  background-color: #f0f0f0;
-  cursor: not-allowed;
-}
-

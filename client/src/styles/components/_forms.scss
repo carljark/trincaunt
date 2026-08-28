@@ -1,0 +1,173 @@
+// Estilos base para formularios
+.form-group {
+  margin-bottom: map-get($spacing-scale, 3);
+
+  label {
+    display: block;
+    margin-bottom: map-get($spacing-scale, 1);
+    font-weight: map-get($font-weights, medium);
+    color: $color-gray-700;
+  }
+
+  .form-text {
+    display: block;
+    margin-top: map-get($spacing-scale, 1);
+    font-size: 0.875rem;
+    color: $color-gray-600;
+  }
+}
+
+// Campos de formulario
+.form-control {
+  display: block;
+  width: 100%;
+  padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+  font-size: $font-size-base;
+  line-height: 1.5;
+  color: $color-gray-700;
+  background-color: white;
+  background-clip: padding-box;
+  border: 1px solid $color-gray-300;
+  border-radius: $border-radius;
+  transition: $transition-base;
+
+  &:focus {
+    color: $color-gray-800;
+    background-color: white;
+    border-color: $color-primary-light;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba($color-primary, 0.25);
+  }
+
+  &::placeholder {
+    color: $color-gray-500;
+    opacity: 1;
+  }
+
+  &:disabled,
+  &[readonly] {
+    background-color: $color-gray-100;
+    opacity: 1;
+  }
+}
+
+// Tamaños
+.form-control-sm {
+  padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+  font-size: 0.875rem;
+  border-radius: $border-radius-sm;
+}
+
+.form-control-lg {
+  padding: map-get($spacing-scale, 3) map-get($spacing-scale, 4);
+  font-size: 1.25rem;
+  border-radius: $border-radius-lg;
+}
+
+// Checkboxes y radios
+.form-check {
+  display: block;
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: map-get($spacing-scale, 2);
+
+  .form-check-input {
+    position: absolute;
+    margin-top: 0.3rem;
+    margin-left: -1.5rem;
+  }
+
+  .form-check-label {
+    margin-bottom: 0;
+  }
+}
+
+.form-check-inline {
+  display: inline-flex;
+  align-items: center;
+  margin-right: map-get($spacing-scale, 3);
+
+  .form-check-input {
+    position: static;
+    margin-top: 0;
+    margin-right: map-get($spacing-scale, 1);
+  }
+}
+
+// Validación
+.valid-feedback {
+  display: none;
+  width: 100%;
+  margin-top: map-get($spacing-scale, 1);
+  font-size: 0.875rem;
+  color: $color-success;
+}
+
+.invalid-feedback {
+  display: none;
+  width: 100%;
+  margin-top: map-get($spacing-scale, 1);
+  font-size: 0.875rem;
+  color: $color-danger;
+}
+
+.was-validated {
+  .form-control:valid {
+    border-color: $color-success;
+
+    &:focus {
+      border-color: $color-success;
+      box-shadow: 0 0 0 0.2rem rgba($color-success, 0.25);
+    }
+
+    ~ .valid-feedback {
+      display: block;
+    }
+  }
+
+  .form-control:invalid {
+    border-color: $color-danger;
+
+    &:focus {
+      border-color: $color-danger;
+      box-shadow: 0 0 0 0.2rem rgba($color-danger, 0.25);
+    }
+
+    ~ .invalid-feedback {
+      display: block;
+    }
+  }
+}
+
+// Select personalizado
+.custom-select {
+  display: inline-block;
+  width: 100%;
+  height: calc(1.5em + 0.75rem + 2px);
+  padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: $color-gray-700;
+  vertical-align: middle;
+  background: white url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='4' height='5' viewBox='0 0 4 5'%3e%3cpath fill='%23343a40' d='M2 0L0 2h4zm0 5L0 3h4z'/%3e%3c/svg%3e") no-repeat right 0.75rem center/8px 10px;
+  border: 1px solid $color-gray-300;
+  border-radius: $border-radius;
+  appearance: none;
+
+  &:focus {
+    border-color: $color-primary-light;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba($color-primary, 0.25);
+
+    &::-ms-value {
+      color: $color-gray-700;
+      background-color: white;
+    }
+  }
+
+  &:disabled {
+    color: $color-gray-600;
+    background-color: $color-gray-100;
+  }
+}

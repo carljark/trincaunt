@@ -1,30 +1,192 @@
-@use 'sass:color';
-@use './variables' as *;
-@use '../pages/GroupDetailPage.scss';
+// ========== SISTEMA DE ESTILOS DE TRINCAUNT ==========
+// Configuración principal del sistema de diseño moderno
 
+// Importaciones abstractas
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// Importaciones base
+@use 'base/reset';
+@use 'base/typography';
+@use 'base/utilities';
+
+// Importaciones de componentes
+@use 'components/buttons';
+@use 'components/forms';
+@use 'components/cards';
+
+// ========== ESTILOS BASE ==========
+
+// Estilos globales del cuerpo
 body {
-  background-color: $light-color;
-  font-family: $font-family;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  font-family: $font-family-sans;
+  background-color: $color-background;
+  color: $color-text;
+  line-height: $line-height-base;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: inherit;
-}
+// ========== CONTENEDOR PRINCIPAL ==========
 
-.normal-button {
-  background-color: $secondary-color; // Or any suitable color from your variables
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: $font-size-base;
-  &:hover {
-    background-color: color.scale($secondary-color, $lightness: -10%);
+.container {
+  width: 100%;
+  padding-right: map-get($spacing-scale, 3);
+  padding-left: map-get($spacing-scale, 3);
+  margin-right: auto;
+  margin-left: auto;
+
+  @include respond-above(sm) {
+    max-width: 540px;
+  }
+
+  @include respond-above(md) {
+    max-width: 720px;
+  }
+
+  @include respond-above(lg) {
+    max-width: 960px;
+  }
+
+  @include respond-above(xl) {
+    max-width: 1140px;
   }
 }
+
+// ========== UTILIDADES DE COMPONENTES ==========
+
+// Utilidades responsivas
+.hidden {
+  display: none !important;
+}
+
+.visible {
+  display: block !important;
+}
+
+// Utilidades de espaciado
+@each $size, $value in $spacing-scale {
+  .mt-#{$size} { margin-top: $value !important; }
+  .mb-#{$size} { margin-bottom: $value !important; }
+  .ml-#{$size} { margin-left: $value !important; }
+  .mr-#{$size} { margin-right: $value !important; }
+  .py-#{$size} { padding-top: $value !important; padding-bottom: $value !important; }
+  .px-#{$size} { padding-left: $value !important; padding-right: $value !important; }
+}
+
+// Utilidades de color
+.text-primary { color: $color-primary !important; }
+.text-secondary { color: $color-secondary !important; }
+.text-success { color: $color-success !important; }
+.text-danger { color: $color-danger !important; }
+.text-warning { color: $color-warning !important; }
+.text-info { color: $color-info !important; }
+.text-muted { color: $color-gray-600 !important; }
+.text-light { color: $color-gray-100 !important; }
+.text-dark { color: $color-gray-900 !important; }
+
+// Utilidades de fondo
+.bg-primary { background-color: $color-primary !important; }
+.bg-secondary { background-color: $color-secondary !important; }
+.bg-success { background-color: $color-success !important; }
+.bg-danger { background-color: $color-danger !important; }
+.bg-light { background-color: $color-gray-100 !important; }
+.bg-dark { background-color: $color-gray-900 !important; }
+
+// ========== CLASES DE UTILIDAD GLOBALES ==========
+
+// Tipografía
+.font-weight-light { font-weight: map-get($font-weights, light) !important; }
+.font-weight-normal { font-weight: map-get($font-weights, regular) !important; }
+.font-weight-medium { font-weight: map-get($font-weights, medium) !important; }
+.font-weight-bold { font-weight: map-get($font-weights, bold) !important; }
+
+.text-xs { font-size: map-get($font-sizes, xs) !important; }
+.text-sm { font-size: map-get($font-sizes, sm) !important; }
+.text-base { font-size: map-get($font-sizes, base) !important; }
+.text-lg { font-size: map-get($font-sizes, lg) !important; }
+.text-xl { font-size: map-get($font-sizes, xl) !important; }
+.text-2xl { font-size: map-get($font-sizes, 2xl) !important; }
+
+.text-left { text-align: left !important; }
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
+
+// Bordes
+.border { border: 1px solid $color-gray-300 !important; }
+.border-top { border-top: 1px solid $color-gray-300 !important; }
+.border-right { border-right: 1px solid $color-gray-300 !important; }
+.border-bottom { border-bottom: 1px solid $color-gray-300 !important; }
+.border-left { border-left: 1px solid $color-gray-300 !important; }
+
+.border-0 { border: 0 !important; }
+
+// Redondeo de bordes
+.rounded { @include component-border-radius(); }
+.rounded-sm { @include component-border-radius(sm); }
+.rounded-lg { @include component-border-radius(lg); }
+.rounded-pill { @include component-border-radius(pill); }
+.rounded-circle { border-radius: 50% !important; }
+
+// Sombras
+.shadow-sm { @include component-shadow(sm); }
+.shadow { @include component-shadow(); }
+.shadow-lg { @include component-shadow(lg); }
+.shadow-none { box-shadow: none !important; }
+
+// ========== RESPONSIVE UTILITIES ==========
+
+// Responsive visibility
+@each $breakpoint, $min-width in $breakpoints {
+  @media (min-width: $min-width) {
+    .hidden-#{$breakpoint}-up {
+      display: none !important;
+    }
+    
+    .visible-#{$breakpoint}-up {
+      display: block !important;
+    }
+  }
+}
+
+// Flex utilities
+.d-flex { display: flex !important; }
+.d-inline-flex { display: inline-flex !important; }
+
+.flex-row { flex-direction: row !important; }
+.flex-column { flex-direction: column !important; }
+
+.justify-content-start { justify-content: flex-start !important; }
+.justify-content-center { justify-content: center !important; }
+.justify-content-end { justify-content: flex-end !important; }
+.justify-content-between { justify-content: space-between !important; }
+.justify-content-around { justify-content: space-around !important; }
+
+.align-items-start { align-items: flex-start !important; }
+.align-items-center { align-items: center !important; }
+.align-items-end { align-items: flex-end !important; }
+.align-items-stretch { align-items: stretch !important; }
+
+.flex-fill { flex: 1 1 auto !important; }
+.flex-grow-0 { flex-grow: 0 !important; }
+.flex-grow-1 { flex-grow: 1 !important; }
+.flex-shrink-0 { flex-shrink: 0 !important; }
+.flex-shrink-1 { flex-shrink: 1 !important; }
+
+// Margin auto
+.m-auto { margin: auto !important; }
+.mt-auto { margin-top: auto !important; }
+.mb-auto { margin-bottom: auto !important; }
+.ml-auto { margin-left: auto !important; }
+.mr-auto { margin-right: auto !important; }
+.mx-auto { margin-left: auto !important; margin-right: auto !important; }
+.my-auto { margin-top: auto !important; margin-bottom: auto !important; }
+
+// Vertical center
+.v-align-middle { vertical-align: middle !important; }
+.v-align-top { vertical-align: top !important; }
+.v-align-bottom { vertical-align: bottom !important; }
+
+// ===== FIN DEL ARCHIVO PRINCIPAL =====
+// Esta plantilla proporciona la base para todos los componentes SCSS
+// al utilizar variables, mixins y utilidades centralizadas

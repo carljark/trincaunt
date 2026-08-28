@@ -1,0 +1,109 @@
+// Mixins para responsive design
+@mixin respond-above($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    $breakpoint-value: map-get($breakpoints, $breakpoint);
+    @media (min-width: $breakpoint-value) {
+      @content;
+    }
+  } @else {
+    @warn "Breakpoint '#{$breakpoint}' no existe en $breakpoints";
+  }
+}
+
+@mixin respond-below($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    $breakpoint-value: map-get($breakpoints, $breakpoint) - 1px;
+    @media (max-width: $breakpoint-value) {
+      @content;
+    }
+  } @else {
+    @warn "Breakpoint '#{$breakpoint}' no existe en $breakpoints";
+  }
+}
+
+@mixin respond-between($lower, $upper) {
+  @if map-has-key($breakpoints, $lower) and map-has-key($breakpoints, $upper) {
+    $lower-value: map-get($breakpoints, $lower);
+    $upper-value: map-get($breakpoints, $upper) - 1px;
+    @media (min-width: $lower-value) and (max-width: $upper-value) {
+      @content;
+    }
+  } @else {
+    @warn "Breakpoints no encontrados";
+  }
+}
+
+// Mixin para texto truncado
+@mixin truncate($width: 100%) {
+  max-width: $width;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Mixin para flexbox centrado
+@mixin flex-center($direction: row) {
+  display: flex;
+  flex-direction: $direction;
+  justify-content: center;
+  align-items: center;
+}
+
+// Mixin para posición absoluta centrada
+@mixin absolute-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+// Mixin para variaciones de botones
+@mixin button-variant($background, $color, $hover-background) {
+  background-color: $background;
+  color: $color;
+  border-color: $background;
+
+  &:hover {
+    background-color: $hover-background;
+    color: $color;
+  }
+}
+
+// Mixin para variaciones de tarjetas
+@mixin card-variant($background, $color) {
+  border-color: $background;
+
+  > .card-header {
+    background-color: $background;
+    color: $color;
+    border-color: $background;
+  }
+}
+
+// Mixin para enfoque de inputs
+@mixin input-focus($color) {
+  border-color: $color;
+  box-shadow: 0 0 0 0.2rem rgba($color, 0.25);
+}
+
+// Mixin para sombras de componentes
+@mixin component-shadow($size: md) {
+  @if $size == sm {
+    box-shadow: $box-shadow-sm;
+  } @else if $size == lg {
+    box-shadow: $box-shadow-lg;
+  } @else {
+    box-shadow: $box-shadow;
+  }
+}
+
+// Mixin para bordes redondeados de componentes
+@mixin component-border-radius($size: md) {
+  @if $size == sm {
+    border-radius: $border-radius-sm;
+  } @else if $size == lg {
+    border-radius: $border-radius-lg;
+  } @else {
+    border-radius: $border-radius;
+  }
+}

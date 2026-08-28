@@ -1,0 +1,276 @@
+// Component: Gráfico de gastos
+.expense-graph-container {
+  padding: 0;
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  margin-top: map-get($spacing-scale, 2);
+  border: none;
+  width: 100%;
+
+  .filters {
+    display: flex;
+    flex-direction: column;
+    gap: map-get($spacing-scale, 3);
+    margin-bottom: map-get($spacing-scale, 4);
+    padding: map-get($spacing-scale, 3);
+    background-color: $color-gray-100;
+    @include component-border-radius();
+    border: 1px solid $color-gray-200;
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: map-get($spacing-scale, 3);
+    }
+
+    .filter-label {
+      font-weight: map-get($font-weights, semibold);
+      color: $color-gray-700;
+      margin-bottom: map-get($spacing-scale, 1);
+      display: block;
+      font-size: map-get($font-sizes, sm);
+    }
+
+    .date-presets-container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .date-presets {
+      display: flex;
+      gap: map-get($spacing-scale, 2);
+
+      .preset-btn {
+        flex: 1;
+        max-width: 50px;
+        height: map-get($spacing-scale, 5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid $color-gray-300;
+        background-color: white;
+        color: $color-gray-700;
+        @include component-border-radius();
+        cursor: pointer;
+        font-weight: map-get($font-weights, semibold);
+        font-size: map-get($font-sizes, sm);
+        transition: all 0.2s ease;
+
+        &:hover {
+          border-color: $color-primary;
+          color: $color-primary;
+        }
+
+        &.active {
+          background-color: $color-primary;
+          color: white;
+          border-color: $color-primary;
+        }
+      }
+    }
+
+    .custom-dates {
+      display: flex;
+      flex-wrap: wrap;
+      gap: map-get($spacing-scale, 3);
+      align-items: flex-end;
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: map-get($spacing-scale, 1);
+        font-weight: map-get($font-weights, semibold);
+        color: $color-gray-700;
+        font-size: map-get($font-sizes, xs);
+        flex: 1;
+        min-width: map-get($spacing-scale, 7);
+
+        input[type="date"] {
+          padding: map-get($spacing-scale, 2);
+          border: 1px solid $color-gray-300;
+          @include component-border-radius();
+          background-color: white;
+          color: $color-gray-900;
+          font-family: inherit;
+          font-size: map-get($font-sizes, sm);
+          height: map-get($spacing-scale, 5);
+          box-sizing: border-box;
+
+          &:disabled {
+            background-color: $color-gray-100;
+            color: $color-gray-500;
+          }
+        }
+      }
+
+      .clear-preset {
+        padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+        background-color: $color-gray-300;
+        color: $color-gray-700;
+        border: none;
+        @include component-border-radius();
+        cursor: pointer;
+        font-weight: map-get($font-weights, semibold);
+        font-size: map-get($font-sizes, xs);
+        height: map-get($spacing-scale, 5);
+      }
+    }
+
+    .category-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+
+      input[type="text"] {
+        padding: map-get($spacing-scale, 3);
+        border: 1px solid $color-gray-300;
+        @include component-border-radius();
+        font-size: map-get($font-sizes, sm);
+        width: 100%;
+        box-sizing: border-box;
+
+        &:focus {
+          @include input-focus($color-primary);
+        }
+      }
+
+      .suggestions-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border: 1px solid $color-gray-300;
+        border-top: none;
+        @include component-border-radius();
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: $z-index-dropdown;
+        @include component-shadow();
+
+        li {
+          padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+          cursor: pointer;
+          font-size: map-get($font-sizes, sm);
+
+          &:hover {
+            background-color: $color-gray-100;
+            color: $color-primary;
+          }
+        }
+      }
+
+      .selected-categories {
+        display: flex;
+        flex-wrap: wrap;
+        gap: map-get($spacing-scale, 2);
+        margin-top: map-get($spacing-scale, 2);
+
+        .selected-category {
+          background-color: $color-primary;
+          color: white;
+          padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+          @include component-border-radius();
+          font-size: map-get($font-sizes, xs);
+          display: flex;
+          align-items: center;
+          gap: map-get($spacing-scale, 2);
+
+          button {
+            background: none;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+            font-size: map-get($font-sizes, xs);
+          }
+        }
+      }
+    }
+
+    .weekday-filters {
+      .weekdays-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: map-get($spacing-scale, 2);
+      }
+
+      .weekday-checkbox {
+        display: flex;
+        align-items: center;
+        padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+        background-color: white;
+        border: 1px solid $color-gray-300;
+        @include component-border-radius(pill);
+        cursor: pointer;
+        font-size: map-get($font-sizes, xs);
+        color: $color-gray-700;
+
+        input[type="checkbox"] {
+          display: none;
+        }
+
+        &.checked {
+          background-color: $color-secondary;
+          color: white;
+          border-color: $color-secondary;
+        }
+      }
+    }
+  }
+
+  .chart-wrapper {
+    width: 100%;
+    height: map-get($spacing-scale, 6); // Fixed height for mobile
+    background-color: white;
+    padding: map-get($spacing-scale, 2);
+    @include component-border-radius();
+    box-sizing: border-box;
+  }
+
+  .loading-state, .no-data {
+    text-align: center;
+    padding: map-get($spacing-scale, 5) map-get($spacing-scale, 3);
+    color: $color-gray-600;
+    background-color: $color-gray-100;
+    @include component-border-radius();
+  }
+
+  @include respond-above(md) {
+    padding: map-get($spacing-scale, 3);
+
+    .chart-wrapper {
+      height: map-get($spacing-scale, 7);
+      padding: map-get($spacing-scale, 4);
+    }
+
+    .filters {
+      flex-direction: row;
+      flex-wrap: wrap;
+
+      .filter-group {
+        flex-direction: row;
+        align-items: flex-start;
+        flex: 1 1 100%;
+      }
+
+      .date-presets-container {
+        flex: 0 0 auto;
+      }
+
+      .custom-dates {
+        flex: 1 1 auto;
+      }
+
+      .category-container {
+        flex: 1 1 100%;
+      }
+    }
+  }
+}

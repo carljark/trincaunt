@@ -1,0 +1,65 @@
+// Tipografía base
+body {
+  font-family: $font-family-sans;
+  font-weight: map-get($font-weights, regular);
+  line-height: 1.5;
+  color: $color-gray-800;
+}
+
+// Encabezados
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  margin-bottom: map-get($spacing-scale, 3);
+  font-weight: map-get($font-weights, bold);
+  line-height: 1.2;
+  color: $color-gray-900;
+}
+
+h1, .h1 { font-size: 2.5rem; }
+h2, .h2 { font-size: 2rem; }
+h3, .h3 { font-size: 1.75rem; }
+h4, .h4 { font-size: 1.5rem; }
+h5, .h5 { font-size: 1.25rem; }
+h6, .h6 { font-size: 1rem; }
+
+// Textos utilitarios
+.text-primary { color: $color-primary; }
+.text-secondary { color: $color-secondary; }
+.text-success { color: $color-success; }
+.text-danger { color: $color-danger; }
+.text-warning { color: $color-warning; }
+.text-info { color: $color-info; }
+.text-light { color: $color-gray-100; }
+.text-dark { color: $color-gray-900; }
+.text-muted { color: $color-gray-600; }
+
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+.text-truncate {
+  @include truncate;
+}
+
+// Pesos de fuente
+.font-weight-light { font-weight: map-get($font-weights, light); }
+.font-weight-normal { font-weight: map-get($font-weights, regular); }
+.font-weight-medium { font-weight: map-get($font-weights, medium); }
+.font-weight-bold { font-weight: map-get($font-weights, bold); }
+
+// Transformaciones
+text-transform-lowercase { text-transform: lowercase; }
+text-transform-uppercase { text-transform: uppercase; }
+text-transform-capitalize { text-transform: capitalize; }
+
+// Estilos de texto
+text-decoration-none { text-decoration: none; }
+.text-decoration-underline { text-decoration: underline; }
+.text-decoration-line-through { text-decoration: line-through; }
+
+// Whitespace
+.white-space-normal { white-space: normal; }
+.white-space-nowrap { white-space: nowrap; }
+.white-space-pre { white-space: pre; }
+.white-space-pre-line { white-space: pre-line; }
+.white-space-pre-wrap { white-space: pre-wrap; }

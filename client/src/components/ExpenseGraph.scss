@@ -1,5 +1,5 @@
-@use 'sass:color';
-@use '../styles/variables' as *;
+@use '../styles/abstracts/variables' as *;
+@use '../styles/abstracts/mixins' as *;
 
 .expense-graph-container {
   padding: 0; // Remove padding to use full width
@@ -245,7 +245,7 @@
     border-radius: 8px;
   }
 
-  @media (min-width: $breakpoint-tablet) {
+  @include respond-above(md) {
     padding: 1rem;
     
     .chart-wrapper {

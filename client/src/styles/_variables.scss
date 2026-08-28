@@ -1,18 +1,19 @@
-$text-color: black;
-$primary-color: #3498db;
-$secondary-color: #2ecc71;
-$danger-color: #e74c3c;
-$light-color: #ecf0f1;
-$medium-color: #95a5a6;
-$dark-color: #2c3e50;
-$background-color: #f4f7f6;
-$border-color: #ddd;
+// Variables estilizados para componentes
+text-color: black;
+$primary-color: $color-primary;
+$secondary-color: $color-secondary;
+$danger-color: $color-danger;
+$light-color: $color-gray-100;
+$medium-color: $color-gray-500;
+$dark-color: $color-gray-900;
+$background-color: $color-background;
+$border-color: $color-gray-300;
 
-$font-family: sans-serif;
-$font-size-base: 16px;
+$font-family: $font-family-sans;
+$font-size-base: $font-size-base;
 
-$border-radius: 8px;
-$border-radius-sm: 4px;
+$border-radius: $border-radius;
+$border-radius-sm: $border-radius-sm;
 
-$breakpoint-mobile: 480px;
-$breakpoint-tablet: 768px;
+$breakpoint-mobile: $breakpoints.xs;
+$breakpoint-tablet: $breakpoints.md;

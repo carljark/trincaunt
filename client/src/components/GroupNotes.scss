@@ -1,59 +1,62 @@
-@use '../styles/variables' as *;
-@use 'sass:color';
+@use '../styles/abstracts/variables' as *;
+@use '../styles/abstracts/mixins' as *;
+@use '../styles/components/buttons';
+@use '../styles/components/forms';
+@use '../styles/components/cards';
 
 .group-notes-container {
-  padding: 1rem;
-  font-family: $font-family;
+  padding: map-get($spacing-scale, 3);
+  font-family: $font-family-sans;
 
   h3 {
-    color: $primary-color;
+    color: $color-primary;
     text-align: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: map-get($spacing-scale, 4);
   }
 
   .add-note-button {
     display: block;
     width: fit-content;
-    margin: 1rem auto 1.5rem auto;
-    padding: 0.8rem 1.5rem;
-    background-color: $primary-color;
+    margin: map-get($spacing-scale, 3) auto map-get($spacing-scale, 4) auto;
+    padding: map-get($spacing-scale, 3) map-get($spacing-scale, 5);
+    background-color: $color-primary;
     color: white;
     border: none;
-    border-radius: $border-radius;
-    font-size: 1rem;
+    @include component-border-radius();
+    font-size: map-get($font-sizes, base);
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: background-color $transition-base;
 
     &:hover {
-      background-color: color.scale($primary-color, $lightness: -10%);
+      background-color: color.scale($color-primary, $lightness: -10%);
     }
   }
 
   .note-form {
-    background-color: #f9f9f9;
-    padding: 1.5rem;
-    border-radius: $border-radius;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    margin-bottom: 2rem;
+    background-color: $color-gray-100;
+    padding: map-get($spacing-scale, 5);
+    @include component-border-radius();
+    @include component-shadow();
+    margin-bottom: map-get($spacing-scale, 6);
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: map-get($spacing-scale, 3);
 
     input[type="text"],
     textarea {
       width: 100%;
-      padding: 0.8rem;
-      border: 1px solid $border-color;
-      border-radius: $border-radius-sm;
-      font-size: 1rem;
+      padding: map-get($spacing-scale, 3);
+      border: 1px solid $color-gray-300;
+      @include component-border-radius(sm);
+      font-size: map-get($font-sizes, base);
       box-sizing: border-box;
-      resize: vertical; // Allow vertical resizing for textarea
+      resize: vertical;
     }
 
     .form-group {
       label {
-        font-weight: bold;
-        margin-bottom: 0.5rem;
+        font-weight: map-get($font-weights, semibold);
+        margin-bottom: map-get($spacing-scale, 2);
         display: block;
       }
     }
@@ -61,30 +64,30 @@
     .note-form-actions {
       display: flex;
       justify-content: flex-end;
-      gap: 1rem;
-      margin-top: 1rem;
+      gap: map-get($spacing-scale, 3);
+      margin-top: map-get($spacing-scale, 3);
 
       button {
-        padding: 0.8rem 1.5rem;
+        padding: map-get($spacing-scale, 3) map-get($spacing-scale, 5);
         border: none;
-        border-radius: $border-radius-sm;
+        @include component-border-radius(sm);
         cursor: pointer;
-        font-size: 1rem;
-        transition: background-color 0.3s ease;
+        font-size: map-get($font-sizes, base);
+        transition: background-color $transition-base;
 
         &[type="submit"] {
-          background-color: $primary-color;
+          background-color: $color-primary;
           color: white;
           &:hover:not(:disabled) {
-            background-color: color.scale($primary-color, $lightness: -10%);
+            background-color: color.scale($color-primary, $lightness: -10%);
           }
         }
 
-        &[type="button"] { // Cancel button
-          background-color: $secondary-color;
-          color: $dark-color;
+        &[type="button"] {
+          background-color: $color-secondary;
+          color: $color-gray-900;
           &:hover:not(:disabled) {
-            background-color: color.scale($secondary-color, $lightness: -10%);
+            background-color: color.scale($color-secondary, $lightness: -10%);
           }
         }
 
@@ -100,14 +103,14 @@
     list-style: none;
     padding: 0;
     display: grid;
-    gap: 1.5rem;
+    gap: map-get($spacing-scale, 5);
   }
 
   .note-item {
     background-color: white;
-    padding: 1.5rem;
-    border-radius: $border-radius;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: map-get($spacing-scale, 5);
+    @include component-border-radius();
+    @include component-shadow();
     transition: transform 0.2s ease-in-out;
 
     &:hover {
@@ -118,36 +121,36 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 1rem;
+      margin-bottom: map-get($spacing-scale, 3);
 
       h4 {
         margin: 0;
-        color: $dark-color;
-        font-size: 1.2rem;
+        color: $color-gray-900;
+        font-size: map-get($font-sizes, xl);
       }
 
       .note-actions {
         display: flex;
-        gap: 0.5rem;
+        gap: map-get($spacing-scale, 2);
 
         button {
           background: none;
           border: none;
           cursor: pointer;
-          font-size: 1rem;
-          padding: 0.3rem;
+          font-size: map-get($font-sizes, base);
+          padding: map-get($spacing-scale, 2);
           transition: color 0.2s ease;
 
           &.edit-btn {
-            color: $secondary-color;
+            color: $color-secondary;
             &:hover {
-              color: color.scale($secondary-color, $lightness: -20%);
+              color: color.scale($color-secondary, $lightness: -20%);
             }
           }
           &.delete-btn {
-            color: $danger-color;
+            color: $color-danger;
             &:hover {
-              color: color.scale($danger-color, $lightness: -20%);
+              color: color.scale($color-danger, $lightness: -20%);
             }
           }
         }
@@ -155,45 +158,44 @@
     }
 
     .note-content {
-      color: $text-color;
-      line-height: 1.6;
-      margin-bottom: 1rem;
-      white-space: pre-wrap; // Preserve whitespace and line breaks
+      color: $color-gray-800;
+      line-height: $line-height-base;
+      margin-bottom: map-get($spacing-scale, 3);
+      white-space: pre-wrap;
     }
 
     .note-footer {
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
-      font-size: 0.85rem;
-      color: $dark-color;
-      border-top: 1px solid $border-color;
-      padding-top: 1rem;
-      gap: 0.5rem;
+      font-size: map-get($font-sizes, xs);
+      color: $color-gray-900;
+      border-top: 1px solid $color-gray-300;
+      padding-top: map-get($spacing-scale, 3);
+      gap: map-get($spacing-scale, 2);
 
       .note-meta {
-        background-color: #f0f0f0;
-        padding: 0.3rem 0.6rem;
-        border-radius: 4px;
+        background-color: $color-gray-200;
+        padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+        @include component-border-radius(sm);
       }
     }
   }
 
   .error-message {
-    color: $danger-color;
+    color: $color-danger;
     text-align: center;
-    margin: 1rem 0;
+    margin: map-get($spacing-scale, 3) 0;
   }
 }
 
 // Responsive adjustments
-@media (min-width: $breakpoint-tablet) {
+@include respond-above(md) {
   .group-notes-container {
-    padding: 1.5rem 2rem;
+    padding: map-get($spacing-scale, 4) map-get($spacing-scale, 5);
 
     .notes-list {
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     }
   }
 }
-

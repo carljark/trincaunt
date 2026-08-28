@@ -1,45 +1,54 @@
+@use '../styles/abstracts/variables' as *;
+@use '../styles/abstracts/mixins' as *;
+@use '../styles/components/buttons';
+@use '../styles/components/cards';
+
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  
-    .modal-content {
-      background-color: white;
-      padding: 20px;
-      border-radius: 8px;
-      width: 80%;
-      max-width: 400px;
-      text-align: center;
-  
-      .modal-actions {
-        margin-top: 20px;
-        display: flex;
-        justify-content: space-around;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: $color-overlay;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: $z-index-modal-backdrop;
 
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+  .modal-content {
+    background-color: white;
+    padding: map-get($spacing-scale, 4);
+    @include component-border-radius();
+    @include component-shadow(lg);
+    width: 80%;
+    max-width: 400px;
+    text-align: center;
 
-            &:first-child {
-                background-color: #4CAF50; // Green
-                color: white;
-            }
+    .modal-actions {
+      margin-top: map-get($spacing-scale, 4);
+      display: flex;
+      justify-content: space-around;
 
-            &:last-child {
-                background-color: #f44336; // Red
-                color: white;
-            }
+      button {
+        padding: map-get($spacing-scale, 3) map-get($spacing-scale, 5);
+        border: none;
+        @include component-border-radius();
+        cursor: pointer;
+        font-size: map-get($font-sizes, base);
+        transition: background-color $transition-base;
+
+        &:first-child {
+          background-color: $color-success;
+          color: white;
+          &:hover { background-color: $color-success-dark; }
+        }
+
+        &:last-child {
+          background-color: $color-danger;
+          color: white;
+          &:hover { background-color: $color-danger-dark; }
         }
       }
     }
   }
-  
+}
