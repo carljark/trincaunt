@@ -860,16 +860,14 @@ const GroupDetailPage: React.FC = () => {
             </div>
           )}
 
-          <div className="filters-accordion-container">
-            <div className="filters-accordion-toggle" onClick={() => setShowFilters(!showFilters)}>
-              <div className="filter-title-with-presets">
-                <h3>Filtros {showFilters ? '▲' : '▼'}</h3>
-                <div className="date-presets">
-                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('day'); }} className={`preset-btn ${dateFilterPreset === 'day' ? 'active' : ''}`}>D</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('week'); }} className={`preset-btn ${dateFilterPreset === 'week' ? 'active' : ''}`}>S</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('month'); }} className={`preset-btn ${dateFilterPreset === 'month' ? 'active' : ''}`}>M</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('year'); }} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
-                </div>
+          <div className="filters-accordion">
+            <div className="filter-title-with-presets" onClick={() => setShowFilters(!showFilters)}>
+              <h3 className="filter-title">Filtros {showFilters ? '▲' : '▼'}</h3>
+              <div className="date-presets">
+                <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('day'); }} className={`preset-btn ${dateFilterPreset === 'day' ? 'active' : ''}`}>D</button>
+                <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('week'); }} className={`preset-btn ${dateFilterPreset === 'week' ? 'active' : ''}`}>S</button>
+                <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('month'); }} className={`preset-btn ${dateFilterPreset === 'month' ? 'active' : ''}`}>M</button>
+                <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('year'); }} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
               </div>
               <div className="filtered"><p>Filtrados: </p><p>{formatCurrency(totalFilteredExpenses)}€</p></div>
             </div>

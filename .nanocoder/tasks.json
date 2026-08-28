@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "id": "082bbba8",
+    "title": "Paso 1: Aplicar cambios de código en GroupDetailPage.tsx (searchTerm, JSX, expenses-header)",
+    "description": "Reemplazar descriptionFilter/categoryFilter por searchTerm, actualizar filteredExpenses, reestructurar JSX con filters-row, search-input, advanced-filters-btn, expenses-header con filtered-total.",
+    "status": "in_progress",
+    "createdAt": "2026-08-28T14:39:45.319Z",
+    "updatedAt": "2026-08-28T14:39:45.319Z"
+  },
+  {
+    "id": "8a97274d",
+    "title": "Paso 2: Crear AdvancedFiltersModal component + SCSS",
+    "description": "Crear nuevo componente con localization, payer, date-from/to, weekdays, categories.",
+    "status": "pending",
+    "createdAt": "2026-08-28T14:39:45.319Z",
+    "updatedAt": "2026-08-28T14:39:45.319Z"
+  },
+  {
+    "id": "b642c570",
+    "title": "Paso 3: Eliminar campos duplicados del accordion body",
+    "description": "Quitar Descripción/Categoría inputs del cuerpo del accordion, ya reemplazados por search-input.",
+    "status": "pending",
+    "createdAt": "2026-08-28T14:39:45.319Z",
+    "updatedAt": "2026-08-28T14:39:45.319Z"
+  },
+  {
+    "id": "3ecb005d",
+    "title": "Paso 4: Verificar compilación (lint/build) y tests",
+    "description": "Ejecutar linter, build/typecheck, y tests si existen.",
+    "status": "pending",
+    "createdAt": "2026-08-28T14:39:45.319Z",
+    "updatedAt": "2026-08-28T14:39:45.319Z"
+  }
+]

@@ -102,6 +102,78 @@
     border-bottom: 1px solid $color-gray-200;
   }
 
+  .filters-accordion {
+    margin-bottom: map.get($spacing-scale, 4);
+  }
+
+  .filter-title-with-presets {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 2);
+    margin-bottom: map.get($spacing-scale, 2);
+    padding: 0 map.get($spacing-scale, 3);
+
+    .filter-title {
+      font-weight: map.get($font-weights, medium);
+      margin: 0;
+    }
+
+    .date-presets {
+      display: flex;
+      gap: map.get($spacing-scale, 1);
+
+      .preset-btn {
+        @extend .btn;
+        @extend .btn-sm;
+        padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
+        min-width: 30px;
+
+        &.active {
+          @extend .btn-primary;
+        }
+      }
+    }
+  }
+
+  .filters-row {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+    margin-bottom: map.get($spacing-scale, 4);
+    padding: 0 map.get($spacing-scale, 3);
+
+    .search-input {
+      flex: 1;
+      @extend .form-control;
+    }
+
+    .advanced-filters-btn {
+      @extend .btn;
+      @extend .btn-outline-primary;
+      padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
+      border-width: 1px;
+    }
+  }
+
+  .expenses-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: map.get($spacing-scale, 3);
+    
+    .expenses-title {
+      h3 {
+        margin: 0;
+      }
+    }
+    
+    .filtered-total {
+      font-weight: map.get($font-weights, medium);
+      color: $color-primary;
+    }
+  }
+
   .expenses-list {
     margin-bottom: map.get($spacing-scale, 4);
 
