@@ -1,3 +1,6 @@
+@use 'sass:map';
+$spacing-base: 0.5rem; // 8px
+
 // Escala de espaciado basada en múltiplos de $spacing-base (8px)
 $spacing-scale: (
   0: 0,
@@ -13,11 +16,11 @@ $spacing-scale: (
 );
 
 // Márgenes y padding utilitarios para componentes
-$container-padding: map-get($spacing-scale, 3);
-$card-padding: map-get($spacing-scale, 4);
-$modal-padding: map-get($spacing-scale, 4);
-$button-padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
-$input-padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+$container-padding: map.get($spacing-scale, 3);
+$card-padding: map.get($spacing-scale, 4);
+$modal-padding: map.get($spacing-scale, 4);
+$button-padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+$input-padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
 
 // Altura de línea para componentes
 $line-height-base: 1.5;

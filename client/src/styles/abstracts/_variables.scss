@@ -1,57 +1,11 @@
-// Sistema de colores
-$color-primary: #4361ee;
-$color-primary-light: #4895ef;
-$color-primary-dark: #3a0ca3;
+@use 'sass:map';
+@forward 'colors';
+@forward 'spacing';
+@forward 'typography';
 
-$color-secondary: #7209b7;
-$color-secondary-light: #b5179e;
-$color-secondary-dark: #560bad;
-
-$color-success: #4cc9f0;
-$color-success-dark: #3a86ff;
-
-$color-warning: #f8961e;
-$color-warning-dark: #f3722c;
-
-$color-danger: #f72585;
-$color-danger-dark: #d00000;
-
-$color-info: #4895ef;
-$color-info-dark: #3a86ff;
-
-// Escala de grises
-$color-gray-100: #f8f9fa;
-$color-gray-200: #e9ecef;
-$color-gray-300: #dee2e6;
-$color-gray-400: #ced4da;
-$color-gray-500: #adb5bd;
-$color-gray-600: #6c757d;
-$color-gray-700: #495057;
-$color-gray-800: #343a40;
-$color-gray-900: #212529;
-
-// Tipografía
-$font-family-sans: 'Inter', system-ui, sans-serif;
-$font-family-mono: 'Roboto Mono', monospace;
-$font-size-base: 1rem; // 16px
-$font-weights: (
-  light: 300,
-  regular: 400,
-  medium: 500,
-  bold: 700
-);
-
-// Espaciado
-$spacing-base: 0.5rem; // 8px
-$spacing-scale: (
-  0: 0,
-  1: $spacing-base * 0.5,
-  2: $spacing-base,
-  3: $spacing-base * 1.5,
-  4: $spacing-base * 2,
-  5: $spacing-base * 3,
-  6: $spacing-base * 4
-);
+@use 'colors' as *;
+@use 'spacing' as *;
+@use 'typography' as *;
 
 // Border radius
 $border-radius-sm: 0.25rem;
@@ -88,3 +42,18 @@ $z-index-modal-backdrop: 1040;
 $z-index-modal: 1050;
 $z-index-popover: 1060;
 $z-index-tooltip: 1070;
+
+// Mapeos de compatibilidad para componentes existentes
+$primary-color: $color-primary;
+$secondary-color: $color-secondary;
+$danger-color: $color-danger;
+$light-color: $color-gray-100;
+$medium-color: $color-gray-500;
+$dark-color: $color-gray-900;
+$background-color: $color-gray-100;
+$border-color: $color-gray-300;
+
+$font-family: $font-family-sans;
+
+$breakpoint-mobile: map.get($breakpoints, xs);
+$breakpoint-tablet: map.get($breakpoints, md);

@@ -1,17 +1,20 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+
 // Estilos base para formularios
 .form-group {
-  margin-bottom: map-get($spacing-scale, 3);
+  margin-bottom: map.get($spacing-scale, 3);
 
   label {
     display: block;
-    margin-bottom: map-get($spacing-scale, 1);
-    font-weight: map-get($font-weights, medium);
+    margin-bottom: map.get($spacing-scale, 1);
+    font-weight: map.get($font-weights, medium);
     color: $color-gray-700;
   }
 
   .form-text {
     display: block;
-    margin-top: map-get($spacing-scale, 1);
+    margin-top: map.get($spacing-scale, 1);
     font-size: 0.875rem;
     color: $color-gray-600;
   }
@@ -21,7 +24,7 @@
 .form-control {
   display: block;
   width: 100%;
-  padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+  padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
   font-size: $font-size-base;
   line-height: 1.5;
   color: $color-gray-700;
@@ -53,13 +56,13 @@
 
 // Tamaños
 .form-control-sm {
-  padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+  padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
   font-size: 0.875rem;
   border-radius: $border-radius-sm;
 }
 
 .form-control-lg {
-  padding: map-get($spacing-scale, 3) map-get($spacing-scale, 4);
+  padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
   font-size: 1.25rem;
   border-radius: $border-radius-lg;
 }
@@ -69,7 +72,7 @@
   display: block;
   position: relative;
   padding-left: 1.5rem;
-  margin-bottom: map-get($spacing-scale, 2);
+  margin-bottom: map.get($spacing-scale, 2);
 
   .form-check-input {
     position: absolute;
@@ -85,12 +88,12 @@
 .form-check-inline {
   display: inline-flex;
   align-items: center;
-  margin-right: map-get($spacing-scale, 3);
+  margin-right: map.get($spacing-scale, 3);
 
   .form-check-input {
     position: static;
     margin-top: 0;
-    margin-right: map-get($spacing-scale, 1);
+    margin-right: map.get($spacing-scale, 1);
   }
 }
 
@@ -98,7 +101,7 @@
 .valid-feedback {
   display: none;
   width: 100%;
-  margin-top: map-get($spacing-scale, 1);
+  margin-top: map.get($spacing-scale, 1);
   font-size: 0.875rem;
   color: $color-success;
 }
@@ -106,7 +109,7 @@
 .invalid-feedback {
   display: none;
   width: 100%;
-  margin-top: map-get($spacing-scale, 1);
+  margin-top: map.get($spacing-scale, 1);
   font-size: 0.875rem;
   color: $color-danger;
 }

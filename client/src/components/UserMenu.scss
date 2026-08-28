@@ -1,18 +1,19 @@
-@use '../styles/abstracts/variables' as *;
-@use '../styles/abstracts/mixins' as *;
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
 
 .user-menu-container {
   position: absolute;
-  top: map-get($spacing-scale, 3);
-  right: map-get($spacing-scale, 3);
+  top: map.get($spacing-scale, 3);
+  right: map.get($spacing-scale, 3);
   z-index: $z-index-dropdown;
 
   .menu-trigger {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: map-get($font-sizes, 2xl);
-    padding: map-get($spacing-scale, 2);
+    font-size: map.get($font-sizes, 2xl);
+    padding: map.get($spacing-scale, 2);
     color: inherit;
     display: flex;
     align-items: center;
@@ -32,7 +33,7 @@
     border: 1px solid $color-gray-300;
     @include component-border-radius();
     @include component-shadow();
-    min-width: map-get($spacing-scale, 6);
+    min-width: map.get($spacing-scale, 6);
     display: none;
     flex-direction: column;
 
@@ -43,10 +44,10 @@
     button, a {
       background: none;
       border: none;
-      padding: map-get($spacing-scale, 3) map-get($spacing-scale, 4);
+      padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
       text-align: left;
       cursor: pointer;
-      font-size: map-get($font-sizes, sm);
+      font-size: map.get($font-sizes, sm);
       color: $color-gray-700;
       text-decoration: none;
       font-family: $font-family-sans;

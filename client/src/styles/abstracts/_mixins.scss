@@ -1,7 +1,10 @@
+@use 'sass:map';
+@use 'variables' as *;
+
 // Mixins para responsive design
 @mixin respond-above($breakpoint) {
-  @if map-has-key($breakpoints, $breakpoint) {
-    $breakpoint-value: map-get($breakpoints, $breakpoint);
+  @if map.has-key($breakpoints, $breakpoint) {
+    $breakpoint-value: map.get($breakpoints, $breakpoint);
     @media (min-width: $breakpoint-value) {
       @content;
     }
@@ -11,8 +14,8 @@
 }
 
 @mixin respond-below($breakpoint) {
-  @if map-has-key($breakpoints, $breakpoint) {
-    $breakpoint-value: map-get($breakpoints, $breakpoint) - 1px;
+  @if map.has-key($breakpoints, $breakpoint) {
+    $breakpoint-value: map.get($breakpoints, $breakpoint) - 1px;
     @media (max-width: $breakpoint-value) {
       @content;
     }
@@ -22,9 +25,9 @@
 }
 
 @mixin respond-between($lower, $upper) {
-  @if map-has-key($breakpoints, $lower) and map-has-key($breakpoints, $upper) {
-    $lower-value: map-get($breakpoints, $lower);
-    $upper-value: map-get($breakpoints, $upper) - 1px;
+  @if map.has-key($breakpoints, $lower) and map.has-key($breakpoints, $upper) {
+    $lower-value: map.get($breakpoints, $lower);
+    $upper-value: map.get($breakpoints, $upper) - 1px;
     @media (min-width: $lower-value) and (max-width: $upper-value) {
       @content;
     }

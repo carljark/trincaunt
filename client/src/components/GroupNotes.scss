@@ -1,29 +1,31 @@
-@use '../styles/abstracts/variables' as *;
-@use '../styles/abstracts/mixins' as *;
-@use '../styles/components/buttons';
-@use '../styles/components/forms';
-@use '../styles/components/cards';
+@use 'sass:map';
+@use 'sass:color';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+@use 'components/buttons';
+@use 'components/forms';
+@use 'components/cards';
 
 .group-notes-container {
-  padding: map-get($spacing-scale, 3);
+  padding: map.get($spacing-scale, 3);
   font-family: $font-family-sans;
 
   h3 {
     color: $color-primary;
     text-align: center;
-    margin-bottom: map-get($spacing-scale, 4);
+    margin-bottom: map.get($spacing-scale, 4);
   }
 
   .add-note-button {
     display: block;
     width: fit-content;
-    margin: map-get($spacing-scale, 3) auto map-get($spacing-scale, 4) auto;
-    padding: map-get($spacing-scale, 3) map-get($spacing-scale, 5);
+    margin: map.get($spacing-scale, 3) auto map.get($spacing-scale, 4) auto;
+    padding: map.get($spacing-scale, 3) map.get($spacing-scale, 5);
     background-color: $color-primary;
     color: white;
     border: none;
     @include component-border-radius();
-    font-size: map-get($font-sizes, base);
+    font-size: map.get($font-sizes, base);
     cursor: pointer;
     transition: background-color $transition-base;
 
@@ -34,29 +36,29 @@
 
   .note-form {
     background-color: $color-gray-100;
-    padding: map-get($spacing-scale, 5);
+    padding: map.get($spacing-scale, 5);
     @include component-border-radius();
     @include component-shadow();
-    margin-bottom: map-get($spacing-scale, 6);
+    margin-bottom: map.get($spacing-scale, 6);
     display: flex;
     flex-direction: column;
-    gap: map-get($spacing-scale, 3);
+    gap: map.get($spacing-scale, 3);
 
     input[type="text"],
     textarea {
       width: 100%;
-      padding: map-get($spacing-scale, 3);
+      padding: map.get($spacing-scale, 3);
       border: 1px solid $color-gray-300;
       @include component-border-radius(sm);
-      font-size: map-get($font-sizes, base);
+      font-size: map.get($font-sizes, base);
       box-sizing: border-box;
       resize: vertical;
     }
 
     .form-group {
       label {
-        font-weight: map-get($font-weights, semibold);
-        margin-bottom: map-get($spacing-scale, 2);
+        font-weight: map.get($font-weights, semibold);
+        margin-bottom: map.get($spacing-scale, 2);
         display: block;
       }
     }
@@ -64,15 +66,15 @@
     .note-form-actions {
       display: flex;
       justify-content: flex-end;
-      gap: map-get($spacing-scale, 3);
-      margin-top: map-get($spacing-scale, 3);
+      gap: map.get($spacing-scale, 3);
+      margin-top: map.get($spacing-scale, 3);
 
       button {
-        padding: map-get($spacing-scale, 3) map-get($spacing-scale, 5);
+        padding: map.get($spacing-scale, 3) map.get($spacing-scale, 5);
         border: none;
         @include component-border-radius(sm);
         cursor: pointer;
-        font-size: map-get($font-sizes, base);
+        font-size: map.get($font-sizes, base);
         transition: background-color $transition-base;
 
         &[type="submit"] {
@@ -103,12 +105,12 @@
     list-style: none;
     padding: 0;
     display: grid;
-    gap: map-get($spacing-scale, 5);
+    gap: map.get($spacing-scale, 5);
   }
 
   .note-item {
     background-color: white;
-    padding: map-get($spacing-scale, 5);
+    padding: map.get($spacing-scale, 5);
     @include component-border-radius();
     @include component-shadow();
     transition: transform 0.2s ease-in-out;
@@ -121,24 +123,24 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: map-get($spacing-scale, 3);
+      margin-bottom: map.get($spacing-scale, 3);
 
       h4 {
         margin: 0;
         color: $color-gray-900;
-        font-size: map-get($font-sizes, xl);
+        font-size: map.get($font-sizes, xl);
       }
 
       .note-actions {
         display: flex;
-        gap: map-get($spacing-scale, 2);
+        gap: map.get($spacing-scale, 2);
 
         button {
           background: none;
           border: none;
           cursor: pointer;
-          font-size: map-get($font-sizes, base);
-          padding: map-get($spacing-scale, 2);
+          font-size: map.get($font-sizes, base);
+          padding: map.get($spacing-scale, 2);
           transition: color 0.2s ease;
 
           &.edit-btn {
@@ -160,7 +162,7 @@
     .note-content {
       color: $color-gray-800;
       line-height: $line-height-base;
-      margin-bottom: map-get($spacing-scale, 3);
+      margin-bottom: map.get($spacing-scale, 3);
       white-space: pre-wrap;
     }
 
@@ -168,15 +170,15 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
-      font-size: map-get($font-sizes, xs);
+      font-size: map.get($font-sizes, xs);
       color: $color-gray-900;
       border-top: 1px solid $color-gray-300;
-      padding-top: map-get($spacing-scale, 3);
-      gap: map-get($spacing-scale, 2);
+      padding-top: map.get($spacing-scale, 3);
+      gap: map.get($spacing-scale, 2);
 
       .note-meta {
         background-color: $color-gray-200;
-        padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+        padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
         @include component-border-radius(sm);
       }
     }
@@ -185,14 +187,14 @@
   .error-message {
     color: $color-danger;
     text-align: center;
-    margin: map-get($spacing-scale, 3) 0;
+    margin: map.get($spacing-scale, 3) 0;
   }
 }
 
 // Responsive adjustments
 @include respond-above(md) {
   .group-notes-container {
-    padding: map-get($spacing-scale, 4) map-get($spacing-scale, 5);
+    padding: map.get($spacing-scale, 4) map.get($spacing-scale, 5);
 
     .notes-list {
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

@@ -1,7 +1,8 @@
-@use '../styles/abstracts/variables' as *;
-@use '../styles/abstracts/mixins' as *;
-@use '../styles/components/buttons';
-@use '../styles/components/cards';
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+@use 'components/buttons';
+@use 'components/cards';
 
 .audio-modal {
   max-width: 400px;
@@ -13,14 +14,14 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: map-get($spacing-scale, 5);
+    padding: map.get($spacing-scale, 5);
     
     .record-indicator {
-      width: map-get($spacing-scale, 6);
-      height: map-get($spacing-scale, 6);
+      width: map.get($spacing-scale, 6);
+      height: map.get($spacing-scale, 6);
       border-radius: 50%;
       background: $color-gray-400;
-      margin-bottom: map-get($spacing-scale, 4);
+      margin-bottom: map.get($spacing-scale, 4);
       
       &.pulsing {
         background: $color-danger;
@@ -29,7 +30,7 @@
     }
     
     .time {
-      font-size: map-get($font-sizes, 3xl);
+      font-size: map.get($font-sizes, 3xl);
       font-family: $font-family-mono;
       color: $color-gray-900;
     }

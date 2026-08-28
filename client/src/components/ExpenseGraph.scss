@@ -1,5 +1,5 @@
-@use '../styles/abstracts/variables' as *;
-@use '../styles/abstracts/mixins' as *;
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
 
 .expense-graph-container {
   padding: 0; // Remove padding to use full width

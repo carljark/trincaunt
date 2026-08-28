@@ -1,5 +1,8 @@
-@use '../styles/abstracts/variables' as *;
-@use '../styles/abstracts/mixins' as *;
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+@use 'components/buttons';
+@use 'components/forms';
 
 .modal-overlay {
   position: fixed;
@@ -12,17 +15,17 @@
   justify-content: center;
   align-items: center;
   z-index: $z-index-modal-backdrop;
-  padding: map-get($spacing-scale, 3);
+  padding: map.get($spacing-scale, 3);
 
   @include respond-below(md) {
     align-items: flex-start;
-    padding-top: calc(env(safe-area-inset-top, 20px) + #{map-get($spacing-scale, 3)});
+    padding-top: calc(env(safe-area-inset-top, 20px) + #{map.get($spacing-scale, 3)});
   }
 }
 
 .modal-content {
   background-color: white;
-  padding: map-get($spacing-scale, 4);
+  padding: map.get($spacing-scale, 4);
   border-radius: $border-radius-lg;
   box-shadow: $box-shadow-lg;
   width: 100%;
@@ -32,28 +35,28 @@
 
   h3 {
     color: $color-primary;
-    margin-bottom: map-get($spacing-scale, 3);
+    margin-bottom: map.get($spacing-scale, 3);
     text-align: center;
   }
 
   .error-message {
     color: $color-danger;
     text-align: center;
-    margin-bottom: map-get($spacing-scale, 2);
+    margin-bottom: map.get($spacing-scale, 2);
   }
 
   form {
     display: flex;
     flex-direction: column;
-    gap: map-get($spacing-scale, 3);
+    gap: map.get($spacing-scale, 3);
 
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: map-get($spacing-scale, 1);
+      gap: map.get($spacing-scale, 1);
 
       label {
-        font-weight: map-get($font-weights, medium);
+        font-weight: map.get($font-weights, medium);
         color: $color-gray-700;
       }
 
@@ -69,21 +72,21 @@
     .checkbox-container {
       display: flex;
       align-items: center;
-      gap: map-get($spacing-scale, 2);
+      gap: map.get($spacing-scale, 2);
 
       label {
         display: flex;
         align-items: center;
-        gap: map-get($spacing-scale, 2);
-        font-weight: map-get($font-weights, regular);
+        gap: map.get($spacing-scale, 2);
+        font-weight: map.get($font-weights, regular);
       }
     }
 
     .modal-actions {
       display: flex;
       justify-content: flex-end;
-      gap: map-get($spacing-scale, 2);
-      margin-top: map-get($spacing-scale, 3);
+      gap: map.get($spacing-scale, 2);
+      margin-top: map.get($spacing-scale, 3);
 
       button {
         @extend .btn;
@@ -106,16 +109,16 @@
 
   @include respond-below(md) {
     width: 95%;
-    max-height: calc(100vh - env(safe-area-inset-top, 20px) - env(safe-area-inset-bottom, 20px) - #{map-get($spacing-scale, 3)});
-    padding: map-get($spacing-scale, 3);
+    max-height: calc(100vh - env(safe-area-inset-top, 20px) - env(safe-area-inset-bottom, 20px) - #{map.get($spacing-scale, 3)});
+    padding: map.get($spacing-scale, 3);
 
     form {
       .modal-actions {
         position: sticky;
         bottom: 0;
         background: white;
-        padding-top: map-get($spacing-scale, 2);
-        padding-bottom: map-get($spacing-scale, 2);
+        padding-top: map.get($spacing-scale, 2);
+        padding-bottom: map.get($spacing-scale, 2);
       }
     }
   }
@@ -134,14 +137,14 @@
     border-radius: $border-radius;
     list-style-type: none;
     padding: 0;
-    margin-top: map-get($spacing-scale, 1);
+    margin-top: map.get($spacing-scale, 1);
     max-height: 150px;
     overflow-y: auto;
     z-index: $z-index-dropdown;
     box-shadow: $box-shadow;
 
     li {
-      padding: map-get($spacing-scale, 2);
+      padding: map.get($spacing-scale, 2);
       cursor: pointer;
 
       &:hover {
@@ -153,8 +156,8 @@
   .selected-categories {
     display: flex;
     flex-wrap: wrap;
-    gap: map-get($spacing-scale, 2);
-    margin-top: map-get($spacing-scale, 2);
+    gap: map.get($spacing-scale, 2);
+    margin-top: map.get($spacing-scale, 2);
   }
 
   .selected-category {
@@ -162,7 +165,7 @@
     align-items: center;
     background-color: $color-primary;
     color: white;
-    padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
     border-radius: $border-radius-sm;
     font-size: 0.875rem;
 
@@ -170,7 +173,7 @@
       background: none;
       border: none;
       color: white;
-      margin-left: map-get($spacing-scale, 1);
+      margin-left: map.get($spacing-scale, 1);
       cursor: pointer;
       font-size: 0.875rem;
       padding: 0;

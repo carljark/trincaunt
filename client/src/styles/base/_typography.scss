@@ -1,7 +1,11 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
 // Tipografía base
 body {
   font-family: $font-family-sans;
-  font-weight: map-get($font-weights, regular);
+  font-weight: map.get($font-weights, regular);
   line-height: 1.5;
   color: $color-gray-800;
 }
@@ -9,8 +13,8 @@ body {
 // Encabezados
 h1, h2, h3, h4, h5, h6,
 .h1, .h2, .h3, .h4, .h5, .h6 {
-  margin-bottom: map-get($spacing-scale, 3);
-  font-weight: map-get($font-weights, bold);
+  margin-bottom: map.get($spacing-scale, 3);
+  font-weight: map.get($font-weights, bold);
   line-height: 1.2;
   color: $color-gray-900;
 }
@@ -42,10 +46,10 @@ h6, .h6 { font-size: 1rem; }
 }
 
 // Pesos de fuente
-.font-weight-light { font-weight: map-get($font-weights, light); }
-.font-weight-normal { font-weight: map-get($font-weights, regular); }
-.font-weight-medium { font-weight: map-get($font-weights, medium); }
-.font-weight-bold { font-weight: map-get($font-weights, bold); }
+.font-weight-light { font-weight: map.get($font-weights, light); }
+.font-weight-normal { font-weight: map.get($font-weights, regular); }
+.font-weight-medium { font-weight: map.get($font-weights, medium); }
+.font-weight-bold { font-weight: map.get($font-weights, bold); }
 
 // Transformaciones
 text-transform-lowercase { text-transform: lowercase; }

@@ -1,10 +1,11 @@
-@use '../styles/abstracts/variables' as *;
-@use '../styles/abstracts/mixins' as *;
-@use '../styles/components/buttons';
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+@use 'components/buttons';
 
 .quick-expense-fab-container {
   position: fixed;
-  bottom: calc(map-get($spacing-scale, 3) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(map.get($spacing-scale, 3) + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   margin: 0 auto;
@@ -19,7 +20,7 @@
       bottom: auto;
       top: 100%;
       margin-bottom: 0;
-      margin-top: map-get($spacing-scale, 3);
+      margin-top: map.get($spacing-scale, 3);
       flex-direction: column;
     }
   }
@@ -29,10 +30,10 @@
     bottom: 100%;
     display: flex;
     flex-direction: column-reverse;
-    margin-bottom: map-get($spacing-scale, 3);
+    margin-bottom: map.get($spacing-scale, 3);
     background: white;
     @include component-border-radius(pill);
-    padding: map-get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 2);
     @include component-shadow();
 
     &.ai-options-menu {
@@ -42,8 +43,8 @@
       button {
         width: 100%;
         justify-content: flex-start;
-        padding: map-get($spacing-scale, 3) map-get($spacing-scale, 4);
-        font-size: map-get($font-sizes, base);
+        padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
+        font-size: map.get($font-sizes, base);
         white-space: nowrap;
       }
     }
@@ -51,8 +52,8 @@
     button {
       background: none;
       border: none;
-      font-size: map-get($font-sizes, xl);
-      padding: map-get($spacing-scale, 3);
+      font-size: map.get($font-sizes, xl);
+      padding: map.get($spacing-scale, 3);
       cursor: pointer;
       @include component-border-radius(pill);
       transition: background $transition-base;
@@ -68,8 +69,8 @@
     top: -15px;
     left: 50%;
     transform: translateX(-50%);
-    width: map-get($spacing-scale, 6);
-    height: map-get($spacing-scale, 6);
+    width: map.get($spacing-scale, 6);
+    height: map.get($spacing-scale, 6);
     background: white;
     @include component-border-radius(pill);
     @include component-shadow();
@@ -85,8 +86,8 @@
     }
 
     .drag-dots {
-      width: map-get($spacing-scale, 5);
-      height: map-get($spacing-scale, 5);
+      width: map.get($spacing-scale, 5);
+      height: map.get($spacing-scale, 5);
       background-image: radial-gradient(circle, #666 1px, transparent 1px);
       background-size: 4px 4px;
       opacity: 0.6;
@@ -105,10 +106,10 @@
     touch-action: none;
 
     &.round {
-      width: map-get($spacing-scale, 8);
-      height: map-get($spacing-scale, 8);
+      width: map.get($spacing-scale, 8);
+      height: map.get($spacing-scale, 8);
       @include component-border-radius(pill);
-      font-size: map-get($font-sizes, 5xl);
+      font-size: map.get($font-sizes, 5xl);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -119,12 +120,12 @@
     }
 
     &.pill {
-      height: map-get($spacing-scale, 8);
+      height: map.get($spacing-scale, 8);
       width: 240px;
       @include component-border-radius(pill);
       display: flex;
       align-items: center;
-      padding: 0 map-get($spacing-scale, 4);
+      padding: 0 map.get($spacing-scale, 4);
       overflow: hidden;
       
       .pill-content {
@@ -134,31 +135,31 @@
         align-items: center;
         
         .icon-part {
-          font-size: map-get($font-sizes, 4xl);
-          padding: map-get($spacing-scale, 2);
+          font-size: map.get($font-sizes, 4xl);
+          padding: map.get($spacing-scale, 2);
           cursor: pointer;
           background: rgba(255,255,255,0.2);
           @include component-border-radius(pill);
         }
 
         .amount-part {
-          font-size: map-get($font-sizes, 2xl);
-          font-weight: map-get($font-weights, bold);
+          font-size: map.get($font-sizes, 2xl);
+          font-weight: map.get($font-weights, bold);
           flex-grow: 1;
           text-align: center;
           user-select: none;
         }
 
         .swipe-hint {
-          font-size: map-get($font-sizes, xl);
+          font-size: map.get($font-sizes, xl);
           opacity: 0.5;
-          &.left { margin-right: map-get($spacing-scale, 2); }
-          &.right { margin-left: map-get($spacing-scale, 2); }
+          &.left { margin-right: map.get($spacing-scale, 2); }
+          &.right { margin-left: map.get($spacing-scale, 2); }
         }
 
         .spinner {
-          font-size: map-get($font-sizes, base);
-          margin-left: map-get($spacing-scale, 4);
+          font-size: map.get($font-sizes, base);
+          margin-left: map.get($spacing-scale, 4);
           animation: blink 1s infinite;
         }
       }

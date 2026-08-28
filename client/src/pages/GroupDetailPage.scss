@@ -1,5 +1,7 @@
-@use '../styles/abstracts/variables' as *;
-@use '../styles/abstracts/mixins' as *;
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+@use 'components/buttons';
 @use '../components/ExpenseGraph.scss';
 
 .group-detail-page {
@@ -10,7 +12,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: map-get($spacing-scale, 3);
+    padding: map.get($spacing-scale, 3);
     width: 100%;
 
     .back-button {
@@ -21,14 +23,14 @@
 
   h2, .tab-navigation, .expenses-tab-content, 
   .balances-tab-content, .group-tab-content {
-    padding: 0 map-get($spacing-scale, 3);
+    padding: 0 map.get($spacing-scale, 3);
   }
 
   .tab-navigation-wrapper {
     position: relative;
     display: flex;
     align-items: center;
-    margin-bottom: map-get($spacing-scale, 4);
+    margin-bottom: map.get($spacing-scale, 4);
     border-bottom: 2px solid $color-gray-300;
 
     .scroll-arrow {
@@ -43,18 +45,18 @@
       justify-content: flex-start;
       cursor: pointer;
       color: $color-primary;
-      font-weight: map-get($font-weights, bold);
+      font-weight: map.get($font-weights, bold);
       z-index: 2;
 
       &.left {
         left: 0;
-        padding-left: map-get($spacing-scale, 2);
+        padding-left: map.get($spacing-scale, 2);
       }
 
       &.right {
         right: 0;
         justify-content: flex-end;
-        padding-right: map-get($spacing-scale, 2);
+        padding-right: map.get($spacing-scale, 2);
         background: linear-gradient(270deg, rgba(255,255,255,1) 40%, rgba(255,255,255,0));
       }
     }
@@ -63,12 +65,12 @@
   .tab-navigation {
     display: flex;
     justify-content: flex-start;
-    padding-bottom: map-get($spacing-scale, 2);
+    padding-bottom: map.get($spacing-scale, 2);
     overflow-x: auto;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    gap: map-get($spacing-scale, 2);
-    padding: 0 map-get($spacing-scale, 3);
+    gap: map.get($spacing-scale, 2);
+    padding: 0 map.get($spacing-scale, 3);
 
     &::-webkit-scrollbar {
       display: none;
@@ -88,20 +90,20 @@
 
   h2 {
     text-align: center;
-    margin-bottom: map-get($spacing-scale, 4);
+    margin-bottom: map.get($spacing-scale, 4);
   }
 
   .expenses-summary {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: map-get($spacing-scale, 4);
-    padding: map-get($spacing-scale, 2) 0;
+    margin-bottom: map.get($spacing-scale, 4);
+    padding: map.get($spacing-scale, 2) 0;
     border-bottom: 1px solid $color-gray-200;
   }
 
   .expenses-list {
-    margin-bottom: map-get($spacing-scale, 4);
+    margin-bottom: map.get($spacing-scale, 4);
 
     .expense-item {
       width: 100%;
@@ -109,10 +111,10 @@
       flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: map-get($spacing-scale, 2);
-      padding: map-get($spacing-scale, 2);
+      margin-bottom: map.get($spacing-scale, 2);
+      padding: map.get($spacing-scale, 2);
       border-bottom: 1px solid $color-gray-200;
-      gap: map-get($spacing-scale, 2);
+      gap: map.get($spacing-scale, 2);
 
       .expense-info {
         display: flex;
@@ -137,7 +139,7 @@
             flex: 1;
             min-width: 10px;
             border-bottom: 2px dotted $color-gray-400;
-            margin: 0 map-get($spacing-scale, 1);
+            margin: 0 map.get($spacing-scale, 1);
             opacity: 0.7;
           }
 
@@ -155,12 +157,12 @@
       .expense-actions {
         display: flex;
         justify-content: flex-end;
-        gap: map-get($spacing-scale, 2);
+        gap: map.get($spacing-scale, 2);
 
         button {
           @extend .btn;
           @extend .btn-sm;
-          padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+          padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
 
           &.edit-btn {
             @extend .btn-secondary;
@@ -176,14 +178,14 @@
 
   .fixed-add-expense-button-container {
     position: fixed;
-    bottom: calc(#{map-get($spacing-scale, 3)} + env(safe-area-inset-bottom, 0px));
+    bottom: calc(#{map.get($spacing-scale, 3)} + env(safe-area-inset-bottom, 0px));
     left: 0;
     right: 0;
     margin: 0 auto;
     width: fit-content;
     z-index: $z-index-fixed;
     display: flex;
-    gap: map-get($spacing-scale, 3);
+    gap: map.get($spacing-scale, 3);
     align-items: center;
 
     .add-expense-button {

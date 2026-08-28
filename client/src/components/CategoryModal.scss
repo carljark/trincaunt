@@ -1,8 +1,9 @@
-@use '../styles/abstracts/variables' as *;
-@use '../styles/abstracts/mixins' as *;
-@use '../styles/components/buttons';
-@use '../styles/components/forms';
-@use '../styles/components/cards';
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+@use 'components/buttons';
+@use 'components/forms';
+@use 'components/cards';
 
 .modal-overlay {
   position: fixed;
@@ -18,7 +19,7 @@
 
   .modal-content {
     background-color: white;
-    padding: map-get($spacing-scale, 4);
+    padding: map.get($spacing-scale, 4);
     @include component-border-radius();
     @include component-shadow(lg);
     width: 80%;
@@ -27,28 +28,28 @@
     h3 {
       margin-top: 0;
       color: $color-primary;
-      margin-bottom: map-get($spacing-scale, 3);
+      margin-bottom: map.get($spacing-scale, 3);
       text-align: center;
     }
 
     .modal-actions {
-      margin-bottom: map-get($spacing-scale, 3);
+      margin-bottom: map.get($spacing-scale, 3);
       button {
-        margin-right: map-get($spacing-scale, 2);
+        margin-right: map.get($spacing-scale, 2);
       }
     }
 
     .category-list {
-      max-height: map-get($spacing-scale, 6);
+      max-height: map.get($spacing-scale, 6);
       overflow-y: auto;
       border: 1px solid $color-gray-300;
-      padding: map-get($spacing-scale, 3);
+      padding: map.get($spacing-scale, 3);
       @include component-border-radius();
 
       .category-item {
         display: flex;
         justify-content: space-between;
-        padding: map-get($spacing-scale, 2) 0;
+        padding: map.get($spacing-scale, 2) 0;
         
         input[type="checkbox"] {
           margin-left: auto;

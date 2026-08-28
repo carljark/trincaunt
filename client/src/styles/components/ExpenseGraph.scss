@@ -1,19 +1,20 @@
+@use 'sass:map';
 // Component: Gráfico de gastos
 .expense-graph-container {
   padding: 0;
   background-color: transparent;
   border-radius: 0;
   box-shadow: none;
-  margin-top: map-get($spacing-scale, 2);
+  margin-top: map.get($spacing-scale, 2);
   border: none;
   width: 100%;
 
   .filters {
     display: flex;
     flex-direction: column;
-    gap: map-get($spacing-scale, 3);
-    margin-bottom: map-get($spacing-scale, 4);
-    padding: map-get($spacing-scale, 3);
+    gap: map.get($spacing-scale, 3);
+    margin-bottom: map.get($spacing-scale, 4);
+    padding: map.get($spacing-scale, 3);
     background-color: $color-gray-100;
     @include component-border-radius();
     border: 1px solid $color-gray-200;
@@ -21,15 +22,15 @@
     .filter-group {
       display: flex;
       flex-direction: column;
-      gap: map-get($spacing-scale, 3);
+      gap: map.get($spacing-scale, 3);
     }
 
     .filter-label {
-      font-weight: map-get($font-weights, semibold);
+      font-weight: map.get($font-weights, semibold);
       color: $color-gray-700;
-      margin-bottom: map-get($spacing-scale, 1);
+      margin-bottom: map.get($spacing-scale, 1);
       display: block;
-      font-size: map-get($font-sizes, sm);
+      font-size: map.get($font-sizes, sm);
     }
 
     .date-presets-container {
@@ -39,12 +40,12 @@
 
     .date-presets {
       display: flex;
-      gap: map-get($spacing-scale, 2);
+      gap: map.get($spacing-scale, 2);
 
       .preset-btn {
         flex: 1;
         max-width: 50px;
-        height: map-get($spacing-scale, 5);
+        height: map.get($spacing-scale, 5);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -53,8 +54,8 @@
         color: $color-gray-700;
         @include component-border-radius();
         cursor: pointer;
-        font-weight: map-get($font-weights, semibold);
-        font-size: map-get($font-sizes, sm);
+        font-weight: map.get($font-weights, semibold);
+        font-size: map.get($font-sizes, sm);
         transition: all 0.2s ease;
 
         &:hover {
@@ -73,28 +74,28 @@
     .custom-dates {
       display: flex;
       flex-wrap: wrap;
-      gap: map-get($spacing-scale, 3);
+      gap: map.get($spacing-scale, 3);
       align-items: flex-end;
 
       label {
         display: flex;
         flex-direction: column;
-        gap: map-get($spacing-scale, 1);
-        font-weight: map-get($font-weights, semibold);
+        gap: map.get($spacing-scale, 1);
+        font-weight: map.get($font-weights, semibold);
         color: $color-gray-700;
-        font-size: map-get($font-sizes, xs);
+        font-size: map.get($font-sizes, xs);
         flex: 1;
-        min-width: map-get($spacing-scale, 7);
+        min-width: map.get($spacing-scale, 7);
 
         input[type="date"] {
-          padding: map-get($spacing-scale, 2);
+          padding: map.get($spacing-scale, 2);
           border: 1px solid $color-gray-300;
           @include component-border-radius();
           background-color: white;
           color: $color-gray-900;
           font-family: inherit;
-          font-size: map-get($font-sizes, sm);
-          height: map-get($spacing-scale, 5);
+          font-size: map.get($font-sizes, sm);
+          height: map.get($spacing-scale, 5);
           box-sizing: border-box;
 
           &:disabled {
@@ -105,15 +106,15 @@
       }
 
       .clear-preset {
-        padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+        padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
         background-color: $color-gray-300;
         color: $color-gray-700;
         border: none;
         @include component-border-radius();
         cursor: pointer;
-        font-weight: map-get($font-weights, semibold);
-        font-size: map-get($font-sizes, xs);
-        height: map-get($spacing-scale, 5);
+        font-weight: map.get($font-weights, semibold);
+        font-size: map.get($font-sizes, xs);
+        height: map.get($spacing-scale, 5);
       }
     }
 
@@ -123,10 +124,10 @@
       flex-direction: column;
 
       input[type="text"] {
-        padding: map-get($spacing-scale, 3);
+        padding: map.get($spacing-scale, 3);
         border: 1px solid $color-gray-300;
         @include component-border-radius();
-        font-size: map-get($font-sizes, sm);
+        font-size: map.get($font-sizes, sm);
         width: 100%;
         box-sizing: border-box;
 
@@ -153,9 +154,9 @@
         @include component-shadow();
 
         li {
-          padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+          padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
           cursor: pointer;
-          font-size: map-get($font-sizes, sm);
+          font-size: map.get($font-sizes, sm);
 
           &:hover {
             background-color: $color-gray-100;
@@ -167,18 +168,18 @@
       .selected-categories {
         display: flex;
         flex-wrap: wrap;
-        gap: map-get($spacing-scale, 2);
-        margin-top: map-get($spacing-scale, 2);
+        gap: map.get($spacing-scale, 2);
+        margin-top: map.get($spacing-scale, 2);
 
         .selected-category {
           background-color: $color-primary;
           color: white;
-          padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+          padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
           @include component-border-radius();
-          font-size: map-get($font-sizes, xs);
+          font-size: map.get($font-sizes, xs);
           display: flex;
           align-items: center;
-          gap: map-get($spacing-scale, 2);
+          gap: map.get($spacing-scale, 2);
 
           button {
             background: none;
@@ -188,7 +189,7 @@
             cursor: pointer;
             padding: 0;
             line-height: 1;
-            font-size: map-get($font-sizes, xs);
+            font-size: map.get($font-sizes, xs);
           }
         }
       }
@@ -198,18 +199,18 @@
       .weekdays-list {
         display: flex;
         flex-wrap: wrap;
-        gap: map-get($spacing-scale, 2);
+        gap: map.get($spacing-scale, 2);
       }
 
       .weekday-checkbox {
         display: flex;
         align-items: center;
-        padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+        padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
         background-color: white;
         border: 1px solid $color-gray-300;
         @include component-border-radius(pill);
         cursor: pointer;
-        font-size: map-get($font-sizes, xs);
+        font-size: map.get($font-sizes, xs);
         color: $color-gray-700;
 
         input[type="checkbox"] {
@@ -227,27 +228,27 @@
 
   .chart-wrapper {
     width: 100%;
-    height: map-get($spacing-scale, 6); // Fixed height for mobile
+    height: map.get($spacing-scale, 6); // Fixed height for mobile
     background-color: white;
-    padding: map-get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 2);
     @include component-border-radius();
     box-sizing: border-box;
   }
 
   .loading-state, .no-data {
     text-align: center;
-    padding: map-get($spacing-scale, 5) map-get($spacing-scale, 3);
+    padding: map.get($spacing-scale, 5) map.get($spacing-scale, 3);
     color: $color-gray-600;
     background-color: $color-gray-100;
     @include component-border-radius();
   }
 
   @include respond-above(md) {
-    padding: map-get($spacing-scale, 3);
+    padding: map.get($spacing-scale, 3);
 
     .chart-wrapper {
-      height: map-get($spacing-scale, 7);
-      padding: map-get($spacing-scale, 4);
+      height: map.get($spacing-scale, 7);
+      padding: map.get($spacing-scale, 4);
     }
 
     .filters {

@@ -1,3 +1,4 @@
+@use 'sass:map';
 // ========== SISTEMA DE ESTILOS DE TRINCAUNT ==========
 // Configuración principal del sistema de diseño moderno
 
@@ -31,8 +32,8 @@ body {
 
 .container {
   width: 100%;
-  padding-right: map-get($spacing-scale, 3);
-  padding-left: map-get($spacing-scale, 3);
+  padding-right: map.get($spacing-scale, 3);
+  padding-left: map.get($spacing-scale, 3);
   margin-right: auto;
   margin-left: auto;
 
@@ -96,17 +97,17 @@ body {
 // ========== CLASES DE UTILIDAD GLOBALES ==========
 
 // Tipografía
-.font-weight-light { font-weight: map-get($font-weights, light) !important; }
-.font-weight-normal { font-weight: map-get($font-weights, regular) !important; }
-.font-weight-medium { font-weight: map-get($font-weights, medium) !important; }
-.font-weight-bold { font-weight: map-get($font-weights, bold) !important; }
+.font-weight-light { font-weight: map.get($font-weights, light) !important; }
+.font-weight-normal { font-weight: map.get($font-weights, regular) !important; }
+.font-weight-medium { font-weight: map.get($font-weights, medium) !important; }
+.font-weight-bold { font-weight: map.get($font-weights, bold) !important; }
 
-.text-xs { font-size: map-get($font-sizes, xs) !important; }
-.text-sm { font-size: map-get($font-sizes, sm) !important; }
-.text-base { font-size: map-get($font-sizes, base) !important; }
-.text-lg { font-size: map-get($font-sizes, lg) !important; }
-.text-xl { font-size: map-get($font-sizes, xl) !important; }
-.text-2xl { font-size: map-get($font-sizes, 2xl) !important; }
+.text-xs { font-size: map.get($font-sizes, xs) !important; }
+.text-sm { font-size: map.get($font-sizes, sm) !important; }
+.text-base { font-size: map.get($font-sizes, base) !important; }
+.text-lg { font-size: map.get($font-sizes, lg) !important; }
+.text-xl { font-size: map.get($font-sizes, xl) !important; }
+.text-2xl { font-size: map.get($font-sizes, 2xl) !important; }
 
 .text-left { text-align: left !important; }
 .text-center { text-align: center !important; }

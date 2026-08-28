@@ -1,11 +1,15 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
 // Botones base
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: map-get($spacing-scale, 2) map-get($spacing-scale, 3);
+  padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
   border-radius: $border-radius;
-  font-weight: map-get($font-weights, medium);
+  font-weight: map.get($font-weights, medium);
   transition: $transition-base;
   cursor: pointer;
   border: none;
@@ -28,12 +32,12 @@
 
 // Tamaños
 .btn-sm {
-  padding: map-get($spacing-scale, 1) map-get($spacing-scale, 2);
+  padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
   font-size: 0.875rem;
 }
 
 .btn-lg {
-  padding: map-get($spacing-scale, 3) map-get($spacing-scale, 4);
+  padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
   font-size: 1.25rem;
 }
 
@@ -71,7 +75,7 @@
 }
 
 .btn-link {
-  font-weight: map-get($font-weights, regular);
+  font-weight: map.get($font-weights, regular);
   color: $color-primary;
   text-decoration: underline;
   background-color: transparent;
