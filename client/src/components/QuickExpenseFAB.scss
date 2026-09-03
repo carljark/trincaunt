@@ -106,21 +106,28 @@
     touch-action: none;
 
     &.round {
-      width: map.get($spacing-scale, 8);
-      height: map.get($spacing-scale, 8);
-      @include component-border-radius(pill);
-      font-size: map.get($font-sizes, 5xl);
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      font-size: 2.5rem;
       display: flex;
       justify-content: center;
       align-items: center;
+      box-shadow: 0 8px 24px rgba($color-primary, 0.4);
+      border: 3px solid rgba(255, 255, 255, 0.2);
 
       &:hover {
-        transform: scale(1.05);
+        transform: scale(1.1);
+        box-shadow: 0 12px 32px rgba($color-primary, 0.5);
+      }
+
+      &:active {
+        transform: scale(0.95);
       }
     }
 
     &.pill {
-      height: map.get($spacing-scale, 8);
+      height: map.get($spacing-scale, 9);
       width: 240px;
       @include component-border-radius(pill);
       display: flex;
