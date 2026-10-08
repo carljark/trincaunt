@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import UserMenu from '../components/UserMenu';
+import { IExpensePopulated } from '../types/expense';
+import { IGroup } from '../types/group';
+import { IUserPopulated } from '../types/user';
 
 import './HomePage.scss'; // Import the new SCSS file
 
@@ -11,10 +14,20 @@ const formatCurrency = (amount: number) => {
   return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+interface IGroupSummary extends IGroup {
+  totalExpenses: number;
+  userShare: number;
+}
+
+interface IGlobalExpense extends Omit<IExpensePopulated, 'pagado_por'> {
+  pagado_por: IUserPopulated[] | IUserPopulated;
+  grupo?: { nombre: string };
+}
+
 const HomePage: React.FC = () => {
-  const { user, token, logout } = useAuth();
-  const [groups, setGroups] = useState<any[]>([]);
-  const [globalExpenses, setGlobalExpenses] = useState<any[]>([]);
+  const { user, token } = useAuth();
+  const [groups, setGroups] = useState<IGroupSummary[]>([]);
+  const [globalExpenses, setGlobalExpenses] = useState<IGlobalExpense[]>([]);
 
   const fetchGroups = async () => {
     if (!token) return;
@@ -71,30 +84,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const handleDeleteGroup = async (groupId: string, groupName: string) => {
-    if (!token) return;
-    if (window.confirm(`¿Estás seguro de que quieres eliminar el grupo "${groupName}"? Esta acción borrará todos los gastos y transacciones de deuda asociadas.`)) {
-      try {
-        const res = await fetch(`${apiHost}/api/v1/groups/${groupId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (res.ok) {
-          alert(`Grupo "${groupName}" eliminado con éxito.`);
-          fetchGroups(); // Refresh the list of groups
-        } else {
-          const data = await res.json();
-          throw new Error(data.message || 'Failed to delete group');
-        }
-      } catch (error) {
-        console.error('Error deleting group:', error);
-        alert(`Error al eliminar el grupo: ${(error as Error).message}`);
-      }
-    }
-  };
-
   const handleExportXLSX = useCallback(async () => {
     if (globalExpenses.length === 0) {
       alert('No hay gastos para exportar.');
@@ -106,8 +95,8 @@ const HomePage: React.FC = () => {
       'Grupo': expense.grupo?.nombre || 'Global',
       'Descripción': expense.descripcion,
       'Monto': expense.monto,
-      'Pagado Por': Array.isArray(expense.pagado_por) ? expense.pagado_por.map((p: any) => p.nombre).join(', ') : expense.pagado_por?.nombre || 'Nadie',
-      'Participantes': expense.participantes.map((p: any) => p.nombre).join(', '),
+      'Pagado Por': Array.isArray(expense.pagado_por) ? expense.pagado_por.map(p => p.nombre).join(', ') : expense.pagado_por?.nombre || 'Nadie',
+      'Participantes': expense.participantes.map(p => p.nombre).join(', '),
       'Fecha': new Date(expense.fecha).toLocaleDateString(),
       'Asume Gasto': expense.asume_gasto ? 'Sí' : 'No',
       'Categoría': expense.categoria?.join(', ') || '',

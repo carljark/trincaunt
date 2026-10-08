@@ -60,8 +60,8 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
         const errData = await res.json();
         throw new Error(errData.message || 'Error al cargar las notas');
       }
-    } catch (err: any) {
-      setError(err.message || 'Error de red al cargar las notas');
+    } catch (err) {
+      setError((err instanceof Error && err.message) || 'Error de red al cargar las notas');
       console.error('Error fetching notes:', err);
     } finally {
       setLoading(false);
@@ -136,8 +136,8 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
         const errData = await res.json();
         throw new Error(errData.message || 'Error al guardar la nota');
       }
-    } catch (err: any) {
-      setError(err.message || 'Error de red al guardar la nota');
+    } catch (err) {
+      setError((err instanceof Error && err.message) || 'Error de red al guardar la nota');
       console.error('Error saving note:', err);
     } finally {
       setLoading(false);
@@ -161,8 +161,8 @@ const GroupNotes: React.FC<GroupNotesProps> = ({ groupId, members }) => {
         const errData = await res.json();
         throw new Error(errData.message || 'Error al eliminar la nota');
       }
-    } catch (err: any) {
-      setError(err.message || 'Error de red al eliminar la nota');
+    } catch (err) {
+      setError((err instanceof Error && err.message) || 'Error de red al eliminar la nota');
       console.error('Error deleting note:', err);
     } finally {
       setLoading(false);

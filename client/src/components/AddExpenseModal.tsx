@@ -44,7 +44,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       if (Array.isArray(expenseToEdit.pagado_por)) {
         setPaidByIds(expenseToEdit.pagado_por.map((p: IUserPopulated) => p._id));
       } else {
-        // @ts-ignore: backward compatibility with old expenses
+        // @ts-expect-error legacy expenses stored a single populated user instead of an array
         setPaidByIds([expenseToEdit.pagado_por._id.toString()]);
       }
       setExpenseDate(expenseToEdit.fecha.split('T')[0]);
@@ -65,7 +65,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.data)) {
-            const validCategories = data.data.filter((item: any) => item && typeof item.category === 'string');
+            const validCategories = data.data.filter((item: { category?: unknown }) => item && typeof item.category === 'string');
             setSuggestedCategories(validCategories);
           }
         }
@@ -130,7 +130,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
       return;
     }
 
-    const expensePayload: any = {
+    const expensePayload: Record<string, unknown> = {
       descripcion: expenseData.description,
       monto: Number.parseFloat(expenseData.amount),
       grupo_id: groupId,
@@ -169,7 +169,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
         const data = await res.json();
         setError(data.message || `Error al ${expenseToEdit ? 'actualizar' : 'añadir'} gasto`);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(`Error ${expenseToEdit ? 'updating' : 'adding'} expense:`, err);
       setError('Error de red o del servidor.');
     } finally {
@@ -299,7 +299,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
                     e.preventDefault();
                     addCategory(categoryInput.trim());
                   }}>
-                    + Añadir "{categoryInput.trim()}"
+                    + Añadir &quot;{categoryInput.trim()}&quot;
                   </li>
                 )}
                 {suggestedCategories
@@ -363,7 +363,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
               onChange={e => setSelectedParticipants(Array.from(e.target.selectedOptions, option => option.value))}
               disabled={assumeExpense}
             >
-              {members.map((m: any) => (
+              {members.map(m => (
                 <option key={m._id} value={m._id}>{m.nombre}</option>
               ))}
             </select>

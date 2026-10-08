@@ -6,7 +6,7 @@ import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import AddExpenseModal from '../components/AddExpenseModal';
 import CategoryModal from '../components/CategoryModal';
-import BulkEditForm from '../components/BulkEditForm';
+import BulkEditForm, { IBulkUpdateData } from '../components/BulkEditForm';
 import ConfirmationModal from '../components/ConfirmationModal';
 import AdvancedFiltersModal from '../components/AdvancedFiltersModal';
 import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
@@ -63,7 +63,7 @@ const GroupDetailPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransaction[]>([]);
-  const [paymentHistory, setPaymentHistory] = useState<IDebtTransaction[]>([]);
+  const [, setPaymentHistory] = useState<IDebtTransaction[]>([]);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false);
   const [totalExpenses, setTotalExpenses] = useState<number>(0);
   const [averageExpense, setAverageExpense] = useState<number>(0);
@@ -85,7 +85,7 @@ const GroupDetailPage: React.FC = () => {
   const [categoryAliases, setCategoryAliases] = useState<{ [alias: string]: string[] }>({});
   const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [bulkUpdateData, setBulkUpdateData] = useState<any>(null);
+  const [bulkUpdateData, setBulkUpdateData] = useState<IBulkUpdateData | null>(null);
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [dateFilterPreset, setDateFilterPreset] = useState<string | null>(null);
@@ -181,7 +181,7 @@ const GroupDetailPage: React.FC = () => {
       if (categoriesRes.ok) {
         const categoriesData = await categoriesRes.json();
         if (Array.isArray(categoriesData.data)) {
-          categoriesData.data.forEach((item: any) => {
+          categoriesData.data.forEach((item: { category?: string }) => {
             if (item && item.category) allCats.add(item.category);
           });
         }
@@ -189,7 +189,7 @@ const GroupDetailPage: React.FC = () => {
 
       if (aliasesRes.ok) {
         const aliasesData = await aliasesRes.json();
-        aliasesData.data.forEach((alias: any) => {
+        aliasesData.data.forEach((alias: { alias: string; mainCategories: string[] }) => {
           aliasesMap[alias.alias] = alias.mainCategories;
           alias.mainCategories.forEach((mc: string) => allCats.add(mc));
         });
@@ -286,7 +286,7 @@ const GroupDetailPage: React.FC = () => {
         setPayerFilter(filters.payer || 'all');
         hasInitializedCategories.current = true;
       }
-    } catch (err) {
+    } catch {
       // It's okay if it fails, it means the user has no saved preferences
       hasInitializedCategories.current = true;
     } finally {
@@ -395,7 +395,7 @@ const GroupDetailPage: React.FC = () => {
     setSearchFilter('');
   };
 
-  const handleBulkUpdate = (updateData: any) => {
+  const handleBulkUpdate = (updateData: IBulkUpdateData) => {
     if (Object.keys(updateData).length === 0) {
       alert('No hay cambios que aplicar.');
       return;
@@ -450,41 +450,6 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
-  const saveFilters = async () => {
-    if (!token) return;
-    const filters = {
-      category: categoryFilter,
-      description: descriptionFilter,
-      dateFrom: dateFilterPreset ? '' : dateFromFilter,
-      dateTo: dateFilterPreset ? '' : dateToFilter,
-      payer: payerFilter,
-      period: dateFilterPreset,
-      localization: localizationFilter,
-    };
-    try {
-      const res = await fetch(`${apiHost}${apiBaseUrl}/user-preferences`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ filters }),
-      });
-      if (res.ok) {
-        alert('Filtros guardados');
-      } else {
-        const data = await res.json();
-        throw new Error(data.message || 'Error al guardar los filtros');
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-        alert('Error al guardar filtros: ' + err.message);
-      } else {
-        setError('An unknown error occurred');
-        alert('Error desconocido al guardar filtros');
-      }
-      setTimeout(() => setError(''), 5000);
-    }
-  };
-
   useEffect(() => {
     if (filteredExpenses.length > 0) {
       const dates = filteredExpenses.map(expense => new Date(expense.fecha).getTime());
@@ -536,7 +501,7 @@ const GroupDetailPage: React.FC = () => {
       setBalance([]);
       setSettlementTransactions([]);
       setPaymentHistory([]);
-      const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0);
+      const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: IExpensePopulated) => sum + expense.monto, 0);
       setTotalExpenses(calculatedTotalExpenses);
 
       setInitialDataLoaded(true);
@@ -645,8 +610,8 @@ const GroupDetailPage: React.FC = () => {
         const errData = await res.json();
         throw new Error(errData.message || 'Error al salir del grupo');
       }
-    } catch (err: any) {
-      setError(err.message || 'Error de red al salir del grupo');
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : 'Error de red al salir del grupo');
       console.error('Error leaving group:', err);
     } finally {
       setLoading(false);
@@ -754,7 +719,7 @@ const GroupDetailPage: React.FC = () => {
 
     socket.emit('join_group', groupId);
 
-    const handleExpensesUpdated = (data: any) => {
+    const handleExpensesUpdated = (data: unknown) => {
       console.log('Gastos actualizados remotamente:', data);
       fetchGroupData();
     };
@@ -925,10 +890,10 @@ const GroupDetailPage: React.FC = () => {
               </div>
               
               {(() => {
-                const groupedExpenses: { date: string; items: any[] }[] = [];
-                let currentGroup: { date: string; items: any[] } | null = null;
+                const groupedExpenses: { date: string; items: IExpensePopulated[] }[] = [];
+                let currentGroup: { date: string; items: IExpensePopulated[] } | null = null;
                 
-                filteredExpenses.forEach((expense: any) => {
+                filteredExpenses.forEach((expense: IExpensePopulated) => {
                   const dateStr = new Date(expense.fecha).toLocaleDateString();
                   if (!currentGroup || currentGroup.date !== dateStr) {
                     currentGroup = { date: dateStr, items: [] };
@@ -941,7 +906,7 @@ const GroupDetailPage: React.FC = () => {
                   <div key={group.date} className="expense-date-group">
                     <h4 className="expense-date-header">{group.date}</h4>
                     <ul className="expenses-list">
-                      {group.items.map((expense: any) => (
+                      {group.items.map((expense: IExpensePopulated) => (
                         <li key={expense._id}>
                             <SwipeableExpenseItem 
                               expense={expense} 

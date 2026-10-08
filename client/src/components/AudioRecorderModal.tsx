@@ -21,7 +21,7 @@ const AudioRecorderModal: React.FC<AudioRecorderModalProps> = ({ onClose, onCapt
     return () => {
       stopRecording();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const startRecording = async () => {
     try {
@@ -55,7 +55,7 @@ const AudioRecorderModal: React.FC<AudioRecorderModalProps> = ({ onClose, onCapt
         setRecordingTime(prev => prev + 1);
       }, 1000);
 
-    } catch (err: any) {
+    } catch {
       setError('No se pudo acceder al micrófono. Revisa los permisos.');
     }
   };

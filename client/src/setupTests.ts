@@ -17,6 +17,6 @@ if (typeof window !== 'undefined') {
     fillText: vi.fn(),
     strokeText: vi.fn(),
     // Add other methods Chart.js might call if needed
-  })) as any;
+  })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
 }
 

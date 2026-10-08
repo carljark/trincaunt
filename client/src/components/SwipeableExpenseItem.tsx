@@ -1,14 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
+import { IExpensePopulated } from '../types/expense';
 import './SwipeableExpenseItem.scss';
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+type SwipeableExpense = IExpensePopulated & {
+  grupo_nombre?: string;
+  original_monto?: number;
+};
+
 interface SwipeableExpenseItemProps {
-  expense: any;
+  expense: SwipeableExpense;
   isGlobal?: boolean;
-  onEdit: (expense: any) => void;
+  onEdit: (expense: SwipeableExpense) => void;
   onDelete: (id: string) => void;
 }
 
@@ -80,7 +86,7 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({ expense, is
               <div className="expense-dots"></div>
               <div className="expense-amount">
                 <strong>{formatCurrency(expense.monto)}€</strong>
-                {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
+                {isGlobal && <span> (de {formatCurrency(expense.original_monto ?? 0)}€)</span>}
               </div>
             </div>
           </div>

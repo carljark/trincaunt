@@ -20,7 +20,7 @@ interface IGroupedAliases {
 
 const PreferencesPage: React.FC = () => {
   const { token } = useAuth();
-  const [groups, setGroups] = useState<any[]>([]);
+  const [groups, setGroups] = useState<{ _id: string; nombre: string }[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [aliases, setAliases] = useState<ICategoryAlias[]>([]);
   const [groupedAliases, setGroupedAliases] = useState<IGroupedAliases>({});
@@ -135,7 +135,7 @@ const PreferencesPage: React.FC = () => {
     if (!token || !selectedGroupId) {
       setAliases([]);
       return;
-    };
+    }
     try {
       setLoading(true);
       const res = await fetch(`${apiHost}${apiBaseUrl}/category-aliases?groupId=${selectedGroupId}`, {
@@ -364,7 +364,7 @@ const PreferencesPage: React.FC = () => {
                                   e.preventDefault();
                                   handleAddMainCategory(mainCategorySearchInput.trim());
                               }}>
-                                  Add "{mainCategorySearchInput.trim()}"
+                                  Add &quot;{mainCategorySearchInput.trim()}&quot;
                               </div>
                           )}
                           {availableAllCategories

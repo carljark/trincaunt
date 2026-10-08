@@ -69,7 +69,7 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.data)) {
-            const validCategories = data.data.filter((item: any) => item && typeof item.category === 'string');
+            const validCategories = data.data.filter((item: { category?: unknown }) => item && typeof item.category === 'string');
             setSuggestedCategories(validCategories);
           }
         }
@@ -348,7 +348,7 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
                       e.preventDefault();
                       addCategory(categoryInput.trim());
                   }}>
-                    Añadir "{categoryInput.trim()}"
+                    Añadir &quot;{categoryInput.trim()}&quot;
                   </li>
                 )}
                 {suggestedCategories

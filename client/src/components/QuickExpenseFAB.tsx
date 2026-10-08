@@ -39,7 +39,6 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
   
   const [isMoveMode, setIsMoveMode] = useState(false);
   const [fabPosition, setFabPosition] = useState<{x: number | null, y: number | null}>({ x: null, y: null });
-  const moveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +49,9 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
       if (savedPos) {
         try {
           setFabPosition(JSON.parse(savedPos));
-        } catch (e) {}
+        } catch {
+          // ignore malformed saved position
+        }
       }
     }
   }, [userId]);
@@ -156,7 +157,7 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
         setIsExpanded(false);
         onExpenseAdded();
       }
-    } catch (err) {
+    } catch {
       alert('Error guardando el gasto rápido');
     } finally {
       setIsSubmitting(false);
@@ -377,7 +378,7 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
     setShowIconSelector(true);
   };
 
-  let pillStyle: any = {};
+  let pillStyle: React.CSSProperties = {};
   if (!isMoveMode) {
     if (offsetX > 0) {
       pillStyle = { transform: `translateX(${offsetX}px)`, backgroundColor: `rgba(46, 204, 113, ${Math.min(offsetX/100, 1)})` };
@@ -386,7 +387,7 @@ const QuickExpenseFAB: React.FC<QuickExpenseFABProps> = ({ groupId, token, userI
     }
   }
 
-  const containerStyle: any = fabPosition.x !== null && fabPosition.y !== null ? {
+  const containerStyle: React.CSSProperties = fabPosition.x !== null && fabPosition.y !== null ? {
     left: `${Math.max(5, Math.min(fabPosition.x || 0, 95))}dvw`,
     top: `${Math.max(5, Math.min(fabPosition.y || 0, 85))}dvh`,
     right: 'auto',

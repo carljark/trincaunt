@@ -31,8 +31,8 @@ const LoginPage: React.FC = () => {
       }
       login(data.token, data.data.user);
       navigate('/');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 

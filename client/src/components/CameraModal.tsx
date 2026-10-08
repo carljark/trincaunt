@@ -21,7 +21,7 @@ const CameraModal: React.FC<CameraModalProps> = ({ onClose, onCapture }) => {
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
         }
-      } catch (err: any) {
+      } catch {
         setError('No se pudo acceder a la cámara. Revisa los permisos.');
       }
     };
@@ -32,7 +32,7 @@ const CameraModal: React.FC<CameraModalProps> = ({ onClose, onCapture }) => {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     return () => {
