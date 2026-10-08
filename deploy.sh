@@ -13,11 +13,17 @@ set -e
 
 source "$(dirname "$0")/scripts/ec2_config.sh"
 
+if [ ! -f .env ]; then
+  echo "❌ Falta .env en la raíz del repo (copia .env.example y rellénalo). Abortando."
+  exit 1
+fi
+
 echo "📦 [1/2] Sincronizando código fuente con el EC2..."
 $SSH_CMD $EC2_USER@$EC2_HOST "mkdir -p $TARGET_DIR"
 
-# Rsync usando la misma clave PEM
-rsync -avz -e "$SSH_CMD" --exclude 'node_modules' --exclude 'client/dist' --exclude 'api/dist' --exclude '.git' --exclude '.env' ./ $EC2_USER@$EC2_HOST:$TARGET_DIR/
+# Rsync usando la misma clave PEM. Sí sincroniza los .env (no están en git):
+# el .env de la raíz es el que lee docker compose en el EC2.
+rsync -avz -e "$SSH_CMD" --exclude 'node_modules' --exclude 'client/dist' --exclude 'api/dist' --exclude '.git' --exclude '/temp' --exclude '/mongodb_backups' ./ $EC2_USER@$EC2_HOST:$TARGET_DIR/
 
 echo "☁️  [2/2] Conectando al EC2 para levantar la app..."
 $SSH_CMD $EC2_USER@$EC2_HOST "FORCE_NGINX=${FORCE_NGINX:-0} bash -s" << 'SSH_EOF'
@@ -25,7 +31,7 @@ $SSH_CMD $EC2_USER@$EC2_HOST "FORCE_NGINX=${FORCE_NGINX:-0} bash -s" << 'SSH_EOF
   cd trincaunt
 
   if [ ! -f .env ]; then
-    echo "❌ Falta ~/trincaunt/.env en el EC2 (ver .env.example). Abortando."
+    echo "❌ Falta .env en la raíz del repo local (ver .env.example); rsync no lo ha subido. Abortando."
     exit 1
   fi
 

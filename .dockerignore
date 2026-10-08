@@ -5,3 +5,5 @@ client/dist
 api/dist
 .git
 .env
+temp
+mongodb_backups
