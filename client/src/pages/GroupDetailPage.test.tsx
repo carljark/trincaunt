@@ -48,6 +48,13 @@ vi.mock('../components/GroupNotes', () => ({
   default: () => <div>GroupNotes</div>,
 }));
 
+// The manual-expense entry point is now the QuickExpenseFAB (onOpenManual)
+vi.mock('../components/QuickExpenseFAB', () => ({
+  default: ({ onOpenManual }: { onOpenManual: () => void }) => (
+    <button onClick={onOpenManual}>Añadir gasto</button>
+  ),
+}));
+
 // Mock NotificationContext
 vi.mock('../contexts/NotificationContext', () => ({
   useNotifications: () => ({
@@ -208,7 +215,7 @@ describe('GroupDetailPage - AddExpenseModal paidByInitial prop', () => {
     const mockUserWithoutId = { nombre: 'Test User', email: 'test@test.com', fecha_registro: '2022-01-01T00:00:00.000Z' };
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       token: 'test-token',
-      // @ts-expect-error
+      // @ts-expect-error intentionally passing a user without _id
       user: mockUserWithoutId,
       login: vi.fn(),
       logout: vi.fn(),
@@ -232,7 +239,7 @@ describe('GroupDetailPage - AddExpenseModal paidByInitial prop', () => {
     expect(capturedPaidByInitial).toBe('');
   });
 
-  it('should show BulkEditForm when Edición tab is clicked', async () => {
+  it('should show BulkEditForm when Edición Múltiple tab is clicked', async () => {
     const mockUser = { _id: 'user-1', nombre: 'User 1', email: 'test@test.com', fecha_registro: '2022-01-01T00:00:00.000Z' };
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       token: 'test-token',
@@ -248,7 +255,7 @@ describe('GroupDetailPage - AddExpenseModal paidByInitial prop', () => {
       expect(screen.getByText('Test Group')).toBeInTheDocument();
     });
 
-    const editTabButton = screen.getByText('Edición');
+    const editTabButton = screen.getByText('Edición Múltiple');
     fireEvent.click(editTabButton);
 
     await waitFor(() => {
