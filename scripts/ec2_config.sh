@@ -5,8 +5,8 @@
 # Cada valor se puede sobrescribir por entorno, p. ej. en el Mac:
 #   SSH_KEY=~/.ssh/id_ed25519 ./deploy.sh
 EC2_USER="${EC2_USER:-ubuntu}"
-EC2_HOST="${EC2_HOST:-51.92.83.113}"
-SSH_KEY="${SSH_KEY:-$HOME/job/profesion/UJI/co2univ/co2unuv-key.pem}"
+EC2_HOST="${EC2_HOST:-51.92.83.118}"
+SSH_KEY="${SSH_KEY:-$HOME/job/profesion/UJI/co2univ/co2univ-key.pem}"
 TARGET_DIR="/home/$EC2_USER/trincaunt"
 DOMAIN="${DOMAIN:-trincaunt.ddns.net}"
 
