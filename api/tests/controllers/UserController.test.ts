@@ -6,7 +6,7 @@ import { Request, Response, NextFunction } from 'express';
 import { register } from '../../src/controllers/UserController';
 import { UserService } from '../../src/services/UserService';
 
-jest.mock('../../src/services/UserService');
+vi.mock('../../src/services/UserService');
 
 const mockRequest = (body: any) => ({
   body,
@@ -14,12 +14,12 @@ const mockRequest = (body: any) => ({
 
 const mockResponse = () => {
   const res: any = {};
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
+  res.status = vi.fn().mockReturnValue(res);
+  res.json = vi.fn().mockReturnValue(res);
   return res as Response;
 };
 
-const mockNext = () => jest.fn() as NextFunction;
+const mockNext = () => vi.fn() as NextFunction;
 
 describe('UserController', () => {
   describe('register', () => {
@@ -38,7 +38,7 @@ describe('UserController', () => {
         email: 'test@example.com',
       };
 
-      (UserService.prototype.register as jest.Mock).mockResolvedValue(user);
+      (UserService.prototype.register as vi.Mock).mockResolvedValue(user);
 
       await register(req, res, next);
 

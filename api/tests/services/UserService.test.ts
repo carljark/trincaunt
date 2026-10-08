@@ -7,18 +7,18 @@ import User from '../../src/models/User';
 import bcrypt from 'bcrypt';
 import { AppError } from '../../src/utils/AppError';
 
-jest.mock('../../src/models/User');
-jest.mock('bcrypt');
+vi.mock('../../src/models/User');
+vi.mock('bcrypt');
 
-const UserMock = User as jest.Mocked<typeof User>;
-const bcryptMock = bcrypt as jest.Mocked<typeof bcrypt>;
+const UserMock = User as vi.Mocked<typeof User>;
+const bcryptMock = bcrypt as vi.Mocked<typeof bcrypt>;
 
 describe('UserService', () => {
   let userService: UserService;
 
   beforeEach(() => {
     userService = new UserService();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterAll(() => {
@@ -27,7 +27,7 @@ describe('UserService', () => {
 
   beforeEach(() => {
     userService = new UserService();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('register', () => {

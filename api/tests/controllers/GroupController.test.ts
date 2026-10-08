@@ -3,7 +3,7 @@ import { createGroup, addMember, getMyGroups } from '../../src/controllers/Group
 import { GroupService } from '../../src/services/GroupService';
 import { AppError } from '../../src/utils/AppError';
 
-jest.mock('../../src/services/GroupService');
+vi.mock('../../src/services/GroupService');
 
 const mockRequest = (body: any, params: any = {}, headers: any = {}, user: any = undefined) => ({
   body,
@@ -14,12 +14,12 @@ const mockRequest = (body: any, params: any = {}, headers: any = {}, user: any =
 
 const mockResponse = () => {
   const res: any = {};
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
+  res.status = vi.fn().mockReturnValue(res);
+  res.json = vi.fn().mockReturnValue(res);
   return res as Response;
 };
 
-const mockNext = () => jest.fn() as NextFunction;
+const mockNext = () => vi.fn() as NextFunction;
 
 describe('GroupController', () => {
   let req: Request;
@@ -29,7 +29,7 @@ describe('GroupController', () => {
   beforeEach(() => {
     res = mockResponse();
     next = mockNext();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('createGroup', () => {
@@ -37,7 +37,7 @@ describe('GroupController', () => {
       const userId = 'user-123';
       req = mockRequest({ nombre: 'Test Group' }, {}, { 'user-id': userId }, { id: userId });
       const group = { _id: 'group-123', nombre: 'Test Group', miembros: [userId] }; // Changed 'members' to 'miembros' to match IGroup
-      (GroupService.prototype.createGroup as jest.Mock).mockResolvedValue(group);
+      (GroupService.prototype.createGroup as vi.Mock).mockResolvedValue(group);
 
       await createGroup(req, res, next);
 
@@ -58,7 +58,7 @@ describe('GroupController', () => {
     it('should add a member to a group and return the updated group with status 200', async () => {
       req = mockRequest({ email: 'member@example.com' }, { groupId: 'group-123' });
       const group = { _id: 'group-123', nombre: 'Test Group', members: ['user-123', 'user-456'] };
-      (GroupService.prototype.addMember as jest.Mock).mockResolvedValue(group);
+      (GroupService.prototype.addMember as vi.Mock).mockResolvedValue(group);
 
       await addMember(req, res, next);
 
@@ -73,7 +73,7 @@ describe('GroupController', () => {
       const userId = 'user-123';
       req = mockRequest({}, {}, { 'user-id': userId }, { id: userId });
       const groups = [{ _id: 'group-123', nombre: 'Test Group' }];
-      (GroupService.prototype.getGroupsForUser as jest.Mock).mockResolvedValue(groups);
+      (GroupService.prototype.getGroupsForUser as vi.Mock).mockResolvedValue(groups);
 
       await getMyGroups(req, res, next);
 

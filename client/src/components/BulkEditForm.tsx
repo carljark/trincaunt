@@ -8,7 +8,7 @@ import './AddExpenseModal.scss';
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-interface IBulkUpdateData {
+export interface IBulkUpdateData {
   categoria?: string[];
   pagado_por?: string[];
   fecha?: string;
@@ -141,7 +141,7 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
                   e.preventDefault();
                   addCategory(categoryInput.trim());
               }}>
-                Añadir "{categoryInput.trim()}"
+                Añadir &quot;{categoryInput.trim()}&quot;
               </li>
             )}
             {suggestedCategories

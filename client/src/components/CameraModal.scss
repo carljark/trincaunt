@@ -1,0 +1,16 @@
+.camera-modal {
+  max-width: 500px;
+  width: 90%;
+  .modal-body {
+    display: flex;
+    justify-content: center;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .camera-preview {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+  }
+}

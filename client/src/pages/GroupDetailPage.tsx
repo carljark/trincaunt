@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSocket } from '../contexts/SocketContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import AddExpenseModal from '../components/AddExpenseModal';
 import CategoryModal from '../components/CategoryModal';
-import BulkEditForm from '../components/BulkEditForm';
+import BulkEditForm, { IBulkUpdateData } from '../components/BulkEditForm';
 import ConfirmationModal from '../components/ConfirmationModal';
+import AdvancedFiltersModal from '../components/AdvancedFiltersModal';
 import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
 import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes component
 import UserMenu from '../components/UserMenu';
-import * as XLSX from 'xlsx-js-style'; // Import xlsx-js-style
+import QuickExpenseFAB from '../components/QuickExpenseFAB';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -34,10 +36,12 @@ export const sumTransactionsToMe = (
 }
 
 import './GroupDetailPage.scss';
+import SwipeableExpenseItem from '../components/SwipeableExpenseItem';
 import '../components/AddExpenseModal.scss';
 import '../components/CategoryModal.scss';
 import '../components/BulkEditForm.scss';
 import '../components/ConfirmationModal.scss';
+import '../components/AdvancedFiltersModal.scss';
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -51,6 +55,7 @@ const GroupDetailPage: React.FC = () => {
   const isGlobal = groupId === 'global';
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  const { socket } = useSocket();
   const [group, setGroup] = useState<IGroup | null>(null);
   const [expenses, setExpenses] = useState<IExpensePopulated[]>([]);
   const [balance, setBalance] = useState<IBalance[]>([]);
@@ -58,7 +63,7 @@ const GroupDetailPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransaction[]>([]);
-  const [paymentHistory, setPaymentHistory] = useState<IDebtTransaction[]>([]);
+  const [, setPaymentHistory] = useState<IDebtTransaction[]>([]);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState<boolean>(false);
   const [totalExpenses, setTotalExpenses] = useState<number>(0);
   const [averageExpense, setAverageExpense] = useState<number>(0);
@@ -76,66 +81,47 @@ const GroupDetailPage: React.FC = () => {
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
   const [payerFilter, setPayerFilter] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [categoryAliases, setCategoryAliases] = useState<{ [alias: string]: string[] }>({});
   const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [bulkUpdateData, setBulkUpdateData] = useState<any>(null);
+  const [bulkUpdateData, setBulkUpdateData] = useState<IBulkUpdateData | null>(null);
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [dateFilterPreset, setDateFilterPreset] = useState<string | null>(null);
   const [localizationFilter, setLocalizationFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
   // New states for group name editing
   const [editableGroupName, setEditableGroupName] = useState<string>('');
   const [isEditingGroupName, setIsEditingGroupName] = useState<boolean>(false);
+  const [showAdvancedFiltersModal, setShowAdvancedFiltersModal] = useState(false);
   
+  const tabRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTabScroll = () => {
+    if (tabRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
+    }
+  };
+
+  useEffect(() => {
+    checkTabScroll();
+    window.addEventListener('resize', checkTabScroll);
+    return () => window.removeEventListener('resize', checkTabScroll);
+  }, [group, activeTab]);
+
   // Usamos useRef para controlar si ya hemos inicializado las categorías
   const hasInitializedCategories = useRef(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (group) {
       setEditableGroupName(group.nombre);
     }
   }, [group]);
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('image', file);
-
-    try {
-      const response = await fetch(`${apiHost}${apiBaseUrl}/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al subir la imagen');
-      }
-
-      const data = await response.json();
-      alert('Imagen subida correctamente: ' + data.filename);
-    } catch (err: any) {
-      console.error('Error uploading file:', err);
-      alert('Error al subir la imagen: ' + err.message);
-    } finally {
-      if (event.target) {
-        event.target.value = '';
-      }
-    }
-  };
 
   const handleUpdateGroupName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,7 +181,7 @@ const GroupDetailPage: React.FC = () => {
       if (categoriesRes.ok) {
         const categoriesData = await categoriesRes.json();
         if (Array.isArray(categoriesData.data)) {
-          categoriesData.data.forEach((item: any) => {
+          categoriesData.data.forEach((item: { category?: string }) => {
             if (item && item.category) allCats.add(item.category);
           });
         }
@@ -203,7 +189,7 @@ const GroupDetailPage: React.FC = () => {
 
       if (aliasesRes.ok) {
         const aliasesData = await aliasesRes.json();
-        aliasesData.data.forEach((alias: any) => {
+        aliasesData.data.forEach((alias: { alias: string; mainCategories: string[] }) => {
           aliasesMap[alias.alias] = alias.mainCategories;
           alias.mainCategories.forEach((mc: string) => allCats.add(mc));
         });
@@ -257,9 +243,16 @@ const GroupDetailPage: React.FC = () => {
         return;
     }
 
+    const formatDateLocal = (d: Date) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
     setDateFilterPreset(preset);
-    setDateFromFilter(fromDate.toISOString().split('T')[0]);
-    setDateToFilter(toDate.toISOString().split('T')[0]);
+    setDateFromFilter(formatDateLocal(fromDate));
+    setDateToFilter(formatDateLocal(toDate));
   }, []); // Stable function
 
   const handleDatePresetClick = useCallback((preset: string) => {
@@ -293,7 +286,7 @@ const GroupDetailPage: React.FC = () => {
         setPayerFilter(filters.payer || 'all');
         hasInitializedCategories.current = true;
       }
-    } catch (err) {
+    } catch {
       // It's okay if it fails, it means the user has no saved preferences
       hasInitializedCategories.current = true;
     } finally {
@@ -313,6 +306,14 @@ const GroupDetailPage: React.FC = () => {
 
   // CORREGIDO: La condición de filtrado ahora está dentro de la función filter
   const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
+    // Búsqueda global por descripción y/o categoría
+    if (searchFilter) {
+      const searchRegex = new RegExp(searchFilter, 'i');
+      const matchesDescription = searchRegex.test(expense.descripcion);
+      const matchesCategory = expense.categoria?.some(cat => searchRegex.test(cat)) ?? false;
+      if (!matchesDescription && !matchesCategory) return false;
+    }
+
     // Filtrar por categoría
     if (categoryFilter.length > 0) {
       const matchesCategory = expense.categoria?.some((cat: string) => {
@@ -333,11 +334,20 @@ const GroupDetailPage: React.FC = () => {
     if (localizationFilter && !new RegExp(localizationFilter, 'i').test(expense.localization || '')) {
       return false;
     }
-    if (dateFromFilter && new Date(expense.fecha) < new Date(dateFromFilter)) {
-      return false;
+    const expenseDate = new Date(expense.fecha);
+    if (dateFromFilter) {
+      const [y, m, d] = dateFromFilter.split('-');
+      const fromDate = new Date(Number(y), Number(m) - 1, Number(d), 0, 0, 0, 0);
+      if (expenseDate < fromDate) {
+        return false;
+      }
     }
-    if (dateToFilter && new Date(expense.fecha) > new Date(dateToFilter)) {
-      return false;
+    if (dateToFilter) {
+      const [y, m, d] = dateToFilter.split('-');
+      const toDate = new Date(Number(y), Number(m) - 1, Number(d), 23, 59, 59, 999);
+      if (expenseDate > toDate) {
+        return false;
+      }
     }
     if (payerFilter !== 'all' && !(Array.isArray(expense.pagado_por) ? expense.pagado_por.some(p => p._id === payerFilter) : (expense.pagado_por as IUserPopulated)._id === payerFilter)) {
       return false;
@@ -348,7 +358,7 @@ const GroupDetailPage: React.FC = () => {
   const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
 
 
-  const handleExportXLSX = useCallback(() => {
+  const handleExportXLSX = useCallback(async () => {
     if (filteredExpenses.length === 0) {
       alert('No hay gastos para exportar.');
       return;
@@ -367,6 +377,7 @@ const GroupDetailPage: React.FC = () => {
       'Localización': expense.localization || '',
     }));
 
+    const XLSX = await import('xlsx-js-style');
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Gastos");
@@ -381,9 +392,10 @@ const GroupDetailPage: React.FC = () => {
     setPayerFilter('all');
     setDateFilterPreset(null);
     setLocalizationFilter('');
+    setSearchFilter('');
   };
 
-  const handleBulkUpdate = (updateData: any) => {
+  const handleBulkUpdate = (updateData: IBulkUpdateData) => {
     if (Object.keys(updateData).length === 0) {
       alert('No hay cambios que aplicar.');
       return;
@@ -438,52 +450,34 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
-  const saveFilters = async () => {
-    if (!token) return;
-    const filters = {
-      category: categoryFilter,
-      description: descriptionFilter,
-      dateFrom: dateFilterPreset ? '' : dateFromFilter,
-      dateTo: dateFilterPreset ? '' : dateToFilter,
-      payer: payerFilter,
-      period: dateFilterPreset,
-      localization: localizationFilter,
-    };
-    try {
-      const res = await fetch(`${apiHost}${apiBaseUrl}/user-preferences`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ filters }),
-      });
-      if (res.ok) {
-        alert('Filtros guardados');
-      } else {
-        const data = await res.json();
-        throw new Error(data.message || 'Error al guardar los filtros');
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-        alert('Error al guardar filtros: ' + err.message);
-      } else {
-        setError('An unknown error occurred');
-        alert('Error desconocido al guardar filtros');
-      }
-      setTimeout(() => setError(''), 5000);
-    }
-  };
-
   useEffect(() => {
     if (filteredExpenses.length > 0) {
       const dates = filteredExpenses.map(expense => new Date(expense.fecha).getTime());
-      const minDate = new Date(Math.min(...dates));
-      const maxDate = new Date(Math.max(...dates));
-      const numberOfDays = Math.ceil(Math.abs(maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      let start: Date;
+      if (dateFromFilter) {
+        const [y, m, d] = dateFromFilter.split('-');
+        start = new Date(Number(y), Number(m) - 1, Number(d));
+      } else {
+        const minD = new Date(Math.min(...dates));
+        start = new Date(minD.getFullYear(), minD.getMonth(), minD.getDate());
+      }
+
+      let end: Date;
+      if (dateToFilter) {
+        const [y, m, d] = dateToFilter.split('-');
+        end = new Date(Number(y), Number(m) - 1, Number(d));
+      } else {
+        const maxD = new Date(Math.max(...dates));
+        end = new Date(maxD.getFullYear(), maxD.getMonth(), maxD.getDate());
+      }
+      
+      const numberOfDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
       setAverageExpense(numberOfDays > 0 ? totalFilteredExpenses / numberOfDays : 0);
     } else {
       setAverageExpense(0);
     }
-  }, [filteredExpenses, totalFilteredExpenses]);
+  }, [filteredExpenses, totalFilteredExpenses, dateFromFilter, dateToFilter]);
 
   const fetchGlobalData = useCallback(async () => {
     if (!token) return;
@@ -507,7 +501,7 @@ const GroupDetailPage: React.FC = () => {
       setBalance([]);
       setSettlementTransactions([]);
       setPaymentHistory([]);
-      const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: any) => sum + expense.monto, 0);
+      const calculatedTotalExpenses = expensesData.data.reduce((sum: number, expense: IExpensePopulated) => sum + expense.monto, 0);
       setTotalExpenses(calculatedTotalExpenses);
 
       setInitialDataLoaded(true);
@@ -616,8 +610,8 @@ const GroupDetailPage: React.FC = () => {
         const errData = await res.json();
         throw new Error(errData.message || 'Error al salir del grupo');
       }
-    } catch (err: any) {
-      setError(err.message || 'Error de red al salir del grupo');
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : 'Error de red al salir del grupo');
       console.error('Error leaving group:', err);
     } finally {
       setLoading(false);
@@ -718,6 +712,35 @@ const GroupDetailPage: React.FC = () => {
     }
   }, [initialFiltersLoaded, isGlobal, fetchGlobalData, fetchGroupData, fetchAllCategories]);
 
+  
+  // Escuchar eventos en vivo del grupo
+  useEffect(() => {
+    if (!socket || !groupId || isGlobal) return;
+
+    socket.emit('join_group', groupId);
+
+    const handleExpensesUpdated = (data: unknown) => {
+      console.log('Gastos actualizados remotamente:', data);
+      fetchGroupData();
+    };
+
+    const handleConnect = () => {
+      console.log('Socket reconectado, uniéndose al grupo y recargando gastos...');
+      socket.emit('join_group', groupId);
+      fetchGroupData();
+    };
+
+    socket.on('expenses_updated', handleExpensesUpdated);
+    socket.on('connect', handleConnect);
+
+    return () => {
+      socket.off('expenses_updated', handleExpensesUpdated);
+      socket.off('connect', handleConnect);
+      socket.emit('leave_group', groupId);
+    };
+  }, [socket, groupId, isGlobal, fetchGroupData]);
+
+
   const getBalanceColor = (amount: number) => {
     if (amount > 0) return 'green';
     if (amount < 0) return 'red';
@@ -738,43 +761,49 @@ const GroupDetailPage: React.FC = () => {
       {error && <p className="error-message">Error: {error}</p>}
 
       {!isGlobal && (
-        <div className="tab-navigation">
-          <button
-            className={activeTab === 'expenses' ? 'active' : ''}
-            onClick={() => setActiveTab('expenses')}
-          >
-            Gastos
-          </button>
-          <button
-            className={activeTab === 'balances' ? 'active' : ''}
-            onClick={() => setActiveTab('balances')}
-          >
-            Saldos
-          </button>
-          <button
-            className={activeTab === 'group' ? 'active' : ''}
-            onClick={() => setActiveTab('group')}
-          >
-            Grupo
-          </button>
-          <button
-            className={activeTab === 'graph' ? 'active' : ''}
-            onClick={() => setActiveTab('graph')}
-          >
-            Gráfico
-          </button>
-          <button
-            className={activeTab === 'notes' ? 'active' : ''}
-            onClick={() => setActiveTab('notes')}
-          >
-            Notas
-          </button>
-          <button
-            className={activeTab === 'edit' ? 'active' : ''}
-            onClick={() => setActiveTab('edit')}
-          >
-            Edición
-          </button>
+        <div className="tab-navigation-wrapper">
+          {canScrollLeft && <div className="scroll-arrow left" onClick={() => tabRef.current?.scrollBy({ left: -100, behavior: 'smooth' })}>❮</div>}
+          <div className="tab-navigation" ref={tabRef} onScroll={checkTabScroll}>
+            <button
+              className={activeTab === 'expenses' ? 'active' : ''}
+              onClick={() => setActiveTab('expenses')}
+            >
+              Gastos
+            </button>
+            <button
+              className={activeTab === 'balances' ? 'active' : ''}
+              onClick={() => setActiveTab('balances')}
+            >
+              Saldos
+            </button>
+            <button
+              className={activeTab === 'group' ? 'active' : ''}
+              onClick={() => setActiveTab('group')}
+            >
+              Grupo
+            </button>
+            <button
+              className={activeTab === 'graph' ? 'active' : ''}
+              onClick={() => setActiveTab('graph')}
+            >
+              Gráfico
+            </button>
+            <button
+              className={activeTab === 'notes' ? 'active' : ''}
+              onClick={() => setActiveTab('notes')}
+            >
+              Notas
+            </button>
+            {user?._id === group?.creado_por && (
+              <button
+                className={activeTab === 'edit' ? 'active' : ''}
+                onClick={() => setActiveTab('edit')}
+              >
+                Edición Múltiple
+              </button>
+            )}
+          </div>
+          {canScrollRight && <div className="scroll-arrow right" onClick={() => tabRef.current?.scrollBy({ left: 100, behavior: 'smooth' })}>❯</div>}
         </div>
       )}
 
@@ -808,64 +837,29 @@ const GroupDetailPage: React.FC = () => {
             </div>
           )}
 
-          <div className="filters-accordion-container">
-            <div className="filters-accordion-toggle" onClick={() => setShowFilters(!showFilters)}>
-              <div className="filter-title-with-presets">
-                <h3>Filtros {showFilters ? '▲' : '▼'}</h3>
-                <div className="date-presets">
-                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('day'); }} className={`preset-btn ${dateFilterPreset === 'day' ? 'active' : ''}`}>D</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('week'); }} className={`preset-btn ${dateFilterPreset === 'week' ? 'active' : ''}`}>S</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('month'); }} className={`preset-btn ${dateFilterPreset === 'month' ? 'active' : ''}`}>M</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDatePresetClick('year'); }} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
-                </div>
-              </div>
-              <div className="filtered"><p>Filtrados: </p><p>{formatCurrency(totalFilteredExpenses)}€</p></div>
+          <div className="filters-row">
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Buscar por nombre o categoría..."
+              value={searchFilter}
+              onChange={e => setSearchFilter(e.target.value)}
+            />
+            <div className="date-presets">
+              <button onClick={() => handleDatePresetClick('day')} className={`preset-btn ${dateFilterPreset === 'day' ? 'active' : ''}`}>D</button>
+              <button onClick={() => handleDatePresetClick('week')} className={`preset-btn ${dateFilterPreset === 'week' ? 'active' : ''}`}>S</button>
+              <button onClick={() => handleDatePresetClick('month')} className={`preset-btn ${dateFilterPreset === 'month' ? 'active' : ''}`}>M</button>
+              <button onClick={() => handleDatePresetClick('year')} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
             </div>
-            {showFilters && (
-              <>
-                <div className="filters">
-                  <label>
-                    Categoría:
-                    <button onClick={() => setShowCategoryModal(true)}>Categorías</button>
-                  </label>
-                  <label>
-                    Descripción:
-                    <input type="text" placeholder="Filtrar..." value={descriptionFilter} onChange={e => setDescriptionFilter(e.target.value)} />
-                  </label>
-                  <label>
-                    Lugar:
-                    <input type="text" placeholder="Filtrar por lugar..." value={localizationFilter} onChange={e => setLocalizationFilter(e.target.value)} />
-                  </label>
-                  {!isGlobal && (
-                    <label>
-                      Pagado por:
-                      <select value={payerFilter} onChange={e => setPayerFilter(e.target.value)}>
-                          <option value="all">Todos</option>
-                          {group?.miembros.map((member) => (
-                              <option key={member._id} value={member._id}>{member.nombre}</option>
-                          ))}
-                      </select>
-                    </label>
-                  )}
-                  <label>
-                    Desde:
-                    <div className="date-filter-container">
-                      <input type="date" value={dateFromFilter} disabled={!!dateFilterPreset} onChange={e => { setDateFromFilter(e.target.value); setDateFilterPreset(null); }} />
-                      <button onClick={() => { setDateFromFilter(''); setDateFilterPreset(null); }} className="clear-date-btn">X</button>
-                    </div>
-                  </label>
-                  <label>
-                    Hasta:
-                    <div className="date-filter-container">
-                      <input type="date" value={dateToFilter} disabled={!!dateFilterPreset} onChange={e => { setDateToFilter(e.target.value); setDateFilterPreset(null); }} />
-                      <button onClick={() => { setDateToFilter(''); setDateFilterPreset(null); }} className="clear-date-btn">X</button>
-                    </div>
-                  </label>
-                  <button onClick={clearAllFilters} className="clear-all-btn">Limpiar filtros</button>
-                  <button onClick={saveFilters} className="save-filters-btn">Guardar filtros</button>
-                </div>
-              </>
-            )}
+            <span
+              onClick={() => setShowAdvancedFiltersModal(true)}
+              className="advanced-filters-icon"
+              role="button"
+              aria-label="Abrir filtros avanzados"
+              title="Filtros avanzados"
+            >
+              🔍+
+            </span>
           </div>
 
           {activeTab === 'edit' && !isGlobal && (
@@ -883,41 +877,49 @@ const GroupDetailPage: React.FC = () => {
           {activeTab === 'expenses' && (
             <>
               <div className="expenses-header">
-                <h3>Gastos del Grupo</h3>
-                <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="sort-button">
-                  Ordenar ({sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'})
-                </button>
+                <h3>{formatCurrency(totalFilteredExpenses)}€</h3>
+                <span
+                  onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                  className="sort-button"
+                  role="button"
+                  aria-label={sortOrder === 'desc' ? 'Ordenar de más antiguos a más recientes' : 'Ordenar de más recientes a más antiguos'}
+                  title={sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'}
+                >
+                  {sortOrder === 'desc' ? '↓' : '↑'}
+                </span>
               </div>
-              <ul className="expenses-list">
-                {filteredExpenses.map((expense: any) => (
-                  <li key={expense._id}>
-                    <div className="expense-item">
-                      <div className="expense-info">
-                        <div>
-                          {isGlobal && <strong>{expense.grupo_nombre}: </strong>}
-                          {expense.descripcion} ({expense.categoria?.join(', ')}):
-                          <strong> {formatCurrency(expense.monto)}€</strong>
-                          {isGlobal && <span> (de {formatCurrency(expense.original_monto)}€)</span>}
-                        </div>
-                        <div className="expense-date">{new Date(expense.fecha).toLocaleDateString()}</div>
-                        {!isGlobal && (
-                          <div>
-                            <span>
-                              {' '}({formatPayers(expense.pagado_por)}{expense.asume_gasto ? ' (invita)' : ''})
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      {!isGlobal && (
-                        <div className="expense-actions">
-                          <button onClick={() => handleEdit(expense)} className="edit-btn" title="Editar">&#9998;</button>
-                          <button onClick={() => handleDeleteExpense(expense._id)} className="delete-btn" title="Borrar">&#10006;</button>
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              
+              {(() => {
+                const groupedExpenses: { date: string; items: IExpensePopulated[] }[] = [];
+                let currentGroup: { date: string; items: IExpensePopulated[] } | null = null;
+                
+                filteredExpenses.forEach((expense: IExpensePopulated) => {
+                  const dateStr = new Date(expense.fecha).toLocaleDateString();
+                  if (!currentGroup || currentGroup.date !== dateStr) {
+                    currentGroup = { date: dateStr, items: [] };
+                    groupedExpenses.push(currentGroup);
+                  }
+                  currentGroup.items.push(expense);
+                });
+
+                return groupedExpenses.map(group => (
+                  <div key={group.date} className="expense-date-group">
+                    <h4 className="expense-date-header">{group.date}</h4>
+                    <ul className="expenses-list">
+                      {group.items.map((expense: IExpensePopulated) => (
+                        <li key={expense._id}>
+                            <SwipeableExpenseItem 
+                              expense={expense} 
+                              isGlobal={isGlobal} 
+                              onEdit={handleEdit} 
+                              onDelete={handleDeleteExpense} 
+                            />
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                ));
+              })()}
             </>
           )}
         </div>
@@ -1016,19 +1018,16 @@ const GroupDetailPage: React.FC = () => {
       )}
 
       {!isGlobal && (activeTab === 'expenses' || activeTab === 'edit') && (
-        <div className="fixed-add-expense-button-container">
-          <button onClick={handleOpenAddExpenseModal} className="add-expense-button">Añadir gasto</button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
-            accept="image/*"
+        <>
+          <QuickExpenseFAB 
+            groupId={groupId!} 
+            token={token!} 
+            userId={user?._id || ''}
+            members={group?.miembros || []} 
+            onExpenseAdded={fetchGroupData}
+            onOpenManual={handleOpenAddExpenseModal}
           />
-          <button onClick={handleUploadClick} className="upload-ticket-button" title="Subir ticket">
-            <img src="/subir_compra.png" alt="Subir ticket" />
-          </button>
-        </div>
+        </>
       )}
 
       {!isGlobal && showRecordPaymentModal && (
@@ -1069,6 +1068,26 @@ const GroupDetailPage: React.FC = () => {
           selectedCategories={categoryFilter}
           onChange={setCategoryFilter}
           onClose={() => setShowCategoryModal(false)}
+        />
+      )}
+
+      {showAdvancedFiltersModal && (
+        <AdvancedFiltersModal
+          categoryFilter={categoryFilter}
+          localizationFilter={localizationFilter}
+          payerFilter={payerFilter}
+          dateFromFilter={dateFromFilter}
+          dateToFilter={dateToFilter}
+          isGlobal={isGlobal}
+          members={group?.miembros || []}
+          onLocalizationChange={setLocalizationFilter}
+          onPayerChange={setPayerFilter}
+          onDateFromChange={(val) => { setDateFromFilter(val); setDateFilterPreset(null); }}
+          onDateToChange={(val) => { setDateToFilter(val); setDateFilterPreset(null); }}
+          onClearAll={clearAllFilters}
+          onSave={() => setShowAdvancedFiltersModal(false)}
+          onClose={() => setShowAdvancedFiltersModal(false)}
+          onOpenCategoryModal={() => { setShowAdvancedFiltersModal(false); setShowCategoryModal(true); }}
         />
       )}
 

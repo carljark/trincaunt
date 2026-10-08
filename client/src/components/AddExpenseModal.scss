@@ -1,185 +1,438 @@
-@use '../styles/variables' as *;
+@use 'sass:map';
 @use 'sass:color';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+// Emite las clases globales .modal-* que usan otros modales (se importaban desde aquí).
+@use 'components/legacy-modal';
 
-.modal-overlay {
+// ============================================
+// MODAL DE GASTOS (BEM: .expense-modal)
+// ============================================
+
+$pastel-blue-light: #e3f2fd;
+$pastel-blue: #bbdefb;
+$pastel-blue-dark: #90caf9;
+$pastel-teal-light: #e0f2f1;
+$pastel-teal: #b2dfdb;
+$pastel-green-light: #e8f5e9;
+$pastel-green: #c8e6c9;
+$pastel-gray-light: #fafafa;
+$pastel-gray: #f5f5f5;
+
+// Altura de los controles: compacta, pero con font-size 16px (inputs y selects) para que iOS no haga zoom al enfocar.
+$control-height: 2.5rem;
+
+.expense-modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: linear-gradient(135deg, rgba($pastel-blue-dark, 0.4) 0%, rgba($pastel-teal-light, 0.4) 100%);
+  backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
-}
+  z-index: $z-index-modal-backdrop;
+  padding: map.get($spacing-scale, 3);
+  animation: expense-modal-fade-in 0.2s ease-out;
 
-.modal-content {
-  background-color: $background-color;
-  padding: 20px;
-  border-radius: $border-radius;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh; /* Limit height to 80% of viewport height */
-  overflow-y: auto; /* Enable vertical scrolling */
-
-  h3 {
-    color: $primary-color;
-    margin-bottom: 15px;
-    text-align: center;
+  // En móvil, hoja inferior a todo el ancho
+  @include respond-below(md) {
+    align-items: flex-end;
+    padding: 0;
   }
 
-  .error-message {
-    color: $danger-color;
-    text-align: center;
-    margin-bottom: 10px;
-  }
-
-  form {
+  &__panel {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow: hidden;
+    background: linear-gradient(180deg, white 0%, $pastel-gray-light 100%);
+    border-radius: $border-radius-lg;
+    box-shadow:
+      0 25px 50px -12px rgba($color-gray-900, 0.15),
+      0 0 0 1px rgba($pastel-blue, 0.3);
+    animation: expense-modal-slide-up 0.3s ease-out;
 
-    input[type="text"],
-    input[type="number"],
-    select {
-      padding: 10px;
-      border: 1px solid $border-color;
-      border-radius: $border-radius-sm;
+    // Franja decorativa superior
+    &::before {
+      content: '';
+      flex-shrink: 0;
+      height: 4px;
+      background: linear-gradient(90deg, $pastel-blue-dark 0%, $pastel-teal 50%, $pastel-green 100%);
+    }
+
+    @include respond-below(md) {
+      max-width: none;
+      max-height: calc(100vh - env(safe-area-inset-top, 0px) - #{map.get($spacing-scale, 3)});
+      max-height: calc(100dvh - env(safe-area-inset-top, 0px) - #{map.get($spacing-scale, 3)});
+      border-radius: $border-radius-lg $border-radius-lg 0 0;
+    }
+  }
+
+  &__header {
+    flex-shrink: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 4);
+    text-align: center;
+    border-bottom: 1px solid $pastel-gray;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, $color-primary 0%, $color-info 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: map.get($spacing-scale, 2);
+
+    &::before {
+      content: '💰';
+      -webkit-text-fill-color: initial;
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  // Zona con scroll; el footer queda fuera para no tapar campos
+  &__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 2);
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: $pastel-blue;
+      border-radius: 3px;
+    }
+  }
+
+  &__error {
+    background: linear-gradient(135deg, rgba($color-danger, 0.1) 0%, rgba($color-danger, 0.05) 100%);
+    border: 1px solid rgba($color-danger, 0.2);
+    color: color.adjust($color-danger, $lightness: -15%);
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    border-radius: $border-radius;
+    font-size: 0.875rem;
+    text-align: center;
+    margin: 0;
+  }
+
+  // Dos campos en la misma línea
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    position: relative;
+
+    // MultiSelect es otro componente: solo igualamos su input al resto del formulario
+    &--payers .multi-select-container input {
+      height: $control-height;
+      padding: 0 map.get($spacing-scale, 3);
       font-size: 1rem;
-      width: 100%;
-      box-sizing: border-box;
+      border: 1.5px solid $pastel-blue;
+      border-radius: $border-radius;
+      background-color: white;
+    }
+  }
+
+  &__label {
+    font-weight: 500;
+    color: $color-gray-600;
+    font-size: 0.8rem;
+    line-height: 1.3;
+  }
+
+  &__input,
+  &__select {
+    width: 100%;
+    min-width: 0;
+    font-size: 1rem;
+    background-color: white;
+    border: 1.5px solid $pastel-blue;
+    border-radius: $border-radius;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+    &:focus {
+      outline: none;
+      border-color: $pastel-blue-dark;
+      box-shadow: 0 0 0 3px rgba($pastel-blue-dark, 0.2);
     }
 
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      label {
-        margin-bottom: 5px;
-        font-weight: bold;
-        color: $dark-color;
-      }
-      input[type="date"] {
-        padding: 10px; // Equivalent to 0.75rem or 12px in GroupDetailPage
-        height: 40px;
-        font-size: 1rem;
-        border: 1px solid $border-color;
-        border-radius: $border-radius-sm;
-        width: 100%;
-        box-sizing: border-box;
-        text-decoration: none;
-        appearance: none;
-        -webkit-appearance: none;
-      }
+    &:disabled {
+      background-color: $pastel-gray;
+      cursor: not-allowed;
+    }
+  }
+
+  &__input {
+    height: $control-height;
+    padding: 0 map.get($spacing-scale, 3);
+
+    &::placeholder {
+      color: $color-gray-400;
     }
 
-    .checkbox-container {
-      display: flex;
-      align-items: center;
-      label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: normal;
-        input[type="checkbox"] {
-          width: auto;
-        }
-      }
+    &--amount {
+      font-weight: 600;
     }
 
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 20px;
+    // iOS da a los date vacíos/rellenos una altura propia; lo forzamos al resto
+    &--date {
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+  }
 
-      button {
-        padding: 10px 20px;
-        border: none;
-        border-radius: $border-radius-sm;
-        cursor: pointer;
-        font-size: 1rem;
-        transition: background-color 0.3s ease;
+  &__select {
+    min-height: 4.5rem;
+    padding: map.get($spacing-scale, 1);
 
-        &[type="submit"] {
-          background-color: $primary-color;
-          color: white;
-          &:hover:not(:disabled) {
-            background-color: color.scale($primary-color, $lightness: -10%);
-          }
-        }
+    option {
+      padding: 2px map.get($spacing-scale, 2);
 
-        &[type="button"] { // Cancel button
-          background-color: $secondary-color;
-          color: $dark-color;
-          &:hover:not(:disabled) {
-            background-color: color.scale($secondary-color, $lightness: -10%);
-          }
-        }
-
-        &:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
+      &:checked {
+        background-color: $pastel-blue-light;
+        font-weight: 500;
       }
     }
   }
-}
 
-.category-container, .localization-container {
-  position: relative;
-  
-  .suggestions-list {
+  &__suggestions {
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
-    background-color: #fff;
-    border: 1px solid $border-color;
-    border-radius: $border-radius-sm;
-    list-style-type: none;
-    padding: 0;
-    margin: 5px 0 0;
-    max-height: 150px;
+    background: white;
+    border: 1.5px solid $pastel-blue;
+    border-radius: $border-radius;
+    list-style: none;
+    padding: map.get($spacing-scale, 1) 0;
+    margin: map.get($spacing-scale, 1) 0 0;
+    max-height: 160px;
     overflow-y: auto;
-    z-index: 1001; // Should be higher than the modal overlay
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: $z-index-dropdown;
+    box-shadow: 0 10px 40px rgba($color-gray-900, 0.1);
+    animation: expense-modal-fade-in 0.15s ease;
+  }
 
-    li {
-      padding: 10px;
-      cursor: pointer;
+  &__suggestion {
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    font-size: 0.9rem;
+
+    &:hover {
+      background-color: $pastel-blue-light;
+    }
+
+    &--add {
+      color: $color-primary;
+      font-weight: 500;
+      border-top: 1px dashed $pastel-blue;
+
       &:hover {
-        background-color: #f0f0f0;
+        background-color: $pastel-teal-light;
       }
     }
   }
 
-  .selected-categories {
+  &__chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
+    gap: map.get($spacing-scale, 1);
+    margin-top: map.get($spacing-scale, 1);
   }
 
-  .selected-category {
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+    padding: 2px map.get($spacing-scale, 2);
+    border-radius: $border-radius-pill;
+    font-size: 0.8rem;
+    font-weight: 500;
+    animation: expense-modal-pop-in 0.2s ease;
+
+    // Colores pastel rotativos
+    &:nth-child(4n+1) {
+      background-color: $pastel-blue-light;
+      color: color.adjust($color-primary, $lightness: -10%);
+      border: 1px solid $pastel-blue;
+    }
+    &:nth-child(4n+2) {
+      background-color: $pastel-teal-light;
+      color: color.adjust(#26a69a, $lightness: -15%);
+      border: 1px solid $pastel-teal;
+    }
+    &:nth-child(4n+3) {
+      background-color: $pastel-green-light;
+      color: color.adjust($color-success-dark, $lightness: -15%);
+      border: 1px solid $pastel-green;
+    }
+    &:nth-child(4n+4) {
+      background-color: rgba($color-secondary, 0.1);
+      color: color.adjust($color-secondary, $lightness: -10%);
+      border: 1px solid rgba($color-secondary, 0.2);
+    }
+  }
+
+  &__chip-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.75rem;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  &__checkbox {
     display: flex;
     align-items: center;
-    background-color: $primary-color;
-    color: white;
-    padding: 5px 10px;
-    border-radius: $border-radius-sm;
+    gap: map.get($spacing-scale, 2);
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    background: linear-gradient(135deg, $pastel-teal-light 0%, $pastel-blue-light 100%);
+    border: 1px solid $pastel-teal;
+    border-radius: $border-radius;
     font-size: 0.9rem;
+    font-weight: 500;
+    color: $color-gray-700;
+    cursor: pointer;
+  }
 
-    button {
-      background: none;
-      border: none;
-      color: white;
-      margin-left: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      padding: 0;
-      line-height: 1;
+  &__checkbox-input {
+    flex-shrink: 0;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0;
+    accent-color: $color-primary;
+    cursor: pointer;
+  }
+
+  &__footer {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: map.get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 4);
+    background: linear-gradient(180deg, $pastel-gray-light 0%, $pastel-gray 100%);
+    border-top: 1px solid rgba($pastel-blue, 0.3);
+
+    @include respond-below(md) {
+      padding-bottom: calc(#{map.get($spacing-scale, 2)} + env(safe-area-inset-bottom, 0px));
     }
+  }
+
+  &__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: map.get($spacing-scale, 1);
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 4);
+    border-radius: $border-radius;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+
+    @include respond-below(md) {
+      flex: 1;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    &--primary {
+      background: linear-gradient(135deg, $color-primary 0%, color.adjust($color-primary, $lightness: -5%) 100%);
+      color: white;
+      border: none;
+      box-shadow: 0 2px 8px rgba($color-primary, 0.3);
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, color.adjust($color-primary, $lightness: -3%) 0%, color.adjust($color-primary, $lightness: -8%) 100%);
+        box-shadow: 0 4px 12px rgba($color-primary, 0.4);
+        transform: translateY(-1px);
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(0);
+      }
+    }
+
+    &--secondary {
+      background: white;
+      color: $color-gray-600;
+      border: 1.5px solid $pastel-gray;
+
+      &:hover:not(:disabled) {
+        background: $pastel-gray-light;
+        border-color: $color-gray-400;
+        color: $color-gray-700;
+      }
+    }
+  }
+}
+
+@keyframes expense-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes expense-modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes expense-modal-pop-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }

@@ -23,14 +23,18 @@ export const savePreferences = async (req: Request, res: Response) => {
         return res.status(401).json({ message: 'Not authorized' });
     }
     try {
-        const { filters } = req.body;
-        if (!filters) {
-            return res.status(400).json({ message: 'No filters provided' });
+        const { filters, quickExpense } = req.body;
+        if (!filters && !quickExpense) {
+            return res.status(400).json({ message: 'No filters or quickExpense provided' });
         }
+
+        const updateData: any = {};
+        if (filters) updateData.filters = filters;
+        if (quickExpense) updateData.quickExpense = quickExpense;
 
         const preferences = await UserPreferences.findOneAndUpdate(
             { userId: req.user._id },
-            { $set: { filters } },
+            { $set: updateData },
             { new: true, upsert: true, runValidators: true }
         );
 

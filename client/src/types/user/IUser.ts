@@ -3,4 +3,6 @@ export interface IUser {
   nombre: string;
   email: string;
   fecha_registro: string; // ISO Date string
+  role?: 'user' | 'admin';
+  aiEnabled?: boolean;
 }

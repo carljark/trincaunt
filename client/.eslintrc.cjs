@@ -28,7 +28,6 @@ module.exports = {
     },
   },
   rules: {
-    // Add custom rules here if needed
-    // Example: 'react/react-in-jsx-scope': 'off', // Not needed for React 17+ with new JSX transform
+    'react/react-in-jsx-scope': 'off', // Not needed with the new JSX transform (jsx: react-jsx)
   },
 };

@@ -53,9 +53,9 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ groupId, token,
       );
       onPaymentRecorded(); // Refresh data in parent component
       onClose(); // Close the modal
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error recording payment:', err);
-      setError(err.response?.data?.message || 'Error al registrar el pago.');
+      setError((axios.isAxiosError(err) && err.response?.data?.message) || 'Error al registrar el pago.');
     } finally {
       setLoading(false);
     }

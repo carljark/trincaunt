@@ -42,9 +42,9 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ groupId, toke
         }
       );
       setPayments(response.data.data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching payment history:', err);
-      setError(err.response?.data?.message || 'Error al cargar el historial de pagos.');
+      setError((axios.isAxiosError(err) && err.response?.data?.message) || 'Error al cargar el historial de pagos.');
     } finally {
       setLoading(false);
     }
@@ -71,9 +71,9 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ groupId, toke
       fetchPaymentHistory();
       // Also notify the parent component to refresh its data (e.g., group balance)
       onHistoryUpdated();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error deleting payment:', err);
-      setError(err.response?.data?.message || 'Error al eliminar el registro de pago.');
+      setError((axios.isAxiosError(err) && err.response?.data?.message) || 'Error al eliminar el registro de pago.');
     }
   };
 

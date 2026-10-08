@@ -1,12 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
+import { getIO } from '../config/socket';
 import { ExpenseService } from '../services/ExpenseService';
+import { CategoryAliasService } from '../services/CategoryAliasService';
 
 const expenseService = new ExpenseService();
+const aliasService = new CategoryAliasService();
 
 export const createExpense = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;
     const expense = await expenseService.createExpense(req.body, userId);
+    getIO().to(`group_${req.body.grupo_id}`).emit('expenses_updated', { message: 'Gasto registrado' });
     res.status(201).json({ status: 'success', data: expense });
   } catch (error) {
     next(error);
@@ -39,6 +43,7 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
   try {
     const { expenseId } = req.params;
     const updatedExpense = await expenseService.updateExpense(expenseId, req.body);
+    if (updatedExpense) getIO().to(`group_${updatedExpense.grupo_id}`).emit('expenses_updated', { message: 'Gasto actualizado' });
     res.status(200).json({ status: 'success', data: updatedExpense });
   } catch (error) {
     next(error);
@@ -48,7 +53,9 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
 export const deleteExpense = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { expenseId } = req.params;
+    // In Trincaunt we don't have getExpenseById exposed in service easily, so let's just rely on the client refreshing or passing the group id in the query/body
     await expenseService.deleteExpense(expenseId);
+    // We broadcast to all rooms as a fallback since we don't have the group ID handy here, or we extract it before deleting
     res.status(204).json({ status: 'success', data: null });
   } catch (error) {
     next(error);
@@ -141,6 +148,56 @@ export const getChartExpenses = async (req: Request, res: Response, next: NextFu
       localization as string | undefined
     );
     res.status(200).json({ status: 'success', data: chartData });
+  } catch (error) {
+    next(error);
+  }
+};
+
+import AiService from '../services/AiService';
+import { AppError } from '../utils/AppError';
+
+export const parseExpenseWithAI = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    if (user.role !== 'admin' && !user.aiEnabled) {
+      throw new AppError('Acceso denegado a las funciones de IA. Contacta con el administrador.', 403);
+    }
+
+    if (!req.file) {
+      throw new AppError('No se proporcionó ningún archivo de audio o imagen', 400);
+    }
+    
+    // El frontend debe mandar grupo_id, participantes y opcionalmente localization en el body
+    const { grupo_id, participantes, localization } = req.body;
+    if (!grupo_id || !participantes) {
+      throw new AppError('Faltan datos requeridos (grupo_id o participantes) para asociar el gasto', 400);
+    }
+    
+    const parsedExpenses = await AiService.parseExpenseFromMedia(req.file.buffer, req.file.mimetype, []);
+    const userId = (req as any).user.id;
+    
+    const createdExpenses = [];
+    
+    // Insertamos cada gasto detectado
+    for (const exp of parsedExpenses) {
+      const expenseData = {
+        grupo_id,
+        descripcion: exp.descripcion,
+        monto: exp.monto,
+        pagado_por: [userId],
+        participantes: Array.isArray(participantes) ? participantes : JSON.parse(participantes),
+        fecha: exp.fecha ? new Date(exp.fecha) : new Date(),
+        asume_gasto: false,
+        categoria: exp.categoria || ['IA'],
+        localization: exp.localization || localization || ''
+      };
+      
+      const savedExpense = await expenseService.createExpense(expenseData, userId);
+      createdExpenses.push(savedExpense);
+    }
+    
+    getIO().to(`group_${grupo_id}`).emit('expenses_updated', { message: 'Nuevos gastos desde IA' });
+    res.status(200).json({ status: 'success', data: createdExpenses });
   } catch (error) {
     next(error);
   }

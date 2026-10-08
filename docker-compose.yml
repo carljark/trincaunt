@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  trincaunt-app:
+    build: .
+    container_name: trincaunt-app
+    restart: unless-stopped
+    ports:
+      # Solo local: nginx del host hace de proxy inverso
+      - "127.0.0.1:3100:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGO_URI=mongodb://mongo:27017/trincaunt
+      # Lee las claves desde el archivo .env donde lances el docker-compose
+      - JWT_SECRET=${JWT_SECRET:?Define JWT_SECRET en .env}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:4.4
+    container_name: trincaunt-mongo
+    restart: unless-stopped
+    # Sin `ports`: Mongo (sin autenticación) solo es accesible desde la red de compose
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

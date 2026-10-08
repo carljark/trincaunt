@@ -1,5 +1,9 @@
+# temp
+/temp
 # Backups
 /backups
+# Playwright MCP screenshots and logs
+/.playwright-mcp
 
 # Dependencies
 /node_modules

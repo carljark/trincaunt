@@ -7,13 +7,21 @@ import * as CategoryAliasController from '../controllers/CategoryAliasController
 import * as UserPreferencesController from '../controllers/UserPreferencesController';
 import * as NoteController from '../controllers/NoteController'; // Import NoteController
 import * as UploadController from '../controllers/UploadController';
+import * as DbController from '../controllers/DbController';
 import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
 
+// DB Routes
+router.get('/db/export', protect, DbController.exportDB);
+router.post('/db/import', protect, DbController.importDB);
+
+
 // User Routes
 router.post('/users/register', UserController.register);
 router.post('/users/login', UserController.login);
+router.get('/users/admin/all', protect, UserController.getAllUsers);
+router.patch('/users/admin/:id/ai', protect, UserController.toggleUserAI);
 
 // Upload Routes
 router.post('/upload', protect, UploadController.uploadImage);
@@ -33,7 +41,11 @@ router.post('/groups/:groupId/members', protect, GroupController.addMember);
 router.delete('/groups/:groupId', protect, GroupController.deleteGroup); // New route for deleting a group
 router.delete('/groups/:groupId/members/:memberId', protect, GroupController.removeMember); // New route for removing a member
 
+import multer from 'multer';
+
 // Expense Routes (Protected)
+const uploadMemory = multer({ storage: multer.memoryStorage() });
+router.post('/expenses/ai-parse', protect, uploadMemory.single('media'), ExpenseController.parseExpenseWithAI);
 router.post('/expenses', protect, ExpenseController.createExpense);
 router.patch('/expenses/bulk-update', protect, ExpenseController.bulkUpdate);
 router.put('/expenses/:expenseId', protect, ExpenseController.updateExpense);

@@ -1,0 +1,44 @@
+// Sistema de colores primarios
+$color-primary: #4361ee;
+$color-primary-light: #4895ef;
+$color-primary-dark: #3a0ca3;
+
+$color-secondary: #7209b7;
+$color-secondary-light: #b5179e;
+$color-secondary-dark: #560bad;
+
+$color-success: #4cc9f0;
+$color-success-dark: #3a86ff;
+
+$color-warning: #f8961e;
+$color-warning-dark: #f3722c;
+
+$color-danger: #f72585;
+$color-danger-dark: #d00000;
+
+$color-info: #4895ef;
+$color-info-dark: #3a86ff;
+
+// Escala de grises
+$color-gray-100: #f8f9fa;
+$color-gray-200: #e9ecef;
+$color-gray-300: #dee2e6;
+$color-gray-400: #ced4da;
+$color-gray-500: #adb5bd;
+$color-gray-600: #6c757d;
+$color-gray-700: #495057;
+$color-gray-800: #343a40;
+$color-gray-900: #212529;
+
+// Colores adicionales para componentes
+$color-background: $color-gray-100;
+$color-surface: white;
+$color-text: $color-gray-800;
+$color-text-muted: $color-gray-600;
+$color-border: $color-gray-200;
+$color-overlay: rgba($color-gray-900, 0.5);
+
+// Colores de estado
+$color-positive: $color-success;
+$color-negative: $color-danger;
+$color-neutral: $color-gray-600;
