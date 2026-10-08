@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==========================================
-# SCRIPT DE DESPLIEGUE A EC2 (Desde Castellón)
+# SCRIPT DE DESPLIEGUE A EC2 (desde Castellón o el Mac)
 # Sincroniza el código y levanta la app. NO toca la base de datos:
 # para copiar tu BD local al EC2 (una sola vez) usa scripts/migrate_db_to_ec2.sh
 # El certificado SSL se emite aparte, una vez: scripts/setup_ssl.sh
@@ -8,22 +8,20 @@
 # El site de nginx solo se instala si aún no existe, para no borrar el bloque
 # HTTPS que añade certbot. Si cambias nginx/trincaunt.conf:
 #   FORCE_NGINX=1 ./deploy.sh && ./scripts/setup_ssl.sh
+#
+# Los secretos (.env) viven solo en el EC2: rsync no sube ningún .env local.
+# Para cambiarlos, edita ~/trincaunt/.env en el EC2 y vuelve a desplegar.
 # ==========================================
 set -e
 
 source "$(dirname "$0")/scripts/ec2_config.sh"
 
-if [ ! -f .env ]; then
-  echo "❌ Falta .env en la raíz del repo (copia .env.example y rellénalo). Abortando."
-  exit 1
-fi
-
 echo "📦 [1/2] Sincronizando código fuente con el EC2..."
 $SSH_CMD $EC2_USER@$EC2_HOST "mkdir -p $TARGET_DIR"
 
-# Rsync usando la misma clave PEM. Sí sincroniza los .env (no están en git):
-# el .env de la raíz es el que lee docker compose en el EC2.
-rsync -avz -e "$SSH_CMD" --exclude 'node_modules' --exclude 'client/dist' --exclude 'api/dist' --exclude '.git' --exclude '/temp' --exclude '/mongodb_backups' --exclude '/.playwright-mcp' ./ $EC2_USER@$EC2_HOST:$TARGET_DIR/
+# Rsync usando la misma clave PEM. Excluye los .env con secretos (no están en git)
+# para no pisar los del EC2; los .env.* versionados (client/.env.production) sí se suben.
+rsync -avz -e "$SSH_CMD" --exclude '.env' --exclude '.env.local' --exclude '.env.*.local' --exclude 'node_modules' --exclude 'client/dist' --exclude 'api/dist' --exclude '.git' --exclude '/temp' --exclude '/mongodb_backups' --exclude '/.playwright-mcp' ./ $EC2_USER@$EC2_HOST:$TARGET_DIR/
 
 echo "☁️  [2/2] Conectando al EC2 para levantar la app..."
 $SSH_CMD $EC2_USER@$EC2_HOST "FORCE_NGINX=${FORCE_NGINX:-0} bash -s" << 'SSH_EOF'
@@ -31,7 +29,7 @@ $SSH_CMD $EC2_USER@$EC2_HOST "FORCE_NGINX=${FORCE_NGINX:-0} bash -s" << 'SSH_EOF
   cd trincaunt
 
   if [ ! -f .env ]; then
-    echo "❌ Falta .env en la raíz del repo local (ver .env.example); rsync no lo ha subido. Abortando."
+    echo "❌ Falta ~/trincaunt/.env en el EC2. Créalo allí a partir de .env.example. Abortando."
     exit 1
   fi
 
