@@ -178,203 +178,214 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h3>{expenseToEdit ? 'Editar Gasto' : 'Añadir Gasto'}</h3>
+    <div className="expense-modal">
+      <div className="expense-modal__panel">
+        <div className="expense-modal__header">
+          <h3 className="expense-modal__title">{expenseToEdit ? 'Editar Gasto' : 'Añadir Gasto'}</h3>
         </div>
 
-        <form className="modal-body" onSubmit={handleSubmitExpense}>
-          {error && <p className="error-message">{error}</p>}
+        <form className="expense-modal__form" onSubmit={handleSubmitExpense}>
+          <div className="expense-modal__body">
+            {error && <p className="expense-modal__error">{error}</p>}
 
-          {/* Descripción */}
-          <div className="form-group">
-            <label htmlFor="description">Descripción</label>
-            <input
-              type="text"
-              id="description"
-              placeholder="¿En qué gastaste?"
-              value={expenseData.description}
-              onChange={e => setExpenseData({ ...expenseData, description: e.target.value })}
-              required
-            />
-          </div>
-
-          {/* Monto */}
-          <div className="form-group">
-            <label htmlFor="amount">Monto</label>
-            <input
-              type="number"
-              id="amount"
-              placeholder="0.00"
-              value={expenseData.amount}
-              onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })}
-              step="0.01"
-              min="0"
-              required
-            />
-          </div>
-
-          {/* Localización */}
-          <div
-            className="category-container"
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                setShowLocationSuggestions(false);
-              }
-            }}
-          >
-            <div className="form-group">
-              <label htmlFor="localization">Lugar</label>
+            {/* Descripción */}
+            <div className="expense-modal__field">
+              <label className="expense-modal__label" htmlFor="description">Descripción</label>
               <input
+                className="expense-modal__input"
                 type="text"
-                id="localization"
-                placeholder="¿Dónde fue?"
-                value={expenseData.localization}
-                onChange={e => setExpenseData({ ...expenseData, localization: e.target.value })}
-                onFocus={() => setShowLocationSuggestions(true)}
-                autoComplete="off"
+                id="description"
+                placeholder="¿En qué gastaste?"
+                value={expenseData.description}
+                onChange={e => setExpenseData({ ...expenseData, description: e.target.value })}
+                required
               />
             </div>
-            {showLocationSuggestions && suggestedLocations.length > 0 && (
-              <ul className="suggestions-list">
-                {suggestedLocations
-                  .filter(l => l.localization.toLowerCase().includes(expenseData.localization.toLowerCase()))
-                  .slice(0, 6)
-                  .map(l => (
-                    <li
-                      key={l.localization}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setExpenseData({ ...expenseData, localization: l.localization });
-                        setShowLocationSuggestions(false);
-                      }}
-                    >
-                      {l.localization}
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </div>
 
-          {/* Fecha */}
-          <div className="form-group">
-            <label htmlFor="expense-date">Fecha del Gasto</label>
-            <input
-              type="date"
-              id="expense-date"
-              value={expenseDate}
-              onChange={e => setExpenseDate(e.target.value)}
-              required
-            />
-          </div>
+            <div className="expense-modal__row">
+              {/* Monto */}
+              <div className="expense-modal__field">
+                <label className="expense-modal__label" htmlFor="amount">Monto</label>
+                <input
+                  className="expense-modal__input expense-modal__input--amount"
+                  type="number"
+                  id="amount"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={expenseData.amount}
+                  onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })}
+                  step="0.01"
+                  min="0"
+                  required
+                />
+              </div>
 
-          {/* Categorías */}
-          <div
-            className="category-container"
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                setShowSuggestions(false);
-              }
-            }}
-          >
-            <div className="form-group">
-              <label htmlFor="category">Categoría</label>
-              <input
-                type="text"
-                id="category"
-                placeholder="Ej: Comida, Ocio, Transporte..."
-                value={categoryInput}
-                ref={categoryInputRef}
-                onChange={e => setCategoryInput(e.target.value)}
-                onKeyDown={handleCategoryKeyDown}
-                onFocus={() => setShowSuggestions(true)}
-                autoComplete="off"
-              />
+              {/* Fecha */}
+              <div className="expense-modal__field">
+                <label className="expense-modal__label" htmlFor="expense-date">Fecha</label>
+                <input
+                  className="expense-modal__input expense-modal__input--date"
+                  type="date"
+                  id="expense-date"
+                  value={expenseDate}
+                  onChange={e => setExpenseDate(e.target.value)}
+                  required
+                />
+              </div>
             </div>
-            {showSuggestions && (
-              <ul className="suggestions-list">
-                {categoryInput.trim() !== '' && !categories.includes(categoryInput.trim()) && (
-                  <li className="add-new" onMouseDown={(e) => {
-                    e.preventDefault();
-                    addCategory(categoryInput.trim());
-                  }}>
-                    + Añadir &quot;{categoryInput.trim()}&quot;
-                  </li>
+
+            <div className="expense-modal__row">
+              {/* Localización */}
+              <div
+                className="expense-modal__field"
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setShowLocationSuggestions(false);
+                  }
+                }}
+              >
+                <label className="expense-modal__label" htmlFor="localization">Lugar</label>
+                <input
+                  className="expense-modal__input"
+                  type="text"
+                  id="localization"
+                  placeholder="¿Dónde fue?"
+                  value={expenseData.localization}
+                  onChange={e => setExpenseData({ ...expenseData, localization: e.target.value })}
+                  onFocus={() => setShowLocationSuggestions(true)}
+                  autoComplete="off"
+                />
+                {showLocationSuggestions && suggestedLocations.length > 0 && (
+                  <ul className="expense-modal__suggestions">
+                    {suggestedLocations
+                      .filter(l => l.localization.toLowerCase().includes(expenseData.localization.toLowerCase()))
+                      .slice(0, 6)
+                      .map(l => (
+                        <li
+                          key={l.localization}
+                          className="expense-modal__suggestion"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setExpenseData({ ...expenseData, localization: l.localization });
+                            setShowLocationSuggestions(false);
+                          }}
+                        >
+                          {l.localization}
+                        </li>
+                      ))}
+                  </ul>
                 )}
-                {suggestedCategories
-                  .filter(c => c.category.toLowerCase().includes(categoryInput.toLowerCase()))
-                  .slice(0, 5)
-                  .map(c => (
-                    <li
-                      key={c.category}
-                      onMouseDown={(e) => {
+              </div>
+
+              {/* Categorías */}
+              <div
+                className="expense-modal__field"
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setShowSuggestions(false);
+                  }
+                }}
+              >
+                <label className="expense-modal__label" htmlFor="category">Categoría</label>
+                <input
+                  className="expense-modal__input"
+                  type="text"
+                  id="category"
+                  placeholder="Comida, Ocio..."
+                  value={categoryInput}
+                  ref={categoryInputRef}
+                  onChange={e => setCategoryInput(e.target.value)}
+                  onKeyDown={handleCategoryKeyDown}
+                  onFocus={() => setShowSuggestions(true)}
+                  autoComplete="off"
+                />
+                {showSuggestions && (
+                  <ul className="expense-modal__suggestions">
+                    {categoryInput.trim() !== '' && !categories.includes(categoryInput.trim()) && (
+                      <li className="expense-modal__suggestion expense-modal__suggestion--add" onMouseDown={(e) => {
                         e.preventDefault();
-                        addCategory(c.category);
-                      }}
-                    >
-                      {c.category}
-                    </li>
-                  ))}
-              </ul>
-            )}
+                        addCategory(categoryInput.trim());
+                      }}>
+                        + Añadir &quot;{categoryInput.trim()}&quot;
+                      </li>
+                    )}
+                    {suggestedCategories
+                      .filter(c => c.category.toLowerCase().includes(categoryInput.toLowerCase()))
+                      .slice(0, 5)
+                      .map(c => (
+                        <li
+                          key={c.category}
+                          className="expense-modal__suggestion"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            addCategory(c.category);
+                          }}
+                        >
+                          {c.category}
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
             {categories.length > 0 && (
-              <div className="selected-categories">
+              <div className="expense-modal__chips">
                 {categories.map(cat => (
-                  <div key={cat} className="selected-category">
+                  <div key={cat} className="expense-modal__chip">
                     {cat}
-                    <button type="button" onClick={() => removeCategory(cat)} title="Eliminar">×</button>
+                    <button type="button" className="expense-modal__chip-remove" onClick={() => removeCategory(cat)} title="Eliminar">×</button>
                   </div>
                 ))}
               </div>
             )}
-          </div>
 
-          {/* Pagado por */}
-          <div className="form-group">
-            <label htmlFor="paidBy">Pagado por</label>
-            <MultiSelect
-              options={members.map(m => ({ value: m._id, label: m.nombre }))}
-              selected={paidByIds}
-              onChange={setPaidByIds}
-              placeholder="¿Quién pagó?"
-            />
-          </div>
+            {/* Pagado por */}
+            <div className="expense-modal__field expense-modal__field--payers">
+              <label className="expense-modal__label" htmlFor="paidBy">Pagado por</label>
+              <MultiSelect
+                options={members.map(m => ({ value: m._id, label: m.nombre }))}
+                selected={paidByIds}
+                onChange={setPaidByIds}
+                placeholder="¿Quién pagó?"
+              />
+            </div>
 
-          {/* Checkbox asumir gasto */}
-          <div className="checkbox-container">
-            <label>
+            {/* Checkbox asumir gasto */}
+            <label className="expense-modal__checkbox">
               <input
+                className="expense-modal__checkbox-input"
                 type="checkbox"
                 checked={assumeExpense}
                 onChange={e => setAssumeExpense(e.target.checked)}
               />
               <span>Asumir el gasto (invitar a otros)</span>
             </label>
-          </div>
 
-          {/* Participantes */}
-          <div className="participants-select">
-            <label htmlFor="participants">Participantes</label>
-            <select
-              id="participants"
-              multiple
-              value={selectedParticipants}
-              onChange={e => setSelectedParticipants(Array.from(e.target.selectedOptions, option => option.value))}
-              disabled={assumeExpense}
-            >
-              {members.map(m => (
-                <option key={m._id} value={m._id}>{m.nombre}</option>
-              ))}
-            </select>
+            {/* Participantes */}
+            <div className="expense-modal__field">
+              <label className="expense-modal__label" htmlFor="participants">Participantes</label>
+              <select
+                className="expense-modal__select"
+                id="participants"
+                multiple
+                value={selectedParticipants}
+                onChange={e => setSelectedParticipants(Array.from(e.target.selectedOptions, option => option.value))}
+                disabled={assumeExpense}
+              >
+                {members.map(m => (
+                  <option key={m._id} value={m._id}>{m.nombre}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Botones */}
-          <div className="modal-footer">
-            <button type="button" className="btn-cancel" onClick={onClose} disabled={loading}>
+          <div className="expense-modal__footer">
+            <button type="button" className="expense-modal__button expense-modal__button--secondary" onClick={onClose} disabled={loading}>
               Cancelar
             </button>
-            <button type="submit" className="btn-submit" disabled={loading}>
+            <button type="submit" className="expense-modal__button expense-modal__button--primary" disabled={loading}>
               {loading ? (
                 expenseToEdit ? 'Actualizando...' : 'Añadiendo...'
               ) : (

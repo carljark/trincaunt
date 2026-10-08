@@ -96,7 +96,7 @@ Uso en SCSS:
 1. **Mobile-first**: Escribir estilos base para móviles y luego sobreescribir para pantallas mayores
 2. **Utilizar variables**: Nunca usar valores hardcodeados
 3. **Extender componentes**: Usar `@extend` para mantener consistencia
-4. **BEM para componentes complejos**:
+4. **BEM en todos los componentes** (un bloque por componente; al tocar estilos de un componente con clases globales antiguas, migrarlo):
    ```scss
    .expense-item {
      &__description { /* ... */ }

@@ -24,7 +24,8 @@ AGENTS.md has a file index of `api/` and `client/`, but it is stale in places: t
 - Gemini (`AiService`) is initialised lazily to avoid a dotenv timing bug. Don't instantiate `GoogleGenAI` at module top level.
 - `server.ts` runs DB migrations (`api/src/migrations/runner`) on startup; Socket.IO shares the HTTP server (`api/src/config/socket`).
 - In production the Express server serves `client/dist` via `path.join(__dirname, '../../client/dist')` in `api/src/app.ts`. `tsc` emits flat to `api/dist/` (so `dist/server.js`), which matches the Dockerfile layout (`/app/api/dist` + `/app/client/dist`). Ignore any stale `dist/src/`.
-- Styles: SCSS, one co-located `.scss` per component/page, shared variables in `client/src/styles/_variables.scss`.
+- Styles: SCSS, one co-located `.scss` per component/page, shared variables in `client/src/styles/abstracts/_variables.scss`.
+- Any style change uses **BEM** (one block per component, `block__element--modifier`) and migrates the touched component off the old global classes. Load the `styles-bem` skill before editing `.scss` or `className`s.
 
 ## Git
 - Branches: `feature/<name>`; PRs target `main`.
