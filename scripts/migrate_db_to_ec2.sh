@@ -3,7 +3,7 @@
 # MIGRACIÓN ÚNICA DE LA BD LOCAL AL EC2
 # Hace mongodump de tu Mongo local y REEMPLAZA (mongorestore --drop) la BD
 # `trincaunt` del contenedor trincaunt-mongo en el EC2.
-# Ejecútalo UNA sola vez, tras el primer ./deploy.sh y EN LA MÁQUINA QUE TIENE LOS
+# Ejecútalo UNA sola vez, tras el primer despliegue (./deploy.sh) y EN LA MÁQUINA QUE TIENE LOS
 # DATOS (Castellón), no en el Mac de desarrollo. Si lo repites, perderás todo lo
 # creado en producción desde entonces. Otra BD de origen: SOURCE_MONGO_URI=...
 # ==========================================
@@ -21,7 +21,7 @@ read -r -p "Escribe 'si' para continuar: " CONFIRM
 
 echo "🔍 [1/4] Comprobando que trincaunt-mongo está en marcha en el EC2..."
 $SSH_CMD $EC2_USER@$EC2_HOST "docker ps --format '{{.Names}}' | grep -qx trincaunt-mongo" \
-  || { echo "❌ trincaunt-mongo no está corriendo. Ejecuta primero ./deploy.sh"; exit 1; }
+  || { echo "❌ trincaunt-mongo no está corriendo. Despliega primero con ./deploy.sh"; exit 1; }
 
 echo "💾 [2/4] Copia de seguridad local de MongoDB..."
 mongodump --uri="${SOURCE_MONGO_URI:-mongodb://localhost:27017/trincaunt}" --archive="$DUMP_FILE" --gzip

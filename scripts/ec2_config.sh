@@ -1,5 +1,5 @@
 #!/bin/bash
-# Configuración común de conexión al EC2. Se carga con `source` desde deploy.sh
+# Configuración común de conexión al EC2. Se carga con `source` desde deploy.sh, scripts/sync_to_ec2.sh
 # y los scripts de scripts/ (migrate_db_to_ec2.sh, setup_ssl.sh).
 
 # Cada valor se puede sobrescribir por entorno, p. ej.:
