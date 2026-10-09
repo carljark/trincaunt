@@ -14,6 +14,8 @@ SSH_KEY_CANDIDATES=(
   "$HOME/job/profesion/UJI/co2univ/co2univ-key.pem"  # Castellón
   "$HOME/UJI/co2univ/co2univ-key.pem"                # Mac
 )
+# Valor por defecto explícito: este fichero también se carga desde scripts con `set -u`
+SSH_KEY="${SSH_KEY:-}"
 if [ -z "$SSH_KEY" ]; then
   for candidate in "${SSH_KEY_CANDIDATES[@]}"; do
     if [ -f "$candidate" ]; then
