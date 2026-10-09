@@ -6,7 +6,6 @@ import * as DebtTransactionController from '../controllers/DebtTransactionContro
 import * as CategoryAliasController from '../controllers/CategoryAliasController';
 import * as UserPreferencesController from '../controllers/UserPreferencesController';
 import * as NoteController from '../controllers/NoteController'; // Import NoteController
-import * as UploadController from '../controllers/UploadController';
 import * as DbController from '../controllers/DbController';
 import { protect } from '../middlewares/authMiddleware';
 
@@ -22,9 +21,6 @@ router.post('/users/register', UserController.register);
 router.post('/users/login', UserController.login);
 router.get('/users/admin/all', protect, UserController.getAllUsers);
 router.patch('/users/admin/:id/ai', protect, UserController.toggleUserAI);
-
-// Upload Routes
-router.post('/upload', protect, UploadController.uploadImage);
 
 // Category Alias Routes (Protected)
 router.get('/category-aliases', protect, CategoryAliasController.getAllAliases);
