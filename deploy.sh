@@ -1,69 +1,110 @@
 #!/bin/bash
 # ==========================================
-# SCRIPT DE DESPLIEGUE A EC2 (desde Castellón o el Mac)
-# Sincroniza el código y levanta la app. NO toca la base de datos:
-# para copiar tu BD local al EC2 (una sola vez) usa scripts/migrate_db_to_ec2.sh
-# El certificado SSL se emite aparte, una vez: scripts/setup_ssl.sh
+# DESPLEGAR A PRODUCCIÓN (EC2), desde Castellón o el Mac
+#   ./deploy.sh                      # desde una rama: PR -> CI -> merge -> despliegue de main
+#   ./deploy.sh                      # desde main: vuelve a desplegar main tal cual
+#   ./deploy.sh --merge-only         # desde una rama: PR -> CI -> merge, sin desplegar
+#   ./deploy.sh --title "feat: ..."  # título de la PR (si no, el del commit)
 #
-# El site de nginx solo se instala si aún no existe, para no borrar el bloque
-# HTTPS que añade certbot. Si cambias nginx/trincaunt.conf:
-#   FORCE_NGINX=1 ./deploy.sh && ./scripts/setup_ssl.sh
-#
-# Despliega exactamente el commit actual (HEAD), no la carpeta local: los cambios
-# sin commitear y los archivos sin seguimiento no se suben. El servidor queda
-# igual que el commit: rsync --delete borra allí lo que ya no está en el repo.
-#
-# Los secretos (.env) viven solo en el EC2 y no se tocan. Para cambiarlos, edita
-# ~/trincaunt/.env en el EC2 y vuelve a desplegar.
+# Si ya hay una PR abierta para la rama, la reutiliza. Si el CI falla, se para
+# sin fusionar ni desplegar. Fusiona siempre con merge commit (sin squash).
+# La subida al EC2 la hace scripts/sync_to_ec2.sh con el commit de main.
 # ==========================================
-set -e
+set -euo pipefail
 
-cd "$(dirname "$0")"
-source scripts/ec2_config.sh
+DEPLOY=1
+TITLE=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --merge-only) DEPLOY=0 ;;
+    --title) TITLE="${2:?--title necesita un valor}"; shift ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    *) echo "❌ Opción desconocida: $1 (usa --help)" >&2; exit 1 ;;
+  esac
+  shift
+done
 
-if [ -n "$(git status --porcelain)" ]; then
-  echo "⚠️  Hay cambios sin commitear o archivos sin seguimiento: NO se despliegan."
-  echo "   Se despliega solo el commit $(git log -1 --format='%h %s')."
+cd "$(git rev-parse --show-toplevel)"
+
+fail() { echo "❌ $*" >&2; exit 1; }
+
+# --- Comprobaciones previas ---
+BRANCH=$(git branch --show-current)
+[ -n "$BRANCH" ] || fail "No estás en ninguna rama (HEAD separado)."
+
+# Solo se despliega lo commiteado: con cambios sueltos, lo desplegado no sería lo que ves
+[ -z "$(git status --porcelain)" ] || { git status --short >&2; fail "Hay cambios sin commitear o archivos sin seguimiento (arriba). Haz commit, bórralos o añádelos a .gitignore."; }
+
+git fetch -q origin
+
+if [ "$BRANCH" = "main" ]; then
+  # --- Desde main: sin PR, se despliega main tal cual está en GitHub ---
+  [ "$DEPLOY" -eq 1 ] || fail "--merge-only no tiene sentido en main: no hay nada que fusionar."
+  [ "$(git rev-list --count origin/main..HEAD)" -eq 0 ] \
+    || fail "Tu main local tiene commits que no están en GitHub. Pásalos a una rama feature/<nombre> y despliega desde ella."
+  git pull -q --ff-only origin main
+  echo "ℹ️  Estás en main: se despliega $(git log -1 --format='%h %s') sin PR."
+else
+  # --- Desde una rama: PR, CI y merge ---
+  gh auth status >/dev/null 2>&1 || fail "gh no tiene sesión iniciada. Ejecuta: gh auth login"
+
+  AHEAD=$(git rev-list --count origin/main..HEAD)
+  [ "$AHEAD" -gt 0 ] || fail "La rama $BRANCH no tiene commits nuevos respecto a origin/main."
+
+  echo "📤 [1/4] Subiendo $BRANCH ($AHEAD commit(s))..."
+  git push -q -u origin "$BRANCH"
+
+  PR=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')
+  if [ -n "$PR" ]; then
+    echo "   PR #$PR ya abierta; la reutilizo."
+  else
+    if [ -z "$TITLE" ]; then
+      if [ "$AHEAD" -eq 1 ]; then TITLE=$(git log -1 --format=%s); else TITLE="$BRANCH"; fi
+    fi
+    BODY="Commits:"$'\n'"$(git log --reverse --format='- %s' origin/main..HEAD)"
+    PR_URL=$(gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$BODY")
+    PR=${PR_URL##*/}
+    echo "   Creada $PR_URL"
+  fi
+
+  echo "⏳ [2/4] Esperando al CI de la PR #$PR..."
+  # Las comprobaciones tardan unos segundos en aparecer tras crear la PR
+  COUNT=0
+  for _ in $(seq 1 24); do
+    COUNT=$(gh pr checks "$PR" --json name --jq 'length' 2>/dev/null || echo 0)
+    [ "$COUNT" -gt 0 ] && break
+    sleep 5
+  done
+  [ "$COUNT" -gt 0 ] || fail "La PR #$PR no tiene comprobaciones de CI tras 2 minutos. Revisa la pestaña Actions."
+
+  if ! gh pr checks "$PR" --watch --fail-fast --interval 10; then
+    fail "El CI ha fallado. No fusiono ni despliego. Detalles: gh pr checks $PR --web"
+  fi
+  gh pr checks "$PR" --json bucket --jq 'all(.[]; .bucket == "pass" or .bucket == "skipping")' | grep -qx true \
+    || fail "Hay comprobaciones que no están en verde. No fusiono ni despliego."
+
+  echo "🔀 [3/4] Fusionando la PR #$PR en main..."
+  gh pr merge "$PR" --merge --delete-branch
+  git checkout -q main
+  git pull -q --ff-only origin main
 fi
 
-EXPORT_DIR=$(mktemp -d)
-trap 'rm -rf "${EXPORT_DIR:?}"' EXIT
-git archive HEAD | tar -x -C "$EXPORT_DIR"
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || fail "main local no coincide con origin/main; no despliego."
+echo "   main en $(git log -1 --format='%h %s')"
 
-echo "📦 [1/2] Sincronizando el commit $(git rev-parse --short HEAD) con el EC2..."
-$SSH_CMD $EC2_USER@$EC2_HOST "mkdir -p $TARGET_DIR"
+if [ "$DEPLOY" -eq 0 ]; then
+  echo "✅ Fusionada. Despliegue omitido (--merge-only)."
+  exit 0
+fi
 
-# --delete deja el servidor igual que el commit. Los --exclude protegen lo que
-# solo existe en el EC2 (secretos, dependencias, builds y copias de seguridad):
-# rsync no borra en destino lo que coincide con un exclude.
-rsync -avz --delete -e "$SSH_CMD" \
-  --exclude '.env' --exclude '.env.local' --exclude '.env.*.local' \
-  --exclude 'node_modules' --exclude 'client/dist' --exclude 'api/dist' --exclude '.git' \
-  --exclude '/temp' --exclude '/mongodb_backups' --exclude '/backups' \
-  "$EXPORT_DIR/" $EC2_USER@$EC2_HOST:$TARGET_DIR/
+# --- 4. Desplegar ---
+echo "🚀 [4/4] Desplegando main en el EC2..."
+./scripts/sync_to_ec2.sh
 
-echo "☁️  [2/2] Conectando al EC2 para levantar la app..."
-$SSH_CMD $EC2_USER@$EC2_HOST "FORCE_NGINX=${FORCE_NGINX:-0} bash -s" << 'SSH_EOF'
-  set -e
-  cd trincaunt
-
-  if [ ! -f .env ]; then
-    echo "❌ Falta ~/trincaunt/.env en el EC2. Créalo allí a partir de .env.example. Abortando."
-    exit 1
-  fi
-
-  echo "=> Levantando aplicación con Docker Compose..."
-  docker compose up -d --build
-
-  if [ ! -f /etc/nginx/sites-available/trincaunt ] || [ "$FORCE_NGINX" = "1" ]; then
-    echo "=> Instalando site de NGINX de Trincaunt (sin tocar las otras apps)..."
-    sudo cp nginx/trincaunt.conf /etc/nginx/sites-available/trincaunt
-    sudo ln -sf /etc/nginx/sites-available/trincaunt /etc/nginx/sites-enabled/trincaunt
-    sudo nginx -t && sudo systemctl reload nginx
-    echo "   (Si ya tenías HTTPS, vuelve a ejecutar ./scripts/setup_ssl.sh)"
-  else
-    echo "=> Site de NGINX ya instalado; no se toca (FORCE_NGINX=1 para reinstalarlo)."
-  fi
-
-  echo "✅ ¡Todo listo! La aplicación Trincaunt está corriendo en la nube."
-SSH_EOF
+source scripts/ec2_config.sh
+CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$DOMAIN/" || true)
+if [ "$CODE" = "200" ]; then
+  echo "✅ Desplegado. https://$DOMAIN responde 200."
+else
+  fail "Desplegado, pero https://$DOMAIN responde '$CODE'. Revisa: ssh al EC2 y docker logs trincaunt-app"
+fi
