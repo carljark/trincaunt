@@ -29,5 +29,6 @@ AGENTS.md has a file index of `api/` and `client/`, but it is stale in places: t
 
 ## Git
 - Branches: `feature/<name>`; PRs target `main`.
+- `scripts/ship.sh` does the whole flow from a clean `feature/*` branch: push, PR, wait for CI, merge, `./deploy.sh` from `main` (`--no-deploy` to stop after the merge).
 - Claude may merge its own PRs without asking (`.claude/settings.json` allows `gh pr merge`), but only after `gh pr checks <n> --watch` shows every check passing. Always `--merge` (never squash, never `--admin`), run `gh pr merge` as its own command, then `git checkout main && git pull` before deploying.
 - Commit messages: Conventional Commits with a scope, e.g. `feat(api): ...`, `fix(client): ...`, `style(client): ...`.
