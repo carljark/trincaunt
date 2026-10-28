@@ -1,0 +1,97 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+
+// ============================================
+// AVISO DE INSTALACIÓN PWA (BEM: .install-prompt)
+// ============================================
+
+.install-prompt {
+  position: fixed;
+  left: map.get($spacing-scale, 3);
+  right: map.get($spacing-scale, 3);
+  bottom: calc(#{map.get($spacing-scale, 3)} + env(safe-area-inset-bottom, 0px));
+  z-index: $z-index-popover;
+  display: flex;
+  align-items: center;
+  gap: map.get($spacing-scale, 3);
+  max-width: 480px;
+  margin: 0 auto;
+  padding: map.get($spacing-scale, 3);
+  background: white;
+  border: 1px solid $color-gray-200;
+  border-radius: $border-radius-lg;
+  box-shadow: $box-shadow-lg;
+  animation: install-prompt-slide-up 0.3s ease-out;
+
+  &__icon {
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: $border-radius;
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 0.95rem;
+    color: $color-gray-900;
+  }
+
+  &__hint {
+    font-size: 0.85rem;
+    line-height: 1.35;
+    color: $color-gray-600;
+  }
+
+  &__share {
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    vertical-align: -0.15em;
+    color: $color-primary;
+  }
+
+  &__button {
+    flex-shrink: 0;
+    min-height: 2.75rem;
+    padding: 0 map.get($spacing-scale, 3);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+    background: $color-primary;
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+  }
+
+  &__close {
+    flex-shrink: 0;
+    align-self: flex-start;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: $color-gray-500;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+}
+
+@keyframes install-prompt-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
