@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import * as ExpenseController from '../../src/controllers/ExpenseController';
 import AiService from '../../src/services/AiService';
+import PushService from '../../src/services/PushService';
 
 vi.mock('../../src/services/AiService', () => {
   return {
@@ -10,6 +11,11 @@ vi.mock('../../src/services/AiService', () => {
     }
   };
 });
+
+vi.mock('../../src/services/PushService', () => ({
+  default: { notifyGroupMembers: vi.fn() },
+  formatAmount: (amount: number) => `${amount} €`
+}));
 
 vi.mock('../../src/config/socket', () => ({
   getIO: vi.fn().mockReturnValue({
@@ -81,6 +87,9 @@ describe('ExpenseController (TDD)', () => {
 
       expect(AiService.parseExpenseFromMedia).toHaveBeenCalledWith(fakeFile.buffer, fakeFile.mimetype, []);
       expect(createSpy).toHaveBeenCalledTimes(2);
+      // Un único aviso push para todo el lote, excluyendo a quien lo sube
+      expect(PushService.notifyGroupMembers).toHaveBeenCalledTimes(1);
+      expect(PushService.notifyGroupMembers).toHaveBeenCalledWith('group123', 'user123', expect.any(Function));
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ status: 'success' }));
     });

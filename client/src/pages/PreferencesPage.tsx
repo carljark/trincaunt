@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import UserMenu from '../components/UserMenu';
+import PushToggle from '../components/PushToggle';
 
 import './PreferencesPage.scss'; // Import the SCSS file
 
@@ -270,6 +271,7 @@ const PreferencesPage: React.FC = () => {
   return (
     <div className="preferences-page">
       <UserMenu />
+      <PushToggle />
       <h2>Category Aliases</h2>
       
       <div className="group-selector">

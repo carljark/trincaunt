@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { IUser } from '../types/user';
+import { unsubscribeFromPush } from '../utils/push';
 
 interface AuthContextType {
   token: string | null;
@@ -34,6 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    // Que este dispositivo deje de recibir los avisos de la cuenta que sale
+    void unsubscribeFromPush(token);
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');

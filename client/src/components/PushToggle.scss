@@ -1,0 +1,98 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+
+// ============================================
+// INTERRUPTOR DE NOTIFICACIONES PUSH (BEM: .push-toggle)
+// ============================================
+
+$switch-width: 3.25rem;
+$switch-height: 2rem;
+$knob-gap: 3px;
+
+.push-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 2);
+  margin-bottom: map.get($spacing-scale, 4);
+  padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
+  background: white;
+  border: 1px solid $color-gray-200;
+  border-radius: $border-radius-lg;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: $color-gray-900;
+  }
+
+  &__description,
+  &__note {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: $color-gray-600;
+  }
+
+  &__error {
+    margin: 0;
+    font-size: 0.875rem;
+    color: $color-danger;
+  }
+
+  &__switch {
+    position: relative;
+    flex-shrink: 0;
+    width: $switch-width;
+    height: $switch-height;
+    padding: 0;
+    background: $color-gray-300;
+    border: none;
+    border-radius: $border-radius-pill;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    &--on {
+      background: $color-primary;
+    }
+  }
+
+  &__knob {
+    position: absolute;
+    top: $knob-gap;
+    left: $knob-gap;
+    width: calc(#{$switch-height} - #{2 * $knob-gap});
+    height: calc(#{$switch-height} - #{2 * $knob-gap});
+    background: white;
+    border-radius: 50%;
+    box-shadow: $box-shadow-sm;
+    transition: transform 0.2s ease;
+  }
+
+  &__switch--on &__knob {
+    transform: translateX(calc(#{$switch-width} - #{$switch-height}));
+  }
+}
