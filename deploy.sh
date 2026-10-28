@@ -102,7 +102,13 @@ echo "🚀 [4/4] Desplegando main en el EC2..."
 ./scripts/sync_to_ec2.sh
 
 source scripts/ec2_config.sh
-CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$DOMAIN/" || true)
+# Tras recrear el contenedor, la app tarda unos segundos en arrancar (migraciones) y nginx da 502
+CODE=""
+for _ in $(seq 1 12); do
+  CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$DOMAIN/" || true)
+  [ "$CODE" = "200" ] && break
+  sleep 5
+done
 if [ "$CODE" = "200" ]; then
   echo "✅ Desplegado. https://$DOMAIN responde 200."
 else
