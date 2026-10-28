@@ -18,7 +18,7 @@ AGENTS.md has a file index of `api/` and `client/`, but it is stale in places: t
 ## Environment
 - `api/.env`: `JWT_SECRET`, `GEMINI_API_KEY`; also reads `MONGO_URI` (default `mongodb://localhost:27017/trincaunt`), `PORT` (default 3000), `NODE_ENV`. Copy `api/.env.example` and `client/.env.example` to `.env`.
 - `client/.env*`: `VITE_API_HOST` (and `VITE_API_BASE_URL`).
-- `docker-compose.yml`: mongo on host port 27019, app on 3100.
+- `docker-compose.yml` builds the production image: app on `127.0.0.1:3100` only (host nginx proxies it), mongo has no published port (reachable only inside the compose network, own `mongo_data` volume). For local dev use root `npm start` against a local mongo on 27017; to test on a phone, run the client with `npm start --prefix client -- --host`.
 
 ## Gotchas
 - Gemini (`AiService`) is initialised lazily to avoid a dotenv timing bug. Don't instantiate `GoogleGenAI` at module top level.
