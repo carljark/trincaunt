@@ -149,16 +149,6 @@ $control-height: 2.5rem;
     gap: 2px;
     min-width: 0;
     position: relative;
-
-    // MultiSelect es otro componente: solo igualamos su input al resto del formulario
-    &--payers .multi-select-container input {
-      height: $control-height;
-      padding: 0 map.get($spacing-scale, 3);
-      font-size: 1rem;
-      border: 1.5px solid $pastel-blue;
-      border-radius: $border-radius;
-      background-color: white;
-    }
   }
 
   &__label {
@@ -168,8 +158,7 @@ $control-height: 2.5rem;
     line-height: 1.3;
   }
 
-  &__input,
-  &__select {
+  &__input {
     width: 100%;
     min-width: 0;
     font-size: 1rem;
@@ -207,20 +196,6 @@ $control-height: 2.5rem;
       -webkit-appearance: none;
       appearance: none;
       cursor: pointer;
-    }
-  }
-
-  &__select {
-    min-height: 4.5rem;
-    padding: map.get($spacing-scale, 1);
-
-    option {
-      padding: 2px map.get($spacing-scale, 2);
-
-      &:checked {
-        background-color: $pastel-blue-light;
-        font-weight: 500;
-      }
     }
   }
 

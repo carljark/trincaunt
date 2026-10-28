@@ -1,0 +1,81 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+
+// ============================================
+// SELECTOR DE MIEMBROS (BEM: .member-toggle)
+// ============================================
+
+// Objetivo táctil mínimo recomendado (Apple HIG)
+$touch-target: 2.75rem;
+
+.member-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: map.get($spacing-scale, 1);
+
+  &--disabled {
+    opacity: 0.55;
+  }
+
+  &__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: map.get($spacing-scale, 2);
+    width: 100%;
+  }
+
+  &__option {
+    display: inline-flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+    min-height: $touch-target;
+    padding: 0 map.get($spacing-scale, 3);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: $color-gray-700;
+    background-color: white;
+    border: 1.5px solid $color-gray-300;
+    border-radius: $border-radius-pill;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+
+    &--selected {
+      color: white;
+      background-color: $color-primary;
+      border-color: $color-primary;
+    }
+  }
+
+  // Reserva el hueco del ✓ para que el botón no cambie de ancho al marcarlo
+  &__check {
+    display: inline-block;
+    width: 0.9em;
+    text-align: center;
+  }
+
+  &__bulk {
+    padding: map.get($spacing-scale, 1) 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: $color-primary;
+    background: none;
+    border: none;
+    cursor: pointer;
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+}

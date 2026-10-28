@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { IExpense, IExpensePopulated } from '../types/expense';
 import { IUserPopulated } from '../types/user';
-import MultiSelect from './MultiSelect';
+import MemberToggleGroup from './MemberToggleGroup';
 import './AddExpenseModal.scss';
 
 interface AddExpenseModalProps {
@@ -38,6 +38,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   const today = new Date();
   const formattedToday = today.toISOString().split('T')[0];
   const [expenseDate, setExpenseDate] = useState<string>(expenseToEdit?.fecha?.split('T')[0] || formattedToday);
+  const memberOptions = members.map(m => ({ value: m._id, label: m.nombre }));
 
   useEffect(() => {
     if (expenseToEdit) {
@@ -341,13 +342,13 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
             )}
 
             {/* Pagado por */}
-            <div className="expense-modal__field expense-modal__field--payers">
-              <label className="expense-modal__label" htmlFor="paidBy">Pagado por</label>
-              <MultiSelect
-                options={members.map(m => ({ value: m._id, label: m.nombre }))}
+            <div className="expense-modal__field">
+              <span className="expense-modal__label" id="paid-by-label">Pagado por</span>
+              <MemberToggleGroup
+                options={memberOptions}
                 selected={paidByIds}
                 onChange={setPaidByIds}
-                placeholder="¿Quién pagó?"
+                labelledBy="paid-by-label"
               />
             </div>
 
@@ -364,19 +365,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
 
             {/* Participantes */}
             <div className="expense-modal__field">
-              <label className="expense-modal__label" htmlFor="participants">Participantes</label>
-              <select
-                className="expense-modal__select"
-                id="participants"
-                multiple
-                value={selectedParticipants}
-                onChange={e => setSelectedParticipants(Array.from(e.target.selectedOptions, option => option.value))}
+              <span className="expense-modal__label" id="participants-label">Participantes</span>
+              <MemberToggleGroup
+                options={memberOptions}
+                selected={selectedParticipants}
+                onChange={setSelectedParticipants}
+                labelledBy="participants-label"
                 disabled={assumeExpense}
-              >
-                {members.map(m => (
-                  <option key={m._id} value={m._id}>{m.nombre}</option>
-                ))}
-              </select>
+                showBulkActions
+              />
             </div>
           </div>
 
