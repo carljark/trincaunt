@@ -2,6 +2,9 @@ version: '3.8'
 
 services:
   trincaunt-app:
+    # En el EC2 la imagen llega ya construida (scripts/sync_to_ec2.sh) y se arranca con --no-build;
+    # `build` queda para levantarla en local con `docker compose up --build`.
+    image: trincaunt-app:latest
     build: .
     container_name: trincaunt-app
     restart: unless-stopped
