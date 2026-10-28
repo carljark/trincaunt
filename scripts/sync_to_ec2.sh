@@ -16,8 +16,12 @@
 #
 # Los secretos (.env) viven solo en el EC2 y no se tocan. Para cambiarlos, edita
 # ~/trincaunt/.env en el EC2 y vuelve a desplegar.
+#
+# La imagen Docker se construye aquí (para linux/amd64) y se envía al EC2 con
+# docker save | docker load: el EC2 no tiene memoria para compilar el cliente.
+# Requiere Docker con buildx en esta máquina.
 # ==========================================
-set -e
+set -eo pipefail  # pipefail: si falla docker save, que no siga con una imagen a medias
 
 cd "$(dirname "$0")/.."
 source scripts/ec2_config.sh
@@ -30,8 +34,14 @@ fi
 EXPORT_DIR=$(mktemp -d)
 trap 'rm -rf "${EXPORT_DIR:?}"' EXIT
 git archive HEAD | tar -x -C "$EXPORT_DIR"
+IMAGE=trincaunt-app:latest  # el mismo nombre que `image:` en docker-compose.yml
 
-echo "📦 [1/2] Sincronizando el commit $(git rev-parse --short HEAD) con el EC2..."
+# Se construye antes de tocar el EC2: si falla, el servidor queda como estaba
+echo "🐳 [1/3] Construyendo la imagen del commit $(git rev-parse --short HEAD) para linux/amd64..."
+docker buildx build --platform linux/amd64 -t "$IMAGE" --load "$EXPORT_DIR"
+
+echo "📤 [2/3] Enviando la imagen y el commit al EC2..."
+docker save "$IMAGE" | gzip | $SSH_CMD $EC2_USER@$EC2_HOST "gunzip | docker load"
 $SSH_CMD $EC2_USER@$EC2_HOST "mkdir -p $TARGET_DIR"
 
 # --delete deja el servidor igual que el commit. Los --exclude protegen lo que
@@ -43,7 +53,7 @@ rsync -avz --delete -e "$SSH_CMD" \
   --exclude '/temp' --exclude '/mongodb_backups' --exclude '/backups' \
   "$EXPORT_DIR/" $EC2_USER@$EC2_HOST:$TARGET_DIR/
 
-echo "☁️  [2/2] Conectando al EC2 para levantar la app..."
+echo "☁️  [3/3] Conectando al EC2 para levantar la app..."
 $SSH_CMD $EC2_USER@$EC2_HOST "FORCE_NGINX=${FORCE_NGINX:-0} bash -s" << 'SSH_EOF'
   set -e
   cd trincaunt
@@ -54,7 +64,9 @@ $SSH_CMD $EC2_USER@$EC2_HOST "FORCE_NGINX=${FORCE_NGINX:-0} bash -s" << 'SSH_EOF
   fi
 
   echo "=> Levantando aplicación con Docker Compose..."
-  docker compose up -d --build
+  docker compose up -d --no-build
+  # Las versiones anteriores quedan sin etiqueta; se borran solo las de esta app (LABEL del Dockerfile)
+  docker image prune -f --filter label=app=trincaunt
 
   if [ ! -f /etc/nginx/sites-available/trincaunt ] || [ "$FORCE_NGINX" = "1" ]; then
     echo "=> Instalando site de NGINX de Trincaunt (sin tocar las otras apps)..."

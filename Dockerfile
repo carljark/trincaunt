@@ -1,5 +1,9 @@
+# Las etapas 1 y 2 solo producen JavaScript, así que corren en la arquitectura de quien construye
+# ($BUILDPLATFORM): al construir para el EC2 (amd64) desde un Mac arm64 no se emulan, y esbuild
+# (Vite) no se cuelga bajo QEMU. Solo la etapa final, con dependencias nativas (bcrypt), es amd64.
+
 # Etapa 1: Construir el Frontend (Cliente)
-FROM node:22-alpine AS build-client
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build-client
 WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
@@ -7,7 +11,7 @@ COPY client/ ./
 RUN npm run build
 
 # Etapa 2: Construir el Backend (API)
-FROM node:22-alpine AS build-api
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build-api
 WORKDIR /app/api
 COPY api/package*.json ./
 RUN npm ci
@@ -16,6 +20,8 @@ RUN npm run build
 
 # Etapa 3: Ensamblar la imagen de Producción
 FROM node:22-alpine
+# Permite borrar en el EC2 solo las imágenes viejas de esta app (docker image prune --filter)
+LABEL app=trincaunt
 WORKDIR /app
 
 # Configurar el Backend
