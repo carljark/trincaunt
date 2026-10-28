@@ -74,6 +74,26 @@ $spacing-scale: (
 </div>
 ```
 
+## 2.1 Patrones de pantalla (estilo general)
+
+Base del estilo común para todas las pantallas, aplicado ya en las pestañas **Grupo** (`GroupSettingsTab`) y **Saldos** (`BalancesTab`). Son mixins de `abstracts/_mixins.scss`: cada bloque BEM los incluye en sus propios elementos, sin clases globales nuevas.
+
+| Mixin | Uso | Valores clave |
+|-------|-----|---------------|
+| `section-card` | Cada sección de una pantalla | fondo blanco, borde `$color-border`, radio `$border-radius-lg`, padding 16px, separación interna 12px |
+| `section-title` | Título de la sección | 18px (`lg`), semibold |
+| `list-row` | Filas de listas (miembros, saldos) | mínimo 48px de alto, texto 16px, separador entre filas |
+| `money` | Importes | cifras tabulares, semibold, sin saltos de línea |
+| `icon-button` | Acciones de icono (editar, añadir) | 44x44px, icono 20px, fondo primario al 8% |
+| `action-button` | Botones de texto | mínimo 44px de alto, texto 16px semibold |
+
+Reglas de texto:
+
+- **Texto normal: 16px** (`base`). Etiquetas secundarias: 14px (`sm`) en `$color-text-muted`. No bajar de 14px.
+- **Importes**: `$color-positive` (verde) a favor y `$color-negative` (rojo) en contra; nunca `success`/`danger`, que son cian y magenta.
+- Entre secciones, 16px (`spacing 4`); dentro de una sección, 12px (`spacing 3`).
+- Iconos: `components/icons.tsx` (SVG de trazo, `currentColor`). El botón lleva `aria-label`.
+
 ## 3. Breakpoints
 
 | Nombre | Ancho  | Uso                  |

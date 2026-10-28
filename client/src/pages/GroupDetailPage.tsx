@@ -13,6 +13,8 @@ import ExpenseGraph from '../components/ExpenseGraph'; // Import the new compone
 import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes component
 import UserMenu from '../components/UserMenu';
 import QuickExpenseFAB from '../components/QuickExpenseFAB';
+import GroupSettingsTab from '../components/GroupSettingsTab';
+import BalancesTab from '../components/BalancesTab';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -59,7 +61,6 @@ const GroupDetailPage: React.FC = () => {
   const [group, setGroup] = useState<IGroup | null>(null);
   const [expenses, setExpenses] = useState<IExpensePopulated[]>([]);
   const [balance, setBalance] = useState<IBalance[]>([]);
-  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [settlementTransactions, setSettlementTransactions] = useState<ISettleGroupDebtsTransaction[]>([]);
@@ -91,9 +92,6 @@ const GroupDetailPage: React.FC = () => {
   const [dateFilterPreset, setDateFilterPreset] = useState<string | null>(null);
   const [localizationFilter, setLocalizationFilter] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
-  // New states for group name editing
-  const [editableGroupName, setEditableGroupName] = useState<string>('');
-  const [isEditingGroupName, setIsEditingGroupName] = useState<boolean>(false);
   const [showAdvancedFiltersModal, setShowAdvancedFiltersModal] = useState(false);
   
   const tabRef = useRef<HTMLDivElement>(null);
@@ -117,26 +115,18 @@ const GroupDetailPage: React.FC = () => {
   // Usamos useRef para controlar si ya hemos inicializado las categorías
   const hasInitializedCategories = useRef(false);
 
-  useEffect(() => {
-    if (group) {
-      setEditableGroupName(group.nombre);
-    }
-  }, [group]);
-
-  const handleUpdateGroupName = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !groupId || !editableGroupName) return;
+  const handleRenameGroup = async (nombre: string): Promise<boolean> => {
+    if (!token || !groupId || !nombre) return false;
 
     try {
       const res = await fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ nombre: editableGroupName })
+        body: JSON.stringify({ nombre })
       });
       if (res.ok) {
         fetchGroupData();
-        setIsEditingGroupName(false);
-        alert('Nombre del grupo actualizado con éxito');
+        return true;
       } else {
         const data = await res.json();
         throw new Error(data.message || 'Error al actualizar el nombre del grupo');
@@ -148,6 +138,7 @@ const GroupDetailPage: React.FC = () => {
         setError('An unknown error occurred');
       }
     }
+    return false;
   };
 
   const formatPayers = useCallback((pagadoPor: IExpensePopulated['pagado_por']) => {
@@ -157,7 +148,6 @@ const GroupDetailPage: React.FC = () => {
     }
     return 'Nadie'; // Fallback if the array is empty
   }, []);
-
 
   const fetchAllCategories = useCallback(async () => {
     if (!token) return;
@@ -356,7 +346,6 @@ const GroupDetailPage: React.FC = () => {
   });
 
   const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
-
 
   const handleExportXLSX = useCallback(async () => {
     if (filteredExpenses.length === 0) {
@@ -618,9 +607,8 @@ const GroupDetailPage: React.FC = () => {
     }
   }, [token, groupId, user?._id, navigate]);
 
-  const handleAddMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !groupId || !email) return;
+  const handleAddMember = async (email: string): Promise<boolean> => {
+    if (!token || !groupId || !email) return false;
 
     try {
       const res = await fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/members`, {
@@ -630,8 +618,7 @@ const GroupDetailPage: React.FC = () => {
       });
       if (res.ok) {
         fetchGroupData();
-        setEmail('');
-        alert('Miembro añadido con éxito');
+        return true;
       } else {
         const data = await res.json();
         throw new Error(data.message || 'Error al añadir miembro');
@@ -643,6 +630,7 @@ const GroupDetailPage: React.FC = () => {
         setError('An unknown error occurred');
       }
     }
+    return false;
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
@@ -740,12 +728,6 @@ const GroupDetailPage: React.FC = () => {
     };
   }, [socket, groupId, isGlobal, fetchGroupData]);
 
-
-  const getBalanceColor = (amount: number) => {
-    if (amount > 0) return 'green';
-    if (amount < 0) return 'red';
-    return 'black';
-  };
 
   if (loading && !initialDataLoaded) return <p>Cargando...</p>;
   if (!group && !isGlobal) return <p>Grupo no encontrado.</p>;
@@ -926,95 +908,28 @@ const GroupDetailPage: React.FC = () => {
       )}
 
       {!isGlobal && activeTab === 'balances' && (
-        <div className="balances-tab-content">
-          <div className="expenses-summary">
-            <div>
-              <p><strong>Total: {formatCurrency(totalExpenses)}€</strong></p>
-            </div>
-            <div>
-              <p><strong>Mi parte: {formatCurrency(myTotalExpenses)}€</strong></p>
-              <p><strong>Pagos: {formatCurrency(myTotalExpensesPay)}€</strong></p>
-              <p><strong>Saldado: {formatCurrency(myTotalSettledIncome)}€</strong></p>
-              {myTotalDebt >= 0 && <p className="positive-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
-              {myTotalDebt < 0 && <p className="negative-balance"><strong>Balance: {formatCurrency(myTotalDebt)}€</strong></p>}
-            </div>
-          </div>
-
-          <hr/>
-
-          <h3>Balance del Grupo</h3>
-          <ul className="balance-list">{balance.map(m => <li key={m.id}><span>{m.nombre}:</span> <strong style={{color: getBalanceColor(m.balance)}}>{formatCurrency(m.balance)}€</strong></li>)}</ul>
-
-          <hr/>
-
-          <h3>Transacciones para Saldar Deudas</h3>
-          {settlementTransactions.length > 0 ? (
-            <ul className="settlement-list">
-              {settlementTransactions.map((tx, index) => (
-                <li key={index}>
-                  {tx.from.nombre} debe {formatCurrency(tx.amount)}€ a {tx.to.nombre}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No hay transacciones pendientes para saldar deudas.</p>
-          )}
-
-          <hr/>
-
-          <h3>Registro de pagos a usuarios</h3>
-          <div className="payment-controls">
-            <button onClick={handleOpenRecordPaymentModal} className="normal-button">Registrar Nuevo Pago</button>
-            <button onClick={handleOpenPaymentHistoryModal} className="normal-button">Ver Historial de Pagos</button>
-          </div>
-        </div>
+        <BalancesTab
+          totalExpenses={totalExpenses}
+          myShare={myTotalExpenses}
+          myPayments={myTotalExpensesPay}
+          mySettled={myTotalSettledIncome}
+          myBalance={myTotalDebt}
+          balances={balance}
+          settlements={settlementTransactions}
+          onRecordPayment={handleOpenRecordPaymentModal}
+          onShowPaymentHistory={handleOpenPaymentHistoryModal}
+        />
       )}
 
-      {!isGlobal && activeTab === 'group' && (
-        <div className="group-tab-content">
-          {group?.creado_por === user?._id && (
-            <div className="form-section">
-              <h4>Editar nombre del grupo</h4>
-              {isEditingGroupName ? (
-                <form onSubmit={handleUpdateGroupName} className="edit-group-name-form">
-                  <input
-                    type="text"
-                    value={editableGroupName}
-                    onChange={(e) => setEditableGroupName(e.target.value)}
-                    required
-                  />
-                  <div className="form-buttons">
-                    <button type="submit" className="save-button">Guardar</button>
-                    <button type="button" onClick={() => { setIsEditingGroupName(false); setEditableGroupName(group?.nombre || ''); }} className="cancel-button">Cancelar</button>
-                  </div>
-                </form>
-              ) : (
-                <div className="group-name-display">
-                  <span className="current-group-name">{group?.nombre}</span>
-                  <button onClick={() => setIsEditingGroupName(true)} className="edit-button">Editar</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {group?.creado_por === user?._id && <hr/>}
-
-          <div className="form-section">
-            <h4>Añadir nuevo miembro</h4>
-            <form onSubmit={handleAddMember}>
-              <input type="email" placeholder="Email del usuario" value={email} onChange={e=>setEmail(e.target.value)} required />
-              <button type="submit">Añadir Miembro</button>
-            </form>
-          </div>
-
-          <hr/>
-
-          <h4>Miembros:</h4>
-          <ul className="members-list">{group?.miembros.map((m: IUser) => <li key={m._id}>{m.nombre}</li>)}</ul>
-
-          <hr/>
-          <button onClick={handleLeaveGroup} className="leave-group-button danger-button">Salir del grupo</button>
-        </div>
+      {!isGlobal && activeTab === 'group' && group && (
+        <GroupSettingsTab
+          groupName={group.nombre}
+          members={group.miembros}
+          isOwner={group.creado_por === user?._id}
+          onRename={handleRenameGroup}
+          onAddMember={handleAddMember}
+          onLeave={handleLeaveGroup}
+        />
       )}
 
       {!isGlobal && (activeTab === 'expenses' || activeTab === 'edit') && (
