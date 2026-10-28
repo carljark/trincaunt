@@ -47,7 +47,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    allowedHosts: ['carlosalbertogodoy.ddns.net']
+    allowedHosts: ['carlosalbertogodoy.ddns.net'],
+    // El api solo escucha en este Mac; el navegador (o el móvil) solo habla con Vite
+    proxy: {
+      '/api': 'http://localhost:3000',
+      '/socket.io': { target: 'http://localhost:3000', ws: true }
+    }
   },
   build: {
     chunkSizeWarningLimit: 1000,
