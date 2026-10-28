@@ -7,6 +7,7 @@ import * as CategoryAliasController from '../controllers/CategoryAliasController
 import * as UserPreferencesController from '../controllers/UserPreferencesController';
 import * as NoteController from '../controllers/NoteController'; // Import NoteController
 import * as DbController from '../controllers/DbController';
+import * as PushController from '../controllers/PushController';
 import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -70,5 +71,9 @@ router.get('/groups/:groupId/notes', protect, NoteController.getGroupNotes);
 router.put('/notes/:noteId', protect, NoteController.updateNote);
 router.delete('/notes/:noteId', protect, NoteController.deleteNote);
 
+// Push Notification Routes
+router.get('/push/public-key', PushController.getPublicKey);
+router.post('/push/subscribe', protect, PushController.subscribe);
+router.post('/push/unsubscribe', protect, PushController.unsubscribe);
 
 export default router;

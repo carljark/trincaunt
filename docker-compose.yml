@@ -16,6 +16,10 @@ services:
       # Lee las claves desde el archivo .env donde lances el docker-compose
       - JWT_SECRET=${JWT_SECRET:?Define JWT_SECRET en .env}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # Notificaciones push; sin ellas la app funciona pero no envía avisos
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-https://trincaunt.ddns.net}
     depends_on:
       - mongo
 

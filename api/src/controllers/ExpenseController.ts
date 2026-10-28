@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getIO } from '../config/socket';
 import { ExpenseService } from '../services/ExpenseService';
 import { CategoryAliasService } from '../services/CategoryAliasService';
+import PushService, { formatAmount } from '../services/PushService';
 
 const expenseService = new ExpenseService();
 const aliasService = new CategoryAliasService();
@@ -11,6 +12,11 @@ export const createExpense = async (req: Request, res: Response, next: NextFunct
     const userId = (req as any).user.id;
     const expense = await expenseService.createExpense(req.body, userId);
     getIO().to(`group_${req.body.grupo_id}`).emit('expenses_updated', { message: 'Gasto registrado' });
+    void PushService.notifyGroupMembers(req.body.grupo_id, userId, (groupName) => ({
+      title: `Nuevo gasto en ${groupName}`,
+      body: `${(req as any).user.nombre} añadió «${req.body.descripcion}»: ${formatAmount(Number(req.body.monto))}`,
+      url: `/group/${req.body.grupo_id}`
+    }));
     res.status(201).json({ status: 'success', data: expense });
   } catch (error) {
     next(error);
@@ -176,7 +182,7 @@ export const parseExpenseWithAI = async (req: Request, res: Response, next: Next
     const parsedExpenses = await AiService.parseExpenseFromMedia(req.file.buffer, req.file.mimetype, []);
     const userId = (req as any).user.id;
     
-    const createdExpenses = [];
+    const createdExpenses: Awaited<ReturnType<typeof expenseService.createExpense>>[] = [];
     
     // Insertamos cada gasto detectado
     for (const exp of parsedExpenses) {
@@ -197,6 +203,16 @@ export const parseExpenseWithAI = async (req: Request, res: Response, next: Next
     }
     
     getIO().to(`group_${grupo_id}`).emit('expenses_updated', { message: 'Nuevos gastos desde IA' });
+    if (createdExpenses.length > 0) {
+      const total = createdExpenses.reduce((sum, e) => sum + Number(e.monto), 0);
+      void PushService.notifyGroupMembers(grupo_id, userId, (groupName) => ({
+        title: `Nuevos gastos en ${groupName}`,
+        body: createdExpenses.length === 1
+          ? `${(req as any).user.nombre} añadió «${createdExpenses[0].descripcion}»: ${formatAmount(total)}`
+          : `${(req as any).user.nombre} añadió ${createdExpenses.length} gastos (${formatAmount(total)})`,
+        url: `/group/${grupo_id}`
+      }));
+    }
     res.status(200).json({ status: 'success', data: createdExpenses });
   } catch (error) {
     next(error);
