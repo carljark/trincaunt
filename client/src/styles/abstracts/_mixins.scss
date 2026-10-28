@@ -110,3 +110,94 @@
     border-radius: $border-radius;
   }
 }
+// ========== PATRONES DE PANTALLA ==========
+// Base del estilo general: tarjetas de sección con título, filas táctiles e importes.
+// Cada bloque BEM los incluye en sus elementos (&__card, &__title...) en vez de usar clases globales.
+
+@mixin section-card {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 3);
+  padding: map.get($spacing-scale, 4);
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: $box-shadow-sm;
+}
+
+@mixin section-title {
+  margin: 0;
+  font-size: map.get($font-sizes, lg);
+  font-weight: map.get($font-weights, semibold);
+  line-height: $line-height-tight;
+  color: $color-gray-900;
+}
+
+// Fila de lista con altura táctil y separador entre filas
+@mixin list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: map.get($spacing-scale, 3);
+  min-height: 3rem;
+  padding: map.get($spacing-scale, 2) 0;
+  font-size: map.get($font-sizes, base);
+
+  & + & {
+    border-top: 1px solid $color-border;
+  }
+}
+
+// Importes alineados (cifras de igual ancho)
+@mixin money {
+  font-variant-numeric: tabular-nums;
+  font-weight: map.get($font-weights, semibold);
+  white-space: nowrap;
+}
+
+// Botón cuadrado de icono, 44px (objetivo táctil mínimo)
+@mixin icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  font-size: 1.25rem;
+  color: $color-primary;
+  background: rgba($color-primary, 0.08);
+  border: none;
+  border-radius: $border-radius;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: rgba($color-primary, 0.15);
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}
+
+// Botón de texto a todo el ancho en móvil
+@mixin action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 map.get($spacing-scale, 4);
+  font-size: map.get($font-sizes, base);
+  font-weight: map.get($font-weights, semibold);
+  border-radius: $border-radius;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}

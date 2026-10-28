@@ -1,0 +1,146 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// PESTAÑA SALDOS (BEM: .balances)
+// ============================================
+
+.balances {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 4);
+  padding: 0 map.get($spacing-scale, 3) map.get($spacing-scale, 6);
+
+  &__card {
+    @include section-card;
+  }
+
+  &__title {
+    @include section-title;
+  }
+
+  // Resumen en dos columnas: etiqueta arriba, importe debajo
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
+    margin: 0;
+  }
+
+  &__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__label {
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__amount {
+    @include money;
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-900;
+
+    &--positive {
+      color: $color-positive;
+    }
+
+    &--negative {
+      color: $color-negative;
+    }
+  }
+
+  &__total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 3);
+    padding-top: map.get($spacing-scale, 3);
+    border-top: 1px solid $color-border;
+  }
+
+  &__total-label {
+    font-size: map.get($font-sizes, base);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+  }
+
+  &__total-amount {
+    @include money;
+    font-size: map.get($font-sizes, 2xl);
+    color: $color-gray-900;
+
+    &--positive {
+      color: $color-positive;
+    }
+
+    &--negative {
+      color: $color-negative;
+    }
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    @include list-row;
+  }
+
+  &__name {
+    @include truncate;
+    color: $color-gray-800;
+  }
+
+  &__transfer {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+    min-width: 0;
+  }
+
+  &__arrow {
+    flex-shrink: 0;
+    color: $color-gray-500;
+  }
+
+  &__empty {
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    color: $color-text-muted;
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 2);
+
+    @include respond-above(sm) {
+      flex-direction: row;
+    }
+  }
+
+  &__button {
+    @include action-button;
+    flex: 1;
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-primary;
+      background: white;
+      border-color: rgba($color-primary, 0.4);
+    }
+  }
+}

@@ -22,8 +22,7 @@
     }
   }
 
-  h2, .tab-navigation, .expenses-tab-content, 
-  .balances-tab-content, .group-tab-content {
+  h2, .tab-navigation, .expenses-tab-content {
     padding: 0 map.get($spacing-scale, 3);
   }
 
