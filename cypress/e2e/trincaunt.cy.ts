@@ -12,16 +12,15 @@ describe('Trincaunt E2E Flows', () => {
     cy.contains('Registrarse').click();
 
     // 3. Verificar login exitoso
-    cy.contains('Bienvenido, Usuario Test').should('be.visible');
+    cy.contains('Hola, Usuario Test').should('be.visible');
 
-    // 4. Crear Grupo
-    cy.window().then(win => {
-      cy.stub(win, 'prompt').returns('Viaje a la Playa');
-    });
-    cy.contains('Crear Nuevo Grupo').click();
+    // 4. Crear Grupo (formulario en la tarjeta «Mis grupos»)
+    cy.get('button[aria-label="Crear grupo"]').click();
+    cy.get('input[aria-label="Nombre del nuevo grupo"]').type('Viaje a la Playa');
+    cy.contains('button', 'Crear').click();
 
     // 5. Verificar grupo en lista
     cy.contains('Viaje a la Playa').should('be.visible');
-    cy.contains('1 miembros').should('be.visible');
+    cy.contains('1 miembro').should('be.visible');
   });
 });

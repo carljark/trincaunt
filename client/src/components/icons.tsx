@@ -64,3 +64,15 @@ export const SortIcon: React.FC<IconProps & { direction: 'asc' | 'desc' }> = ({ 
       : <path d="M12 19V5M6 11l6-6 6 6" />}
   </svg>
 );
+
+export const PlusIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+export const ChevronRightIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <path d="m9 6 6 6-6 6" />
+  </svg>
+);
