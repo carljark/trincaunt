@@ -3,7 +3,6 @@
 @use 'abstracts/mixins' as *;
 @use 'components/buttons';
 @use 'components/forms';
-@use '../components/ExpenseGraph.scss';
 
 .group-detail-page {
   padding: 0;
