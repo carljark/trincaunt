@@ -472,7 +472,7 @@ const GroupDetailPage: React.FC = () => {
     if (!token) return;
     setLoading(true);
     try {
-      const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/expenses/global`);
+      const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/expenses/global`, window.location.origin);
       // Solo añadir filtros de categoría si hay alguno seleccionado
       if (categoryFilter.length > 0) {
         expenseUrl.searchParams.append('category', categoryFilter.join(','));
@@ -510,7 +510,7 @@ const GroupDetailPage: React.FC = () => {
     if (!token || !groupId) return;
     setLoading(true);
     try {
-      const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses`);
+      const expenseUrl = new URL(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses`, window.location.origin);
       // Solo añadir filtros de categoría si hay alguno seleccionado
       if (categoryFilter.length > 0) {
         expenseUrl.searchParams.append('category', categoryFilter.join(','));
