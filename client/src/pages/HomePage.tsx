@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import UserMenu from '../components/UserMenu';
+import { ChevronRightIcon, PlusIcon } from '../components/icons';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IUserPopulated } from '../types/user';
@@ -10,9 +11,10 @@ import './HomePage.scss'; // Import the new SCSS file
 
 const apiHost = import.meta.env.VITE_API_HOST;
 
-const formatCurrency = (amount: number) => {
-  return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
+const formatEuros = (amount: number) =>
+  amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+const initialOf = (name: string) => name.trim().charAt(0).toUpperCase() || '?';
 
 interface IGroupSummary extends IGroup {
   totalExpenses: number;
@@ -28,6 +30,9 @@ const HomePage: React.FC = () => {
   const { user, token } = useAuth();
   const [groups, setGroups] = useState<IGroupSummary[]>([]);
   const [globalExpenses, setGlobalExpenses] = useState<IGlobalExpense[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const fetchGroups = async () => {
     if (!token) return;
@@ -66,11 +71,13 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const createGroup = async () => {
-    const nombre = prompt('Nombre del grupo:');
+  const createGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const nombre = newGroupName.trim();
     if (!nombre || !token) return;
+    setCreateError(null);
     try {
-      await fetch(`${apiHost}/api/v1/groups`, {
+      const res = await fetch(`${apiHost}/api/v1/groups`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
@@ -78,9 +85,16 @@ const HomePage: React.FC = () => {
         },
         body: JSON.stringify({ nombre })
       });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'No se pudo crear el grupo');
+      }
+      setNewGroupName('');
+      setIsCreating(false);
       fetchGroups();
     } catch (error) {
       console.error(error);
+      setCreateError(error instanceof Error ? error.message : 'No se pudo crear el grupo');
     }
   };
 
@@ -118,37 +132,82 @@ const HomePage: React.FC = () => {
   const totalGlobalExpenses = globalExpenses.reduce((sum, expense) => sum + expense.monto, 0);
 
   return (
-    <div className="home-page"> {/* Main container */}
+    <div className="home">
       <UserMenu onExportXLSX={handleExportXLSX} />
-      <div className="user-info">
-        <h1 className="welcome-message">Bienvenido, {user?.nombre}</h1>
-      </div>
-      
-      <div className="create-group-section">
-        <button onClick={createGroup} className="create-group-button">Crear Nuevo Grupo</button>
-      </div>
-      
-      <div className="groups-list-section">
-        <h3>Mis Grupos</h3>
-        <ul>
-          <li key="global-group">
-            <Link to={`/group/global`}>
-              <strong>Global</strong> - Total: {formatCurrency(totalGlobalExpenses)}€
-            </Link>
-          </li>
-          {groups.length > 0 ? (
-            groups.map(g => (
-              <li key={g._id}>
-                <Link to={`/group/${g._id}`}>
-                  <strong>{g.nombre}</strong> - {formatCurrency(g.totalExpenses)}€ ({formatCurrency(g.userShare)}€)
+      <header className="home__header">
+        <h1 className="home__greeting">Hola, {user?.nombre}</h1>
+      </header>
+
+      <Link to="/group/global" className="home__global">
+        <span className="home__global-text">
+          <span className="home__global-label">Todos los grupos · tu parte</span>
+          <span className="home__global-total">{formatEuros(totalGlobalExpenses)}</span>
+        </span>
+        <ChevronRightIcon className="home__chevron home__chevron--light" />
+      </Link>
+
+      <section className="home__card">
+        <div className="home__card-header">
+          <h2 className="home__title">Mis grupos</h2>
+          <button
+            type="button"
+            className={`home__icon-button ${isCreating ? 'home__icon-button--active' : ''}`}
+            onClick={() => { setIsCreating(open => !open); setCreateError(null); }}
+            aria-label="Crear grupo"
+            aria-expanded={isCreating}
+            title="Crear grupo"
+          >
+            <PlusIcon />
+          </button>
+        </div>
+
+        {isCreating && (
+          <form className="home__form" onSubmit={createGroup}>
+            <input
+              className="home__input"
+              type="text"
+              placeholder="Nombre del grupo"
+              value={newGroupName}
+              onChange={e => setNewGroupName(e.target.value)}
+              aria-label="Nombre del nuevo grupo"
+              autoFocus
+              required
+            />
+            {createError && <p className="home__error">{createError}</p>}
+            <div className="home__form-actions">
+              <button type="button" className="home__button home__button--secondary" onClick={() => setIsCreating(false)}>
+                Cancelar
+              </button>
+              <button type="submit" className="home__button home__button--primary">Crear</button>
+            </div>
+          </form>
+        )}
+
+        {groups.length > 0 ? (
+          <ul className="home__groups">
+            {groups.map(g => (
+              <li key={g._id} className="home__group">
+                <Link to={`/group/${g._id}`} className="home__group-link">
+                  <span className="home__avatar" aria-hidden="true">{initialOf(g.nombre)}</span>
+                  <span className="home__group-text">
+                    <span className="home__group-name">{g.nombre}</span>
+                    <span className="home__group-meta">
+                      {g.miembros.length} {g.miembros.length === 1 ? 'miembro' : 'miembros'}
+                    </span>
+                  </span>
+                  <span className="home__group-amounts">
+                    <span className="home__group-total">{formatEuros(g.totalExpenses)}</span>
+                    <span className="home__group-share">tu parte {formatEuros(g.userShare)}</span>
+                  </span>
+                  <ChevronRightIcon className="home__chevron" />
                 </Link>
               </li>
-            ))
-          ) : (
-            <p>No perteneces a ningún grupo.</p>
-          )}
-        </ul>
-      </div>
+            ))}
+          </ul>
+        ) : (
+          <p className="home__empty">Todavía no estás en ningún grupo. Crea uno con el botón +.</p>
+        )}
+      </section>
     </div>
   );
 };
