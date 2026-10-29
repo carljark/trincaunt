@@ -1,0 +1,115 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// FILTROS DE LA LISTA DE GASTOS (BEM: .expense-filters)
+// ============================================
+
+$control-height: 2.75rem;
+
+.expense-filters {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 2);
+  margin-bottom: map.get($spacing-scale, 4);
+  padding: 0 map.get($spacing-scale, 3);
+
+  &__search-row {
+    display: flex;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__search-icon {
+    position: absolute;
+    left: map.get($spacing-scale, 3);
+    font-size: 1.125rem;
+    color: $color-gray-500;
+    pointer-events: none;
+  }
+
+  // 16px: por debajo, iOS hace zoom al enfocar
+  &__input {
+    width: 100%;
+    height: $control-height;
+    padding: 0 map.get($spacing-scale, 3) 0 2.5rem;
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-900;
+    background: $color-surface;
+    border: 1.5px solid $color-gray-300;
+    border-radius: $border-radius;
+    -webkit-appearance: none;
+    appearance: none;
+
+    &::placeholder {
+      color: $color-gray-500;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
+    }
+  }
+
+  &__advanced {
+    @include icon-button;
+    position: relative;
+
+    // Punto que avisa de filtros avanzados aplicados
+    &--active::after {
+      content: '';
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 0.5rem;
+      height: 0.5rem;
+      background: $color-warning;
+      border: 2px solid $color-surface;
+      border-radius: 50%;
+    }
+  }
+
+  // Control segmentado
+  &__presets {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2px;
+    padding: 2px;
+    background: $color-gray-200;
+    border-radius: $border-radius;
+  }
+
+  &__preset {
+    min-height: 2.25rem;
+    padding: 0 map.get($spacing-scale, 1);
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+    background: transparent;
+    border: none;
+    border-radius: calc(#{$border-radius} - 2px);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 1px;
+    }
+
+    &--active {
+      color: $color-primary;
+      font-weight: map.get($font-weights, semibold);
+      background: $color-surface;
+      box-shadow: $box-shadow-sm;
+    }
+  }
+}

@@ -1,0 +1,105 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// LISTA DE GASTOS (BEM: .expense-list)
+// ============================================
+
+.expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 4);
+  // Hueco para el botón flotante de añadir gasto
+  padding: 0 map.get($spacing-scale, 3) calc(5.5rem + env(safe-area-inset-bottom, 0px));
+
+  &__summary {
+    @include section-card;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__summary-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__summary-label {
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__total {
+    @include money;
+    font-size: map.get($font-sizes, 3xl);
+    line-height: $line-height-tight;
+    color: $color-gray-900;
+  }
+
+  &__meta {
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__sort {
+    @include icon-button;
+  }
+
+  &__empty {
+    margin: 0;
+    padding: map.get($spacing-scale, 5) 0;
+    font-size: map.get($font-sizes, base);
+    text-align: center;
+    color: $color-text-muted;
+  }
+
+  &__day {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__day-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 3);
+    margin: 0;
+    padding: 0 map.get($spacing-scale, 1);
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, semibold);
+    color: $color-gray-700;
+  }
+
+  // La primera letra en mayúscula: «Mar, 28 oct»
+  &__day-label {
+    &::first-letter {
+      text-transform: uppercase;
+    }
+  }
+
+  &__day-total {
+    @include money;
+    font-weight: map.get($font-weights, medium);
+    color: $color-text-muted;
+  }
+
+  // Tarjeta del día; overflow oculto para que el fondo del deslizamiento respete las esquinas
+  &__items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow: hidden;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-lg;
+    box-shadow: $box-shadow-sm;
+  }
+
+  &__item + &__item {
+    border-top: 1px solid $color-border;
+  }
+}

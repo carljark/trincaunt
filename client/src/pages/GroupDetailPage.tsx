@@ -38,16 +38,13 @@ export const sumTransactionsToMe = (
 }
 
 import './GroupDetailPage.scss';
-import SwipeableExpenseItem from '../components/SwipeableExpenseItem';
+import ExpenseFilters from '../components/ExpenseFilters';
+import ExpenseList from '../components/ExpenseList';
 import '../components/AddExpenseModal.scss';
 import '../components/CategoryModal.scss';
 import '../components/BulkEditForm.scss';
 import '../components/ConfirmationModal.scss';
 import '../components/AdvancedFiltersModal.scss';
-
-const formatCurrency = (amount: number) => {
-  return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -346,6 +343,10 @@ const GroupDetailPage: React.FC = () => {
   });
 
   const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
+
+  // Filtros del modal avanzado; las fechas solo cuentan si no vienen de un periodo rápido
+  const hasAdvancedFilters = categoryFilter.length > 0 || !!descriptionFilter || !!localizationFilter ||
+    payerFilter !== 'all' || (!dateFilterPreset && (!!dateFromFilter || !!dateToFilter));
 
   const handleExportXLSX = useCallback(async () => {
     if (filteredExpenses.length === 0) {
@@ -803,46 +804,14 @@ const GroupDetailPage: React.FC = () => {
 
       {(activeTab === 'expenses' || activeTab === 'edit') && (
         <div className="expenses-tab-content">
-          {isGlobal && (
-            <div className="expenses-summary">
-              <div>
-                <p><strong>Total: {formatCurrency(totalExpenses)}€</strong></p>
-              </div>
-            </div>
-          )}
-
-          {isGlobal && <hr/>}
-
-          {expenses.length > 0 && (
-            <div className="average-expense-display">
-              <p><strong>Media de gasto por día: {formatCurrency(averageExpense)}€</strong></p>
-            </div>
-          )}
-
-          <div className="filters-row">
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Buscar por nombre o categoría..."
-              value={searchFilter}
-              onChange={e => setSearchFilter(e.target.value)}
-            />
-            <div className="date-presets">
-              <button onClick={() => handleDatePresetClick('day')} className={`preset-btn ${dateFilterPreset === 'day' ? 'active' : ''}`}>D</button>
-              <button onClick={() => handleDatePresetClick('week')} className={`preset-btn ${dateFilterPreset === 'week' ? 'active' : ''}`}>S</button>
-              <button onClick={() => handleDatePresetClick('month')} className={`preset-btn ${dateFilterPreset === 'month' ? 'active' : ''}`}>M</button>
-              <button onClick={() => handleDatePresetClick('year')} className={`preset-btn ${dateFilterPreset === 'year' ? 'active' : ''}`}>A</button>
-            </div>
-            <span
-              onClick={() => setShowAdvancedFiltersModal(true)}
-              className="advanced-filters-icon"
-              role="button"
-              aria-label="Abrir filtros avanzados"
-              title="Filtros avanzados"
-            >
-              🔍+
-            </span>
-          </div>
+          <ExpenseFilters
+            search={searchFilter}
+            onSearchChange={setSearchFilter}
+            datePreset={dateFilterPreset}
+            onDatePresetClick={handleDatePresetClick}
+            hasAdvancedFilters={hasAdvancedFilters}
+            onOpenAdvancedFilters={() => setShowAdvancedFiltersModal(true)}
+          />
 
           {activeTab === 'edit' && !isGlobal && (
             <div className="form-section">
@@ -857,52 +826,17 @@ const GroupDetailPage: React.FC = () => {
           )}
 
           {activeTab === 'expenses' && (
-            <>
-              <div className="expenses-header">
-                <h3>{formatCurrency(totalFilteredExpenses)}€</h3>
-                <span
-                  onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                  className="sort-button"
-                  role="button"
-                  aria-label={sortOrder === 'desc' ? 'Ordenar de más antiguos a más recientes' : 'Ordenar de más recientes a más antiguos'}
-                  title={sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'}
-                >
-                  {sortOrder === 'desc' ? '↓' : '↑'}
-                </span>
-              </div>
-              
-              {(() => {
-                const groupedExpenses: { date: string; items: IExpensePopulated[] }[] = [];
-                let currentGroup: { date: string; items: IExpensePopulated[] } | null = null;
-                
-                filteredExpenses.forEach((expense: IExpensePopulated) => {
-                  const dateStr = new Date(expense.fecha).toLocaleDateString();
-                  if (!currentGroup || currentGroup.date !== dateStr) {
-                    currentGroup = { date: dateStr, items: [] };
-                    groupedExpenses.push(currentGroup);
-                  }
-                  currentGroup.items.push(expense);
-                });
-
-                return groupedExpenses.map(group => (
-                  <div key={group.date} className="expense-date-group">
-                    <h4 className="expense-date-header">{group.date}</h4>
-                    <ul className="expenses-list">
-                      {group.items.map((expense: IExpensePopulated) => (
-                        <li key={expense._id}>
-                            <SwipeableExpenseItem 
-                              expense={expense} 
-                              isGlobal={isGlobal} 
-                              onEdit={handleEdit} 
-                              onDelete={handleDeleteExpense} 
-                            />
-                          </li>
-                        ))}
-                    </ul>
-                  </div>
-                ));
-              })()}
-            </>
+            <ExpenseList
+              expenses={filteredExpenses}
+              total={totalFilteredExpenses}
+              grandTotal={totalExpenses}
+              averagePerDay={averageExpense}
+              sortOrder={sortOrder}
+              onToggleSort={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+              isGlobal={isGlobal}
+              onEdit={handleEdit}
+              onDelete={handleDeleteExpense}
+            />
           )}
         </div>
       )}
