@@ -926,6 +926,7 @@ const GroupDetailPage: React.FC = () => {
           groupName={group.nombre}
           members={group.miembros}
           isOwner={group.creado_por === user?._id}
+          creatorName={group.miembros.find((m: IUser) => m._id === group.creado_por)?.nombre}
           onRename={handleRenameGroup}
           onAddMember={handleAddMember}
           onLeave={handleLeaveGroup}

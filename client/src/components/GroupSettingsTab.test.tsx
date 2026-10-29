@@ -33,9 +33,20 @@ describe('GroupSettingsTab', () => {
     expect(screen.getByText('Luis')).toBeInTheDocument();
   });
 
-  it('only lets the owner edit the name', () => {
-    renderTab({ isOwner: false });
+  it('only lets the owner edit the name, and tells the others who can', () => {
+    renderTab({ isOwner: false, creatorName: 'Ivan' });
     expect(screen.queryByRole('button', { name: 'Editar nombre del grupo' })).not.toBeInTheDocument();
+    expect(screen.getByText('Solo Ivan puede cambiar el nombre.')).toBeInTheDocument();
+  });
+
+  it('falls back to a generic hint when the creator left the group', () => {
+    renderTab({ isOwner: false });
+    expect(screen.getByText('Solo quien creó el grupo puede cambiar el nombre.')).toBeInTheDocument();
+  });
+
+  it('shows no hint to the owner', () => {
+    renderTab();
+    expect(screen.queryByText(/puede cambiar el nombre/)).not.toBeInTheDocument();
   });
 
   it('renames the group from the pencil icon', async () => {
