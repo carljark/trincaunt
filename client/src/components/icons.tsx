@@ -37,3 +37,30 @@ export const ArrowRightIcon: React.FC<IconProps> = (props) => (
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
 );
+
+export const TrashIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+  </svg>
+);
+
+export const SearchIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
+
+export const FilterIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <path d="M4 6h16M7 12h10M10 18h4" />
+  </svg>
+);
+
+export const SortIcon: React.FC<IconProps & { direction: 'asc' | 'desc' }> = ({ direction, ...props }) => (
+  <svg {...baseProps} {...props}>
+    {direction === 'desc'
+      ? <path d="M12 5v14M6 13l6 6 6-6" />
+      : <path d="M12 19V5M6 11l6-6 6 6" />}
+  </svg>
+);
