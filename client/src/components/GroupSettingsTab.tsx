@@ -7,6 +7,8 @@ interface GroupSettingsTabProps {
   groupName: string;
   members: IUser[];
   isOwner: boolean;
+  // Nombre del creador, para explicar a los demás por qué no pueden renombrar
+  creatorName?: string;
   onRename: (name: string) => Promise<boolean>;
   onAddMember: (email: string) => Promise<boolean>;
   onLeave: () => void;
@@ -14,7 +16,7 @@ interface GroupSettingsTabProps {
 
 const initialOf = (name: string) => name.trim().charAt(0).toUpperCase() || '?';
 
-const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupName, members, isOwner, onRename, onAddMember, onLeave }) => {
+const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupName, members, isOwner, creatorName, onRename, onAddMember, onLeave }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(groupName);
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -73,7 +75,14 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupName, members,
             </div>
           </form>
         ) : (
-          <p className="group-settings__name">{groupName}</p>
+          <>
+            <p className="group-settings__name">{groupName}</p>
+            {!isOwner && (
+              <p className="group-settings__hint">
+                Solo {creatorName || 'quien creó el grupo'} puede cambiar el nombre.
+              </p>
+            )}
+          </>
         )}
       </section>
 
