@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import Dialog from './Dialog';
 import './AudioRecorderModal.scss';
 
 interface AudioRecorderModalProps {
@@ -7,19 +7,35 @@ interface AudioRecorderModalProps {
   onCapture: (file: File) => void;
 }
 
+const formatTime = (seconds: number) =>
+  `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
+// Safari (iPhone) graba en audio/mp4 y Chrome en audio/webm: se usa el formato real del grabador
+const fileForRecording = (chunks: BlobPart[], recorderType: string) => {
+  const type = (recorderType || 'audio/webm').split(';')[0];
+  const extension = type.split('/')[1] === 'mp4' ? 'm4a' : type.split('/')[1];
+  return new File([new Blob(chunks, { type })], `audio_${Date.now()}.${extension}`, { type });
+};
+
 const AudioRecorderModal: React.FC<AudioRecorderModalProps> = ({ onClose, onCapture }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [error, setError] = useState('');
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Solo se envía el audio al pulsar «Detener y enviar», no al cancelar o cerrar
+  const sendOnStopRef = useRef(false);
 
+  // Al desmontar (cancelar, cerrar, Escape) se apaga el micrófono aunque se esté grabando
   useEffect(() => {
     return () => {
-      stopRecording();
+      sendOnStopRef.current = false;
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
+      streamRef.current?.getTracks().forEach(track => track.stop());
     };
   }, []);
 
@@ -38,19 +54,14 @@ const AudioRecorderModal: React.FC<AudioRecorderModalProps> = ({ onClose, onCapt
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const file = new File([blob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
-        onCapture(file);
-        
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-        }
+        stream.getTracks().forEach(track => track.stop());
+        if (sendOnStopRef.current) onCapture(fileForRecording(chunksRef.current, mediaRecorder.mimeType));
       };
 
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
-      
+
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
@@ -60,46 +71,45 @@ const AudioRecorderModal: React.FC<AudioRecorderModalProps> = ({ onClose, onCapt
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+  const stopAndSend = () => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      sendOnStopRef.current = true;
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       if (timerRef.current) clearInterval(timerRef.current);
     }
   };
 
-  const modalContent = (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content audio-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>🎤 Grabar audio</h2>
-          <button className="close-button" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
-          {error ? (
-            <p className="error">{error}</p>
-          ) : (
-            <div className="recording-status">
-              <div className={`record-indicator ${isRecording ? 'pulsing' : ''}`}></div>
-              <span className="time">{recordingTime}s</span>
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="cancel-button" onClick={onClose}>Cancelar</button>
+  return (
+    <Dialog
+      title="Grabar audio"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="audio-recorder__button audio-recorder__button--secondary" onClick={onClose}>Cancelar</button>
           {!error && (
             isRecording ? (
-              <button className="stop-button primary-button danger" onClick={stopRecording}>Detener y Enviar</button>
+              <button type="button" className="audio-recorder__button audio-recorder__button--danger" onClick={stopAndSend}>Detener y enviar</button>
             ) : (
-              <button className="start-button primary-button" onClick={startRecording}>Comenzar Grabación</button>
+              <button type="button" className="audio-recorder__button audio-recorder__button--primary" onClick={startRecording}>Empezar a grabar</button>
             )
           )}
+        </>
+      }
+    >
+      {error ? (
+        <p className="audio-recorder__error" role="alert">{error}</p>
+      ) : (
+        <div className="audio-recorder">
+          <span className={`audio-recorder__indicator ${isRecording ? 'audio-recorder__indicator--recording' : ''}`} aria-hidden="true" />
+          <span className="audio-recorder__time" role="timer" aria-live="off">{formatTime(recordingTime)}</span>
+          <p className="audio-recorder__hint">
+            {isRecording ? 'Grabando… Di qué has pagado, cuánto y quién.' : 'Por ejemplo: «Cena en el puerto, 64 euros, pagó Ana».'}
+          </p>
         </div>
-      </div>
-    </div>
+      )}
+    </Dialog>
   );
-
-  return createPortal(modalContent, document.body);
 };
 
 export default AudioRecorderModal;

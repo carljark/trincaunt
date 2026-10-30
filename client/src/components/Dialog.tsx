@@ -1,4 +1,5 @@
 import React, { useEffect, useId } from 'react';
+import { createPortal } from 'react-dom';
 import { CloseIcon } from './icons';
 import './Dialog.scss';
 
@@ -39,7 +40,8 @@ const Dialog: React.FC<DialogProps> = ({ title, onClose, children, footer, onSub
     </>
   );
 
-  return (
+  // En un portal: así ningún contenedor con transform o overflow (p. ej. el FAB) lo recorta
+  return createPortal(
     <div
       className="dialog"
       onMouseDown={(e) => {
@@ -55,7 +57,8 @@ const Dialog: React.FC<DialogProps> = ({ title, onClose, children, footer, onSub
         </div>
         {onSubmit ? <form className="dialog__form" onSubmit={onSubmit}>{content}</form> : content}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

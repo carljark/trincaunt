@@ -1,44 +1,88 @@
 @use 'sass:map';
 @use 'abstracts/variables' as *;
 @use 'abstracts/mixins' as *;
-@use 'components/buttons';
-@use 'components/cards';
 
-.audio-modal {
-  max-width: 400px;
-  @include component-shadow(lg);
-  @include component-border-radius();
+// ============================================
+// GRABAR AUDIO (BEM: .audio-recorder), dentro de un Dialog
+// ============================================
 
-  .recording-status {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: map.get($spacing-scale, 5);
-    
-    .record-indicator {
-      width: map.get($spacing-scale, 6);
-      height: map.get($spacing-scale, 6);
-      border-radius: 50%;
-      background: $color-gray-400;
-      margin-bottom: map.get($spacing-scale, 4);
-      
-      &.pulsing {
-        background: $color-danger;
-        animation: pulse 1.5s infinite;
-      }
+.audio-recorder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: map.get($spacing-scale, 3);
+  padding: map.get($spacing-scale, 4) 0;
+  text-align: center;
+
+  &__indicator {
+    width: 3.5rem;
+    height: 3.5rem;
+    background: $color-gray-300;
+    border-radius: 50%;
+
+    &--recording {
+      background: $color-negative;
+      animation: audio-recorder-pulse 1.5s infinite;
     }
-    
-    .time {
-      font-size: map.get($font-sizes, 3xl);
-      font-family: $font-family-mono;
-      color: $color-gray-900;
+  }
+
+  &__time {
+    font-size: map.get($font-sizes, 3xl);
+    font-weight: map.get($font-weights, semibold);
+    font-variant-numeric: tabular-nums;
+    color: $color-gray-900;
+  }
+
+  &__hint {
+    margin: 0;
+    max-width: 22rem;
+    font-size: map.get($font-sizes, sm);
+    line-height: $line-height-base;
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  &__button {
+    @include action-button;
+
+    @include respond-below(md) {
+      flex: 1;
+    }
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--danger {
+      color: white;
+      background: $color-negative;
+    }
+
+    &--secondary {
+      color: $color-gray-700;
+      background: $color-surface;
+      border-color: $color-gray-300;
     }
   }
 }
 
-@keyframes pulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba($color-danger, 0.7); }
-  70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba($color-danger, 0); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba($color-danger, 0); }
+@keyframes audio-recorder-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba($color-negative, 0.6); }
+  70% { transform: scale(1.08); box-shadow: 0 0 0 14px rgba($color-negative, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba($color-negative, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audio-recorder__indicator--recording {
+    animation: none;
+  }
 }

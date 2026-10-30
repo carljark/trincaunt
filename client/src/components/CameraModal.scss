@@ -1,16 +1,65 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// HACER FOTO (BEM: .camera-modal), dentro de un Dialog
+// ============================================
+
 .camera-modal {
-  max-width: 500px;
-  width: 90%;
-  .modal-body {
-    display: flex;
-    justify-content: center;
-    background: #000;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .camera-preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+  overflow: hidden;
+  background: $color-gray-900;
+  border-radius: $border-radius;
+
+  &__preview {
+    display: block;
     width: 100%;
-    max-height: 400px;
+    max-height: 60vh;
+    max-height: 60dvh;
     object-fit: cover;
+  }
+
+  &__loading {
+    position: absolute;
+    font-size: map.get($font-sizes, sm);
+    color: rgba(white, 0.8);
+  }
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  &__button {
+    @include action-button;
+
+    @include respond-below(md) {
+      flex: 1;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-gray-700;
+      background: $color-surface;
+      border-color: $color-gray-300;
+    }
   }
 }
