@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { MoreVerticalIcon } from './icons';
 import './UserMenu.scss';
 
 interface UserMenuProps {
@@ -22,9 +23,15 @@ const UserMenu: React.FC<UserMenuProps> = ({ onExportXLSX }) => {
       }
     };
 
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, []);
 
@@ -82,28 +89,41 @@ const UserMenu: React.FC<UserMenuProps> = ({ onExportXLSX }) => {
   };
 
   return (
-    <div className="user-menu-container" ref={menuRef}>
-      <button className="menu-trigger" onClick={toggleMenu} aria-label="Menu de usuario">
-        &#8942;
+    <div className="user-menu" ref={menuRef}>
+      <button
+        type="button"
+        className={`user-menu__trigger ${isOpen ? 'user-menu__trigger--open' : ''}`}
+        onClick={toggleMenu}
+        aria-label="Menú de usuario"
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+      >
+        <MoreVerticalIcon />
       </button>
-      <div className={`menu-dropdown ${isOpen ? 'open' : ''}`}>
-        <Link to="/preferences" onClick={() => setIsOpen(false)}>Preferencias</Link>
-        {onExportXLSX && (
-          <button onClick={() => { onExportXLSX(); setIsOpen(false); }}>
-            Exportar a XLSX
+      {isOpen && (
+        <div className="user-menu__dropdown">
+          {user?.nombre && <div className="user-menu__user">{user.nombre}</div>}
+          <Link to="/preferences" className="user-menu__item" onClick={() => setIsOpen(false)}>Preferencias</Link>
+          {onExportXLSX && (
+            <button type="button" className="user-menu__item" onClick={() => { onExportXLSX(); setIsOpen(false); }}>
+              Exportar a Excel
+            </button>
+          )}
+          {user?.email === 'elcal.lico@gmail.com' && (
+            <>
+              <button type="button" className="user-menu__item" onClick={handleDownloadDDBB}>Descargar copia de la BD</button>
+              <button type="button" className="user-menu__item" onClick={() => { fileInputRef.current?.click(); }}>Restaurar BD</button>
+            </>
+          )}
+          <button type="button" className="user-menu__item user-menu__item--danger" onClick={() => { logout(); setIsOpen(false); }}>
+            Cerrar sesión
           </button>
-        )}
-        {user?.email === 'elcal.lico@gmail.com' && (
-          <>
-            <button onClick={handleDownloadDDBB}>Download DDBB</button>
-            <button onClick={() => { fileInputRef.current?.click(); }}>Cargar DDBB</button>
-            <input type="file" ref={fileInputRef} style={{display: 'none'}} accept=".json" onChange={handleUploadDDBB} />
-          </>
-        )}
-        <button className="logout-item" onClick={() => { logout(); setIsOpen(false); }}>
-          Logout
-        </button>
-      </div>
+        </div>
+      )}
+      {/* Fuera del desplegable: si se desmontara al cerrarlo, se perdería el archivo elegido */}
+      {user?.email === 'elcal.lico@gmail.com' && (
+        <input type="file" ref={fileInputRef} hidden accept=".json" onChange={handleUploadDDBB} />
+      )}
     </div>
   );
 };

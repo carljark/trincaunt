@@ -1,231 +1,304 @@
+@use 'sass:map';
 @use 'abstracts/variables' as *;
-@use 'sass:color';
+@use 'abstracts/mixins' as *;
 
-.preferences-page {
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
-  display: flex; /* Added display flex */
-  flex-direction: column; /* Align items in a column */
-  align-items: center; /* Center items horizontally */
-  position: relative; // Needed for UserMenu
+// ============================================
+// PANTALLA DE PREFERENCIAS (BEM: .preferences)
+// ============================================
 
-  h2, h3 {
-    color: $dark-color;
-    border-bottom: 2px solid $primary-color;
-    padding-bottom: 0.5rem;
-    margin-bottom: 1.5rem;
-    width: 100%;
-    text-align: center;
+.preferences {
+  position: relative; // Ancla del UserMenu
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 5);
+  padding: map.get($spacing-scale, 4) map.get($spacing-scale, 3) map.get($spacing-scale, 6);
+
+  @include respond-above(md) {
+    max-width: 800px;
+    margin: 0 auto;
   }
 
-  .group-selector {
-    margin-bottom: 2rem;
-    width: 100%;
+  // Hueco a la derecha para la campana y el menú de usuario
+  &__header {
     display: flex;
-    justify-content: center;
     align-items: center;
-    gap: 1rem;
+    gap: map.get($spacing-scale, 1);
+    min-height: 2.75rem;
+    padding-right: 6.5rem;
+  }
 
-    label {
-      font-weight: bold;
-      color: $dark-color;
+  &__back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-left: -(map.get($spacing-scale, 2));
+    font-size: 1.5rem;
+    color: $color-gray-700;
+    border-radius: 50%;
+
+    &:hover {
+      background: $color-gray-200;
     }
 
-    select {
-      padding: 0.5rem;
-      border: 1px solid $medium-color;
-      border-radius: 4px;
-      font-size: 1rem;
-      color: $dark-color;
-      background-color: white;
-      cursor: pointer;
-
-      &:focus {
-        border-color: $primary-color;
-        outline: none;
-      }
+    &:focus-visible {
+      outline: 2px solid $color-primary;
     }
   }
 
-  .no-group-selected {
-    padding: 2rem;
-    background-color: $light-color;
-    border-radius: 8px;
-    border: 1px dashed $medium-color;
-    width: 100%;
-    text-align: center;
-    color: $medium-color;
-    font-style: italic;
-  }
-  h4 {
-    color: $dark-color;
-    margin-top: 1.5rem;
-    margin-bottom: 0.8rem;
+  &__heading {
+    @include truncate;
+    margin: 0;
+    font-size: map.get($font-sizes, 2xl);
+    font-weight: map.get($font-weights, bold);
+    line-height: $line-height-tight;
+    color: $color-gray-900;
   }
 
-  .error-message {
-    color: $danger-color;
-    margin-bottom: 1rem;
-    text-align: center;
-  }
-
-  .alias-form {
+  &__section {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background-color: #f9f9f9;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__section-title {
+    @include section-title;
+  }
+
+  &__card {
+    @include section-card;
+  }
+
+  &__card-title {
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    font-weight: map.get($font-weights, semibold);
+    color: $color-gray-900;
+    overflow-wrap: anywhere;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    line-height: $line-height-base;
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
     border-radius: $border-radius;
-    border: 1px solid $border-color;
-    
-    .alias-form-content { /* New wrapper for form elements */
-      display: flex;
-      flex-direction: column;
-      align-items: center; /* Center form elements horizontally */
-      gap: 1rem; /* Space between wrapped elements */
-    }
+  }
 
-    input[type="text"] {
-      padding: 0.75rem;
-      border: 1px solid $border-color;
-      border-radius: $border-radius-sm;
-      font-size: 1rem;
-      width: 100%;
-      box-sizing: border-box;
-    }
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
 
-    .category-input-container {
-      position: relative;
-      width: 100%; /* Ensure it takes full width */
-      display: flex;
-      flex-direction: column;
-    }
-
-    .main-categories-input-group {
-      position: relative;
-      width: 100%; /* Ensure it takes full width */
-      display: flex;
-      flex-direction: column;
-      label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-weight: bold;
-        color: $dark-color;
-      }
-
-      .selected-main-categories {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-
-        .selected-tag {
-          background-color: $primary-color;
-          color: white;
-          padding: 0.3rem 0.6rem;
-          border-radius: $border-radius-sm;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-          font-size: 0.9rem;
-
-          button {
-            background: none;
-            border: none;
-            color: white;
-            cursor: pointer;
-            font-size: 0.8rem;
-            line-height: 1;
-            padding: 0;
-          }
-        }
-      }
-
-      .suggestions-list {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background-color: #f8f8f8; /* Slightly different background */
-        border: 1px solid #ccc; /* Distinct border */
-        border-radius: $border-radius-sm;
-        padding: 0;
-        margin: 5px 0 0;
-        max-height: 150px;
-        overflow-y: auto;
-        z-index: 1001;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        display: flex; /* Use flexbox for layout */
-        flex-direction: column; /* Stack items vertically */
-
-        .suggestion-item { /* Target the new div for items */
-          padding: 0.75rem;
-          cursor: pointer;
-          &:hover {
-            background-color: #f0f0f0;
-          }
-        }
-      }
-    }
-
-    .form-actions {
-      display: flex;
-      gap: 1rem;
-
-      button {
-        padding: 0.75rem 1.5rem;
-        border: none;
-        border-radius: $border-radius-sm;
-        cursor: pointer;
-        font-size: 1rem;
-        transition: background-color 0.3s ease;
-
-        &[type="submit"] {
-          background-color: $primary-color;
-          color: white;
-          &:hover {
-            background-color: color.scale($primary-color, $lightness: -10%);
-          }
-        }
-
-        &[type="button"] { // Cancel button
-          background-color: $secondary-color;
-          color: $dark-color;
-          &:hover {
-            background-color: color.scale($secondary-color, $lightness: -10%);
-          }
-        }
-      }
+    &--suggest {
+      position: relative; // Ancla de las sugerencias
     }
   }
 
-  .aliases-list {
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      
-      th, td {
-        padding: 0.75rem;
-        border: 1px solid $border-color;
-        text-align: left;
-      }
+  &__label {
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+  }
 
-      th {
-        background-color: $light-color;
-      }
+  // 16px: por debajo, iOS hace zoom al enfocar
+  &__input {
+    width: 100%;
+    height: 2.75rem;
+    padding: 0 map.get($spacing-scale, 3);
+    font-family: inherit;
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-900;
+    background: $color-surface;
+    border: 1.5px solid $color-gray-300;
+    border-radius: $border-radius;
 
-      .alias-actions {
-        display: flex;
-        gap: 0.5rem;
-        
-        button {
-          font-size: 0.9rem;
-          padding: 0.3rem 0.6rem;
-        }
-      }
+    &::placeholder {
+      color: $color-gray-500;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
+    }
+
+    // Flecha propia: Safari ignora el padding del select nativo
+    &--select {
+      padding-right: 2.5rem;
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right map.get($spacing-scale, 3) center;
+      background-size: 1.125rem;
+    }
+  }
+
+  &__suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: $z-index-dropdown;
+    max-height: 12rem;
+    margin: map.get($spacing-scale, 1) 0 0;
+    padding: map.get($spacing-scale, 1) 0;
+    overflow-y: auto;
+    list-style: none;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+    box-shadow: $box-shadow-md;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  &__suggestion {
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-800;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-primary;
+      background: $color-gray-100;
+    }
+  }
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: map.get($spacing-scale, 2);
+    margin-top: map.get($spacing-scale, 1);
+  }
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+    min-height: 2.25rem;
+    padding: 0 map.get($spacing-scale, 1) 0 map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-primary;
+    background: rgba($color-primary, 0.08);
+    border-radius: 999px;
+  }
+
+  &__chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    font-size: 1.125rem;
+    line-height: 1;
+    color: inherit;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba($color-primary, 0.15);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__button {
+    @include action-button;
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-gray-700;
+      background: $color-surface;
+      border-color: $color-gray-300;
+    }
+  }
+
+  &__group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__group-title {
+    margin: 0;
+    padding-bottom: map.get($spacing-scale, 1);
+    font-size: map.get($font-sizes, xs);
+    font-weight: map.get($font-weights, semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: $color-text-muted;
+  }
+
+  &__aliases {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__alias {
+    @include list-row;
+    padding: 0;
+    gap: 0;
+  }
+
+  &__alias-name {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: $color-gray-900;
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    font-size: 1.125rem;
+    color: $color-gray-600;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-primary;
+      background: $color-gray-100;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+    }
+
+    &--delete:hover {
+      color: $color-negative;
     }
   }
 }
