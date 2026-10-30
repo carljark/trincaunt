@@ -76,3 +76,17 @@ export const ChevronRightIcon: React.FC<IconProps> = (props) => (
     <path d="m9 6 6 6-6 6" />
   </svg>
 );
+
+export const MoreVerticalIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <circle cx="12" cy="5" r="1" />
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="12" cy="19" r="1" />
+  </svg>
+);
+
+export const ChevronLeftIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <path d="m15 6-6 6 6 6" />
+  </svg>
+);

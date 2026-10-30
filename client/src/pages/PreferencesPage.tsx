@@ -1,10 +1,12 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import UserMenu from '../components/UserMenu';
 import PushToggle from '../components/PushToggle';
+import { ChevronLeftIcon, PencilIcon, TrashIcon } from '../components/icons';
 
-import './PreferencesPage.scss'; // Import the SCSS file
+import './PreferencesPage.scss';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -36,10 +38,6 @@ const PreferencesPage: React.FC = () => {
   const [showAliasSuggestions, setShowAliasSuggestions] = useState(false);
   const [showMainCatSuggestions, setShowMainCatSuggestions] = useState(false);
   const [availableAllCategories, setAvailableAllCategories] = useState<string[]>([]);
-  
-  // Input Refs
-  const aliasInputRef = useRef<HTMLInputElement>(null);
-  const mainCategoryInputRef = useRef<HTMLInputElement>(null);
 
   // State for Main Categories input
   const [mainCategorySearchInput, setMainCategorySearchInput] = useState('');
@@ -146,13 +144,13 @@ const PreferencesPage: React.FC = () => {
         const data = await res.json();
         setAliases(data.data);
       } else {
-        throw new Error('Failed to fetch aliases');
+        throw new Error('No se pudieron cargar los alias');
       }
     } catch (err) {
         if (err instanceof Error) {
             setError(err.message);
         } else {
-            setError('An unknown error occurred');
+            setError('Ha ocurrido un error inesperado');
         }
     } finally {
       setLoading(false);
@@ -190,11 +188,11 @@ const PreferencesPage: React.FC = () => {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGroupId) {
-      setError('Please select a group first.');
+      setError('Elige primero un grupo.');
       return;
     }
     if (!aliasInput || selectedMainCategories.length === 0) {
-      setError('Alias and at least one main category are required.');
+      setError('Indica el alias y al menos una categoría principal.');
       return;
     }
     const mainCategories = selectedMainCategories;
@@ -219,13 +217,13 @@ const PreferencesPage: React.FC = () => {
         resetForm();
       } else {
         const data = await res.json();
-        throw new Error(data.message || 'Failed to save alias');
+        throw new Error(data.message || 'No se pudo guardar el alias');
       }
     } catch (err) {
         if (err instanceof Error) {
             setError(err.message);
         } else {
-            setError('An unknown error occurred');
+            setError('Ha ocurrido un error inesperado');
         }
     }
   };
@@ -234,10 +232,11 @@ const PreferencesPage: React.FC = () => {
     setEditingAlias(alias);
     setAliasInput(alias.alias);
     setSelectedMainCategories(alias.mainCategories);
+    setError(null);
   };
 
   const handleDelete = async (aliasId: string) => {
-    if (!window.confirm('Are you sure you want to delete this alias?')) return;
+    if (!window.confirm('¿Seguro que quieres borrar este alias?')) return;
     try {
       const res = await fetch(`${apiHost}${apiBaseUrl}/category-aliases/${aliasId}`, {
         method: 'DELETE',
@@ -247,13 +246,13 @@ const PreferencesPage: React.FC = () => {
         await fetchAliases();
       } else {
         const data = await res.json();
-        throw new Error(data.message || 'Failed to delete alias');
+        throw new Error(data.message || 'No se pudo borrar el alias');
       }
     } catch (err) {
         if (err instanceof Error) {
             setError(err.message);
         } else {
-            setError('An unknown error occurred');
+            setError('Ha ocurrido un error inesperado');
         }
     }
   };
@@ -266,164 +265,217 @@ const PreferencesPage: React.FC = () => {
     setError(null);
   };
 
-  if (loading) return <p>Loading preferences...</p>;
+  const selectedGroupName = groups.find(g => g._id === selectedGroupId)?.nombre;
 
   return (
-    <div className="preferences-page">
+    <div className="preferences">
       <UserMenu />
-      <PushToggle />
-      <h2>Category Aliases</h2>
-      
-      <div className="group-selector">
-        <label htmlFor="group-select">Select Group: </label>
-        <select 
-          id="group-select" 
-          value={selectedGroupId} 
-          onChange={(e) => setSelectedGroupId(e.target.value)}
-        >
-          <option value="">-- Choose a group --</option>
-          {groups.map(group => (
-            <option key={group._id} value={group._id}>{group.nombre}</option>
-          ))}
-        </select>
-      </div>
+      <header className="preferences__header">
+        <Link to="/" className="preferences__back" aria-label="Volver al inicio" title="Volver al inicio">
+          <ChevronLeftIcon />
+        </Link>
+        <h1 className="preferences__heading">Preferencias</h1>
+      </header>
 
-      {!selectedGroupId ? (
-        <div className="no-group-selected">
-          <p>Please select a group to manage its categories.</p>
+      <section className="preferences__section">
+        <h2 className="preferences__section-title">Notificaciones</h2>
+        <PushToggle />
+      </section>
+
+      <section className="preferences__section">
+        <h2 className="preferences__section-title">Alias de categorías</h2>
+        <div className="preferences__card">
+          <p className="preferences__hint">
+            Al filtrar por una categoría principal, en la lista de gastos o en el gráfico, se incluyen también sus alias.
+            Por ejemplo, «cervezas» y «vinos» como alias de «bebidas».
+          </p>
+
+          <label className="preferences__field">
+            <span className="preferences__label">Grupo</span>
+            <select
+              className="preferences__input preferences__input--select"
+              value={selectedGroupId}
+              onChange={(e) => setSelectedGroupId(e.target.value)}
+            >
+              <option value="">Elige un grupo</option>
+              {groups.map(group => (
+                <option key={group._id} value={group._id}>{group.nombre}</option>
+              ))}
+            </select>
+          </label>
         </div>
-      ) : (
-        <>
-          <p>Map a specific category (alias) to one or more main categories for <strong>{groups.find(g => g._id === selectedGroupId)?.nombre}</strong>.</p>
 
-          {error && <p className="error-message">{error}</p>}
+        {selectedGroupId && (
+          <>
+            <form onSubmit={handleFormSubmit} className="preferences__card">
+              <h3 className="preferences__card-title">
+                {editingAlias ? `Editar «${editingAlias.alias}»` : `Nuevo alias en ${selectedGroupName ?? 'el grupo'}`}
+              </h3>
 
-          <form onSubmit={handleFormSubmit} className="alias-form">
-            <div className="alias-form-content">
+              {error && <p className="preferences__error" role="alert">{error}</p>}
+
               <div
-                  className="category-input-container"
-                  onBlur={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                          setShowAliasSuggestions(false);
-                      }
-                  }}
+                className="preferences__field preferences__field--suggest"
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setShowAliasSuggestions(false);
+                  }
+                }}
               >
-                  <input
-                      type="text"
-                      placeholder="Specific Category (Alias)"
-                      value={aliasInput}
-                      onChange={(e) => setAliasInput(e.target.value)}
-                      onFocus={() => setShowAliasSuggestions(true)}
-                      ref={aliasInputRef}
-                      required
-                  />
-                  {showAliasSuggestions && (
-                      <div className="suggestions-list">
-                          {availableAllCategories
-                              .filter(cat => cat.toLowerCase().includes(aliasInput.toLowerCase()))
-                              .map((cat) => (
-                                  <div key={cat} className="suggestion-item" onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      handleSelectAliasSuggestion(cat);
-                                  }}>
-                                      {cat}
-                                  </div>
-                              ))}
-                      </div>
-                  )}
-              </div>
-              <div
-                  className="main-categories-input-group"
-                  onBlur={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                          setShowMainCatSuggestions(false);
-                      }
-                  }}
-              >
-                  <label htmlFor="main-categories-input">Main Categories:</label>
-                  <input
-                      id="main-categories-input"
-                      type="text"
-                      placeholder="Type or select main categories"
-                      value={mainCategorySearchInput}
-                      onChange={(e) => setMainCategorySearchInput(e.target.value)}
-                      onKeyDown={handleMainCategoryInputKeyDown}
-                      onFocus={() => setShowMainCatSuggestions(true)}
-                      ref={mainCategoryInputRef}
-                  />
-                  <div className="selected-main-categories">
-                      {selectedMainCategories.map((cat) => (
-                          <span key={cat} className="selected-tag">
-                              {cat}
-                              <button type="button" onClick={() => handleRemoveMainCategory(cat)}>x</button>
-                          </span>
+                <label htmlFor="preferences-alias" className="preferences__label">Alias (categoría concreta)</label>
+                <input
+                  id="preferences-alias"
+                  className="preferences__input"
+                  type="text"
+                  placeholder="p. ej. cervezas"
+                  value={aliasInput}
+                  onChange={(e) => setAliasInput(e.target.value)}
+                  onFocus={() => setShowAliasSuggestions(true)}
+                  autoComplete="off"
+                  required
+                />
+                {showAliasSuggestions && (
+                  <ul className="preferences__suggestions">
+                    {availableAllCategories
+                      .filter(cat => cat.toLowerCase().includes(aliasInput.toLowerCase()) && cat !== aliasInput)
+                      .map((cat) => (
+                        <li
+                          key={cat}
+                          className="preferences__suggestion"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectAliasSuggestion(cat);
+                          }}
+                        >
+                          {cat}
+                        </li>
                       ))}
-                  </div>
-                  {showMainCatSuggestions && (
-                      <div className="suggestions-list">
-                          {!availableAllCategories.includes(mainCategorySearchInput.trim()) && mainCategorySearchInput.trim() !== '' && (
-                              <div className="suggestion-item" onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  handleAddMainCategory(mainCategorySearchInput.trim());
-                              }}>
-                                  Add &quot;{mainCategorySearchInput.trim()}&quot;
-                              </div>
-                          )}
-                          {availableAllCategories
-                              .filter(cat => cat.toLowerCase().includes(mainCategorySearchInput.toLowerCase()) && !selectedMainCategories.includes(cat))
-                              .map((cat) => (
-                                  <div key={cat} className="suggestion-item" onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      handleAddMainCategory(cat);
-                                  }}>
-                                      {cat}
-                                  </div>
-                              ))}
-                      </div>
-                  )}
+                  </ul>
+                )}
               </div>
-              <div className="form-actions">
-                <button type="submit">{editingAlias ? 'Update Alias' : 'Create Alias'}</button>
-                {editingAlias && <button type="button" onClick={resetForm}>Cancel Edit</button>}
-              </div>
-            </div>
-          </form>
 
-          <div className="aliases-list">
-            <h3>Existing Aliases by Main Category</h3>
-            {Object.keys(groupedAliases).length === 0 ? (
-              <p>No aliases defined yet for this group.</p>
-            ) : (
-              <div>
-                {Object.entries(groupedAliases).map(([mainCategory, aliasesInGroup]) => (
-                  <div key={mainCategory} className="main-category-group">
-                    <h4>{mainCategory}</h4>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Alias</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {aliasesInGroup.map((alias) => (
-                          <tr key={alias._id}>
-                            <td>{alias.alias}</td>
-                            <td className="alias-actions">
-                              <button onClick={() => handleEdit(alias)}>Edit</button>
-                              <button onClick={() => handleDelete(alias._id)}>Delete</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              <div
+                className="preferences__field preferences__field--suggest"
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setShowMainCatSuggestions(false);
+                  }
+                }}
+              >
+                <label htmlFor="main-categories-input" className="preferences__label">Categorías principales</label>
+                <input
+                  id="main-categories-input"
+                  className="preferences__input"
+                  type="text"
+                  placeholder="Escribe o elige y pulsa Intro"
+                  value={mainCategorySearchInput}
+                  onChange={(e) => setMainCategorySearchInput(e.target.value)}
+                  onKeyDown={handleMainCategoryInputKeyDown}
+                  onFocus={() => setShowMainCatSuggestions(true)}
+                  autoComplete="off"
+                />
+                {showMainCatSuggestions && (
+                  <ul className="preferences__suggestions">
+                    {!availableAllCategories.includes(mainCategorySearchInput.trim()) && mainCategorySearchInput.trim() !== '' && (
+                      <li
+                        className="preferences__suggestion"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleAddMainCategory(mainCategorySearchInput.trim());
+                        }}
+                      >
+                        Añadir «{mainCategorySearchInput.trim()}»
+                      </li>
+                    )}
+                    {availableAllCategories
+                      .filter(cat => cat.toLowerCase().includes(mainCategorySearchInput.toLowerCase()) && !selectedMainCategories.includes(cat))
+                      .map((cat) => (
+                        <li
+                          key={cat}
+                          className="preferences__suggestion"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleAddMainCategory(cat);
+                          }}
+                        >
+                          {cat}
+                        </li>
+                      ))}
+                  </ul>
+                )}
+                {selectedMainCategories.length > 0 && (
+                  <div className="preferences__chips">
+                    {selectedMainCategories.map((cat) => (
+                      <span key={cat} className="preferences__chip">
+                        {cat}
+                        <button
+                          type="button"
+                          className="preferences__chip-remove"
+                          onClick={() => handleRemoveMainCategory(cat)}
+                          aria-label={`Quitar ${cat}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        </>
-      )}
+
+              <div className="preferences__actions">
+                {editingAlias && (
+                  <button type="button" className="preferences__button preferences__button--secondary" onClick={resetForm}>
+                    Cancelar
+                  </button>
+                )}
+                <button type="submit" className="preferences__button preferences__button--primary">
+                  {editingAlias ? 'Guardar cambios' : 'Crear alias'}
+                </button>
+              </div>
+            </form>
+
+            <div className="preferences__card">
+              <h3 className="preferences__card-title">Alias del grupo</h3>
+              {loading ? (
+                <p className="preferences__hint">Cargando alias…</p>
+              ) : Object.keys(groupedAliases).length === 0 ? (
+                <p className="preferences__hint">Este grupo todavía no tiene alias.</p>
+              ) : (
+                Object.entries(groupedAliases).map(([mainCategory, aliasesInGroup]) => (
+                  <div key={mainCategory} className="preferences__group">
+                    <h4 className="preferences__group-title">{mainCategory}</h4>
+                    <ul className="preferences__aliases">
+                      {aliasesInGroup.map((alias) => (
+                        <li key={alias._id} className="preferences__alias">
+                          <span className="preferences__alias-name">{alias.alias}</span>
+                          <button
+                            type="button"
+                            className="preferences__action"
+                            onClick={() => handleEdit(alias)}
+                            aria-label={`Editar ${alias.alias}`}
+                            title="Editar"
+                          >
+                            <PencilIcon />
+                          </button>
+                          <button
+                            type="button"
+                            className="preferences__action preferences__action--delete"
+                            onClick={() => handleDelete(alias._id)}
+                            aria-label={`Borrar ${alias.alias}`}
+                            title="Borrar"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </section>
     </div>
   );
 };

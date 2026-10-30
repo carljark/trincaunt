@@ -13,7 +13,6 @@ $knob-gap: 3px;
   display: flex;
   flex-direction: column;
   gap: map.get($spacing-scale, 2);
-  margin-bottom: map.get($spacing-scale, 4);
   padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
   background: white;
   border: 1px solid $color-gray-200;
