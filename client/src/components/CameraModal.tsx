@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import Dialog from './Dialog';
 import './CameraModal.scss';
 
 interface CameraModalProps {
@@ -10,37 +10,37 @@ interface CameraModalProps {
 const CameraModal: React.FC<CameraModalProps> = ({ onClose, onCapture }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+
     const initCamera = async () => {
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        setStream(mediaStream);
+        // Cámara trasera si la hay: es la de fotografiar tickets
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        // Si el modal se cerró mientras se pedía permiso, no dejar la cámara encendida
+        if (cancelled) {
+          mediaStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        stream = mediaStream;
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
         }
       } catch {
-        setError('No se pudo acceder a la cámara. Revisa los permisos.');
+        if (!cancelled) setError('No se pudo acceder a la cámara. Revisa los permisos.');
       }
     };
     initCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      cancelled = true;
+      stream?.getTracks().forEach(track => track.stop());
     };
   }, []);
-
-  useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [stream]);
 
   const handleCapture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -49,7 +49,7 @@ const CameraModal: React.FC<CameraModalProps> = ({ onClose, onCapture }) => {
         canvasRef.current.width = videoRef.current.videoWidth;
         canvasRef.current.height = videoRef.current.videoHeight;
         context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
-        
+
         canvasRef.current.toBlob(blob => {
           if (blob) {
             const file = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
@@ -60,32 +60,39 @@ const CameraModal: React.FC<CameraModalProps> = ({ onClose, onCapture }) => {
     }
   };
 
-  const modalContent = (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content camera-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>📸 Hacer foto</h2>
-          <button className="close-button" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
-          {error ? (
-            <p className="error">{error}</p>
-          ) : (
-            <>
-              <video ref={videoRef} autoPlay playsInline className="camera-preview" />
-              <canvas ref={canvasRef} style={{ display: 'none' }} />
-            </>
+  return (
+    <Dialog
+      title="Hacer foto"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="camera-modal__button camera-modal__button--secondary" onClick={onClose}>Cancelar</button>
+          {!error && (
+            <button type="button" className="camera-modal__button camera-modal__button--primary" onClick={handleCapture} disabled={!ready}>
+              Tomar foto
+            </button>
           )}
+        </>
+      }
+    >
+      {error ? (
+        <p className="camera-modal__error" role="alert">{error}</p>
+      ) : (
+        <div className="camera-modal">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="camera-modal__preview"
+            onLoadedData={() => setReady(true)}
+          />
+          {!ready && <span className="camera-modal__loading">Abriendo la cámara…</span>}
+          <canvas ref={canvasRef} hidden />
         </div>
-        <div className="modal-footer">
-          <button className="cancel-button" onClick={onClose}>Cancelar</button>
-          {!error && <button className="capture-button primary-button" onClick={handleCapture}>Tomar Foto</button>}
-        </div>
-      </div>
-    </div>
+      )}
+    </Dialog>
   );
-
-  return createPortal(modalContent, document.body);
 };
 
 export default CameraModal;

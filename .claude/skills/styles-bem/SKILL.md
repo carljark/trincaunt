@@ -19,8 +19,12 @@ Every component that gets its styles touched ends up with its own BEM block. Old
 
 ## Migrating legacy classes
 - Check who else uses a class before renaming it: `grep -rn "class-name" client/src cypress`.
-- If other components still depend on global rules that live in the file you are migrating, move those rules unchanged into a `styles/components/_legacy-*.scss` partial and `@use` it from the same place, so the CSS they get doesn't change. `_legacy-modal.scss` is the example.
+- If other components still depend on global rules that live in the file you are migrating, move those rules unchanged into a `styles/components/_legacy-*.scss` partial and `@use` it from the same place, so the CSS they get doesn't change (the old `_legacy-modal.scss` worked this way until the last modal was migrated).
 - Delete dead rules (classes no markup uses) as you go.
+
+## Screens and modals
+- Screens use the shared mixins in `abstracts/_mixins.scss` (`section-card`, `section-title`, `list-row`, `money`, `icon-button`, `action-button`, `text-input`, `select-input`, `field-label`) inside their own block.
+- Modals render inside `components/Dialog` (bottom sheet on mobile, title + close, Escape, scroll lock, optional `footer` and `onSubmit`) and keep only their content in their own block. Don't build a new overlay.
 
 ## Mobile
 The main target is an iPhone in Safari (about 428x746 CSS px of usable viewport). Never take the text of an `input`, `select` or `textarea` below `font-size: 1rem` (16px), even when making a form more compact: iOS zooms in when they get focus and the layout breaks. Compact with padding, height, gaps and label size instead, and check the computed font-size of every focusable control (including ones inside child components like `MultiSelect`). Use `dvh` with a `vh` fallback, and add `env(safe-area-inset-*)` to padding at screen edges. After visual changes, check the result in the browser at that size.

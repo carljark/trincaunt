@@ -12,10 +12,10 @@ describe('Dialog', () => {
 
   it('closes from the X, with Escape and by tapping the backdrop', () => {
     const onClose = vi.fn();
-    const { container } = render(<Dialog title="T" onClose={onClose}>contenido</Dialog>);
+    render(<Dialog title="T" onClose={onClose}>contenido</Dialog>);
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
     fireEvent.keyDown(document, { key: 'Escape' });
-    fireEvent.mouseDown(container.querySelector('.dialog')!);
+    fireEvent.mouseDown(document.querySelector('.dialog')!);
     fireEvent.mouseDown(screen.getByText('contenido'));
     expect(onClose).toHaveBeenCalledTimes(3);
   });
