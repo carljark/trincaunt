@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IUser } from '../types/user';
 import { IGroup } from '../types/group';
-import MultiSelect from './MultiSelect';
-import './MultiSelect.scss';
-import './AddExpenseModal.scss';
+import MemberToggleGroup from './MemberToggleGroup';
+import './BulkEditForm.scss';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -20,12 +19,14 @@ export interface IBulkUpdateData {
 
 interface BulkEditFormProps {
   members: IUser[];
+  // Gastos que se ven con los filtros actuales: son los que se editarán
+  expenseCount: number;
   onBulkUpdate: (updateData: IBulkUpdateData) => void;
   token: string;
   groupId: string;
 }
 
-const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, token, groupId }) => {
+const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, expenseCount, onBulkUpdate, token, groupId }) => {
   const [categories, setCategories] = useState<string[]>([]);
   const [paidByIds, setPaidByIds] = useState<string[]>([]);
   const [expenseDate, setExpenseDate] = useState<string>('');
@@ -38,7 +39,6 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
   const [categoryInput, setCategoryInput] = useState('');
   const [suggestedCategories, setSuggestedCategories] = useState<{ category: string, count: number }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const categoryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -111,108 +111,142 @@ const BulkEditForm: React.FC<BulkEditFormProps> = ({ members, onBulkUpdate, toke
 
   const memberOptions = members.map(m => ({ value: m._id, label: m.nombre }));
 
+  const changeCount = [
+    categories.length > 0, !!selectedGroup, paidByIds.length > 0, !!expenseDate,
+    !!localization, participants.length > 0, assumeExpense !== null
+  ].filter(Boolean).length;
+
   return (
-    <div className="bulk-edit-form">
-      <h4>Campos a Editar</h4>
-      <div
-        className="form-group"
-        onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-            setShowSuggestions(false);
-          }
-        }}
-      >
-        <label htmlFor="category">Categoría:</label>
-        <input
-          type="text"
-          id="category"
-          placeholder="Ej: Comida, Ocio..."
-          value={categoryInput}
-          ref={categoryInputRef}
-          onChange={e => setCategoryInput(e.target.value)}
-          onKeyDown={handleCategoryKeyDown}
-          onFocus={() => setShowSuggestions(true)}
-          autoComplete="off"
-        />
-        {showSuggestions && (
-          <ul className="suggestions-list">
-            {categoryInput.trim() !== '' && !categories.includes(categoryInput.trim()) && (
-              <li onMouseDown={(e) => {
-                  e.preventDefault();
-                  addCategory(categoryInput.trim());
-              }}>
-                Añadir &quot;{categoryInput.trim()}&quot;
-              </li>
-            )}
-            {suggestedCategories
-              .filter(c => c.category.toLowerCase().includes(categoryInput.toLowerCase()))
-              .map(c => (
-                <li
-                  key={c.category}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    addCategory(c.category);
-                  }}
-                >
-                  {c.category}
-                </li>
-              ))}
-          </ul>
-        )}
-        <div className="selected-categories">
-          {categories.map(cat => (
-            <div key={cat} className="selected-category">
-              {cat}
-              <button type="button" onClick={() => removeCategory(cat)}>x</button>
-            </div>
-          ))}
+    <section className="bulk-edit">
+      <div className="bulk-edit__card">
+        <div className="bulk-edit__intro">
+          <h3 className="bulk-edit__title">Editar {expenseCount} {expenseCount === 1 ? 'gasto' : 'gastos'} a la vez</h3>
+          <p className="bulk-edit__hint">
+            Se editan los gastos que dejan los filtros de arriba. Solo cambia lo que rellenes; lo vacío se queda como está.
+          </p>
         </div>
+
+        <div
+          className="bulk-edit__field"
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setShowSuggestions(false);
+            }
+          }}
+        >
+          <label className="bulk-edit__label" htmlFor="bulk-edit-category">Categorías</label>
+          <div className="bulk-edit__combo">
+            <input
+              className="bulk-edit__input"
+              type="text"
+              id="bulk-edit-category"
+              placeholder="Escribe o elige y pulsa Intro"
+              value={categoryInput}
+              onChange={e => setCategoryInput(e.target.value)}
+              onKeyDown={handleCategoryKeyDown}
+              onFocus={() => setShowSuggestions(true)}
+              autoComplete="off"
+            />
+            {showSuggestions && (
+              <ul className="bulk-edit__suggestions">
+                {categoryInput.trim() !== '' && !categories.includes(categoryInput.trim()) && (
+                  <li
+                    className="bulk-edit__suggestion bulk-edit__suggestion--add"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      addCategory(categoryInput.trim());
+                    }}
+                  >
+                    + Añadir «{categoryInput.trim()}»
+                  </li>
+                )}
+                {suggestedCategories
+                  .filter(c => !categories.includes(c.category))
+                  .filter(c => c.category.toLowerCase().includes(categoryInput.toLowerCase()))
+                  .map(c => (
+                    <li
+                      key={c.category}
+                      className="bulk-edit__suggestion"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        addCategory(c.category);
+                      }}
+                    >
+                      {c.category}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+          {categories.length > 0 && (
+            <div className="bulk-edit__chips">
+              {categories.map(cat => (
+                <span key={cat} className="bulk-edit__chip">
+                  {cat}
+                  <button type="button" className="bulk-edit__chip-remove" onClick={() => removeCategory(cat)} aria-label={`Quitar ${cat}`}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bulk-edit__row">
+          <label className="bulk-edit__field">
+            <span className="bulk-edit__label">Fecha</span>
+            <input className="bulk-edit__input" type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} />
+          </label>
+          <label className="bulk-edit__field">
+            <span className="bulk-edit__label">Lugar</span>
+            <input className="bulk-edit__input" type="text" value={localization} onChange={e => setLocalization(e.target.value)} placeholder="No cambiar" />
+          </label>
+        </div>
+
+        <div className="bulk-edit__field">
+          <span className="bulk-edit__label" id="bulk-edit-payers">Pagado por</span>
+          <MemberToggleGroup options={memberOptions} selected={paidByIds} onChange={setPaidByIds} labelledBy="bulk-edit-payers" />
+        </div>
+
+        <div className="bulk-edit__field">
+          <span className="bulk-edit__label" id="bulk-edit-participants">Participantes</span>
+          <MemberToggleGroup options={memberOptions} selected={participants} onChange={setParticipants} labelledBy="bulk-edit-participants" showBulkActions />
+        </div>
+
+        <div className="bulk-edit__row">
+          <label className="bulk-edit__field">
+            <span className="bulk-edit__label">¿El pagador invita?</span>
+            <select
+              className="bulk-edit__select"
+              value={assumeExpense === null ? '' : String(assumeExpense)}
+              onChange={e => setAssumeExpense(e.target.value === '' ? null : e.target.value === 'true')}
+            >
+              <option value="">No cambiar</option>
+              <option value="true">Sí</option>
+              <option value="false">No</option>
+            </select>
+          </label>
+          <label className="bulk-edit__field">
+            <span className="bulk-edit__label">Mover al grupo</span>
+            <select className="bulk-edit__select" value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}>
+              <option value="">No cambiar</option>
+              {groups.map(g => (
+                <option key={g._id} value={g._id}>{g.nombre}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <button
+          type="button"
+          className="bulk-edit__submit"
+          onClick={handleUpdate}
+          disabled={changeCount === 0 || expenseCount === 0}
+        >
+          {changeCount === 0
+            ? 'Rellena lo que quieras cambiar'
+            : `Aplicar a ${expenseCount} ${expenseCount === 1 ? 'gasto' : 'gastos'}`}
+        </button>
       </div>
-      <div className="form-group">
-        <label>Mover al grupo</label>
-        <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}>
-          <option value="">No cambiar</option>
-          {groups.map(g => (
-            <option key={g._id} value={g._id}>{g.nombre}</option>
-          ))}
-        </select>
-      </div>
-      <div className="form-group">
-        <label>Pagado por</label>
-        <MultiSelect
-          options={memberOptions}
-          selected={paidByIds}
-          onChange={setPaidByIds}
-          placeholder="Añadir pagadores..."
-        />
-      </div>
-      <div className="form-group">
-        <label>Fecha del Gasto</label>
-        <input type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} />
-      </div>
-      <div className="form-group">
-        <label>Lugar</label>
-        <input type="text" value={localization} onChange={e => setLocalization(e.target.value)} placeholder="Lugar del gasto" />
-      </div>
-      <div className="form-group">
-        <label>Participantes</label>
-        <MultiSelect
-          options={memberOptions}
-          selected={participants}
-          onChange={setParticipants}
-          placeholder="Añadir participantes..."
-        />
-      </div>
-      <div className="form-group">
-        <label>¿El pagador invita?</label>
-        <select onChange={e => setAssumeExpense(e.target.value === '' ? null : e.target.value === 'true')}>
-            <option value="">No cambiar</option>
-            <option value="true">Sí</option>
-            <option value="false">No</option>
-        </select>
-      </div>
-      <button onClick={handleUpdate}>Actualizar Gastos Filtrados</button>
-    </div>
+    </section>
   );
 };
 

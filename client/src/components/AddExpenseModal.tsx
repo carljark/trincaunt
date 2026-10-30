@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { IExpense, IExpensePopulated } from '../types/expense';
 import { IUserPopulated } from '../types/user';
 import MemberToggleGroup from './MemberToggleGroup';
+import Dialog from './Dialog';
 import './AddExpenseModal.scss';
 
 interface AddExpenseModalProps {
@@ -179,220 +180,217 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   };
 
   return (
-    <div className="expense-modal">
-      <div className="expense-modal__panel">
-        <div className="expense-modal__header">
-          <h3 className="expense-modal__title">{expenseToEdit ? 'Editar Gasto' : 'Añadir Gasto'}</h3>
+    <Dialog
+      title={expenseToEdit ? 'Editar gasto' : 'Añadir gasto'}
+      onClose={onClose}
+      onSubmit={handleSubmitExpense}
+      busy={loading}
+      footer={
+        <>
+          <button type="button" className="expense-modal__button expense-modal__button--secondary" onClick={onClose} disabled={loading}>
+            Cancelar
+          </button>
+          <button type="submit" className="expense-modal__button expense-modal__button--primary" disabled={loading}>
+            {loading ? (
+              expenseToEdit ? 'Guardando...' : 'Añadiendo...'
+            ) : (
+              expenseToEdit ? 'Guardar cambios' : 'Añadir gasto'
+            )}
+          </button>
+        </>
+      }
+    >
+      <div className="expense-modal">
+        {error && <p className="expense-modal__error" role="alert">{error}</p>}
+
+        {/* Descripción */}
+        <div className="expense-modal__field">
+          <label className="expense-modal__label" htmlFor="description">Descripción</label>
+          <input
+            className="expense-modal__input"
+            type="text"
+            id="description"
+            placeholder="¿En qué gastaste?"
+            value={expenseData.description}
+            onChange={e => setExpenseData({ ...expenseData, description: e.target.value })}
+            required
+          />
         </div>
 
-        <form className="expense-modal__form" onSubmit={handleSubmitExpense}>
-          <div className="expense-modal__body">
-            {error && <p className="expense-modal__error">{error}</p>}
+        <div className="expense-modal__row">
+          {/* Monto */}
+          <div className="expense-modal__field">
+            <label className="expense-modal__label" htmlFor="amount">Importe</label>
+            <input
+              className="expense-modal__input expense-modal__input--amount"
+              type="number"
+              id="amount"
+              inputMode="decimal"
+              placeholder="0,00"
+              value={expenseData.amount}
+              onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })}
+              step="0.01"
+              min="0"
+              required
+            />
+          </div>
 
-            {/* Descripción */}
-            <div className="expense-modal__field">
-              <label className="expense-modal__label" htmlFor="description">Descripción</label>
-              <input
-                className="expense-modal__input"
-                type="text"
-                id="description"
-                placeholder="¿En qué gastaste?"
-                value={expenseData.description}
-                onChange={e => setExpenseData({ ...expenseData, description: e.target.value })}
-                required
-              />
-            </div>
+          {/* Fecha */}
+          <div className="expense-modal__field">
+            <label className="expense-modal__label" htmlFor="expense-date">Fecha</label>
+            <input
+              className="expense-modal__input"
+              type="date"
+              id="expense-date"
+              value={expenseDate}
+              onChange={e => setExpenseDate(e.target.value)}
+              required
+            />
+          </div>
+        </div>
 
-            <div className="expense-modal__row">
-              {/* Monto */}
-              <div className="expense-modal__field">
-                <label className="expense-modal__label" htmlFor="amount">Monto</label>
-                <input
-                  className="expense-modal__input expense-modal__input--amount"
-                  type="number"
-                  id="amount"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={expenseData.amount}
-                  onChange={e => setExpenseData({ ...expenseData, amount: e.target.value })}
-                  step="0.01"
-                  min="0"
-                  required
-                />
-              </div>
-
-              {/* Fecha */}
-              <div className="expense-modal__field">
-                <label className="expense-modal__label" htmlFor="expense-date">Fecha</label>
-                <input
-                  className="expense-modal__input expense-modal__input--date"
-                  type="date"
-                  id="expense-date"
-                  value={expenseDate}
-                  onChange={e => setExpenseDate(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="expense-modal__row">
-              {/* Localización */}
-              <div
-                className="expense-modal__field"
-                onBlur={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                    setShowLocationSuggestions(false);
-                  }
-                }}
-              >
-                <label className="expense-modal__label" htmlFor="localization">Lugar</label>
-                <input
-                  className="expense-modal__input"
-                  type="text"
-                  id="localization"
-                  placeholder="¿Dónde fue?"
-                  value={expenseData.localization}
-                  onChange={e => setExpenseData({ ...expenseData, localization: e.target.value })}
-                  onFocus={() => setShowLocationSuggestions(true)}
-                  autoComplete="off"
-                />
-                {showLocationSuggestions && suggestedLocations.length > 0 && (
-                  <ul className="expense-modal__suggestions">
-                    {suggestedLocations
-                      .filter(l => l.localization.toLowerCase().includes(expenseData.localization.toLowerCase()))
-                      .slice(0, 6)
-                      .map(l => (
-                        <li
-                          key={l.localization}
-                          className="expense-modal__suggestion"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            setExpenseData({ ...expenseData, localization: l.localization });
-                            setShowLocationSuggestions(false);
-                          }}
-                        >
-                          {l.localization}
-                        </li>
-                      ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* Categorías */}
-              <div
-                className="expense-modal__field"
-                onBlur={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                    setShowSuggestions(false);
-                  }
-                }}
-              >
-                <label className="expense-modal__label" htmlFor="category">Categoría</label>
-                <input
-                  className="expense-modal__input"
-                  type="text"
-                  id="category"
-                  placeholder="Comida, Ocio..."
-                  value={categoryInput}
-                  ref={categoryInputRef}
-                  onChange={e => setCategoryInput(e.target.value)}
-                  onKeyDown={handleCategoryKeyDown}
-                  onFocus={() => setShowSuggestions(true)}
-                  autoComplete="off"
-                />
-                {showSuggestions && (
-                  <ul className="expense-modal__suggestions">
-                    {categoryInput.trim() !== '' && !categories.includes(categoryInput.trim()) && (
-                      <li className="expense-modal__suggestion expense-modal__suggestion--add" onMouseDown={(e) => {
+        <div className="expense-modal__row">
+          {/* Localización */}
+          <div
+            className="expense-modal__field"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setShowLocationSuggestions(false);
+              }
+            }}
+          >
+            <label className="expense-modal__label" htmlFor="localization">Lugar</label>
+            <input
+              className="expense-modal__input"
+              type="text"
+              id="localization"
+              placeholder="¿Dónde fue?"
+              value={expenseData.localization}
+              onChange={e => setExpenseData({ ...expenseData, localization: e.target.value })}
+              onFocus={() => setShowLocationSuggestions(true)}
+              autoComplete="off"
+            />
+            {showLocationSuggestions && suggestedLocations.length > 0 && (
+              <ul className="expense-modal__suggestions">
+                {suggestedLocations
+                  .filter(l => l.localization.toLowerCase().includes(expenseData.localization.toLowerCase()))
+                  .slice(0, 6)
+                  .map(l => (
+                    <li
+                      key={l.localization}
+                      className="expense-modal__suggestion"
+                      onMouseDown={(e) => {
                         e.preventDefault();
-                        addCategory(categoryInput.trim());
-                      }}>
-                        + Añadir &quot;{categoryInput.trim()}&quot;
-                      </li>
-                    )}
-                    {suggestedCategories
-                      .filter(c => c.category.toLowerCase().includes(categoryInput.toLowerCase()))
-                      .slice(0, 5)
-                      .map(c => (
-                        <li
-                          key={c.category}
-                          className="expense-modal__suggestion"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            addCategory(c.category);
-                          }}
-                        >
-                          {c.category}
-                        </li>
-                      ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-
-            {categories.length > 0 && (
-              <div className="expense-modal__chips">
-                {categories.map(cat => (
-                  <div key={cat} className="expense-modal__chip">
-                    {cat}
-                    <button type="button" className="expense-modal__chip-remove" onClick={() => removeCategory(cat)} title="Eliminar">×</button>
-                  </div>
-                ))}
-              </div>
+                        setExpenseData({ ...expenseData, localization: l.localization });
+                        setShowLocationSuggestions(false);
+                      }}
+                    >
+                      {l.localization}
+                    </li>
+                  ))}
+              </ul>
             )}
-
-            {/* Pagado por */}
-            <div className="expense-modal__field">
-              <span className="expense-modal__label" id="paid-by-label">Pagado por</span>
-              <MemberToggleGroup
-                options={memberOptions}
-                selected={paidByIds}
-                onChange={setPaidByIds}
-                labelledBy="paid-by-label"
-              />
-            </div>
-
-            {/* Checkbox asumir gasto */}
-            <label className="expense-modal__checkbox">
-              <input
-                className="expense-modal__checkbox-input"
-                type="checkbox"
-                checked={assumeExpense}
-                onChange={e => setAssumeExpense(e.target.checked)}
-              />
-              <span>Asumir el gasto (invitar a otros)</span>
-            </label>
-
-            {/* Participantes */}
-            <div className="expense-modal__field">
-              <span className="expense-modal__label" id="participants-label">Participantes</span>
-              <MemberToggleGroup
-                options={memberOptions}
-                selected={selectedParticipants}
-                onChange={setSelectedParticipants}
-                labelledBy="participants-label"
-                disabled={assumeExpense}
-                showBulkActions
-              />
-            </div>
           </div>
 
-          {/* Botones */}
-          <div className="expense-modal__footer">
-            <button type="button" className="expense-modal__button expense-modal__button--secondary" onClick={onClose} disabled={loading}>
-              Cancelar
-            </button>
-            <button type="submit" className="expense-modal__button expense-modal__button--primary" disabled={loading}>
-              {loading ? (
-                expenseToEdit ? 'Actualizando...' : 'Añadiendo...'
-              ) : (
-                expenseToEdit ? 'Actualizar Gasto' : 'Añadir Gasto'
-              )}
-            </button>
+          {/* Categorías */}
+          <div
+            className="expense-modal__field"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setShowSuggestions(false);
+              }
+            }}
+          >
+            <label className="expense-modal__label" htmlFor="category">Categoría</label>
+            <input
+              className="expense-modal__input"
+              type="text"
+              id="category"
+              placeholder="Comida, Ocio..."
+              value={categoryInput}
+              ref={categoryInputRef}
+              onChange={e => setCategoryInput(e.target.value)}
+              onKeyDown={handleCategoryKeyDown}
+              onFocus={() => setShowSuggestions(true)}
+              autoComplete="off"
+            />
+            {showSuggestions && (
+              <ul className="expense-modal__suggestions">
+                {categoryInput.trim() !== '' && !categories.includes(categoryInput.trim()) && (
+                  <li className="expense-modal__suggestion expense-modal__suggestion--add" onMouseDown={(e) => {
+                    e.preventDefault();
+                    addCategory(categoryInput.trim());
+                  }}>
+                    + Añadir &quot;{categoryInput.trim()}&quot;
+                  </li>
+                )}
+                {suggestedCategories
+                  .filter(c => c.category.toLowerCase().includes(categoryInput.toLowerCase()))
+                  .slice(0, 5)
+                  .map(c => (
+                    <li
+                      key={c.category}
+                      className="expense-modal__suggestion"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        addCategory(c.category);
+                      }}
+                    >
+                      {c.category}
+                    </li>
+                  ))}
+              </ul>
+            )}
           </div>
-        </form>
+        </div>
+
+        {categories.length > 0 && (
+          <div className="expense-modal__chips">
+            {categories.map(cat => (
+              <div key={cat} className="expense-modal__chip">
+                {cat}
+                <button type="button" className="expense-modal__chip-remove" onClick={() => removeCategory(cat)} title="Eliminar">×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagado por */}
+        <div className="expense-modal__field">
+          <span className="expense-modal__label" id="paid-by-label">Pagado por</span>
+          <MemberToggleGroup
+            options={memberOptions}
+            selected={paidByIds}
+            onChange={setPaidByIds}
+            labelledBy="paid-by-label"
+          />
+        </div>
+
+        {/* Checkbox asumir gasto */}
+        <label className="expense-modal__checkbox">
+          <input
+            className="expense-modal__checkbox-input"
+            type="checkbox"
+            checked={assumeExpense}
+            onChange={e => setAssumeExpense(e.target.checked)}
+          />
+          <span>Asumir el gasto (invitar a otros)</span>
+        </label>
+
+        {/* Participantes */}
+        <div className="expense-modal__field">
+          <span className="expense-modal__label" id="participants-label">Participantes</span>
+          <MemberToggleGroup
+            options={memberOptions}
+            selected={selectedParticipants}
+            onChange={setSelectedParticipants}
+            labelledBy="participants-label"
+            disabled={assumeExpense}
+            showBulkActions
+          />
+        </div>
       </div>
-    </div>
+    </Dialog>
   );
 };
 
