@@ -1,0 +1,90 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// REGISTRAR PAGO (BEM: .record-payment), dentro de un Dialog
+// ============================================
+
+.record-payment {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 3);
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+  }
+
+  &__label {
+    @include field-label;
+  }
+
+  &__select {
+    @include select-input;
+  }
+
+  &__amount {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__input {
+    @include text-input;
+    padding-right: 2.25rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__currency {
+    position: absolute;
+    right: map.get($spacing-scale, 3);
+    color: $color-text-muted;
+    pointer-events: none;
+  }
+
+  &__summary {
+    margin: 0;
+    padding: map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, base);
+    font-weight: map.get($font-weights, medium);
+    text-align: center;
+    color: $color-primary;
+    background: rgba($color-primary, 0.06);
+    border-radius: $border-radius;
+  }
+
+  &__button {
+    @include action-button;
+
+    @include respond-below(md) {
+      flex: 1;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-gray-700;
+      background: $color-surface;
+      border-color: $color-gray-300;
+    }
+  }
+}

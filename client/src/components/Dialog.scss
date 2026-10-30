@@ -1,0 +1,141 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// DIÁLOGO MODAL COMÚN (BEM: .dialog)
+// Los modales ponen su contenido dentro y usan sus propios bloques para los campos.
+// ============================================
+
+.dialog {
+  position: fixed;
+  inset: 0;
+  z-index: $z-index-modal-backdrop;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: map.get($spacing-scale, 3);
+  background: rgba($color-gray-900, 0.45);
+  animation: dialog-fade-in 0.15s ease-out;
+
+  // En móvil, hoja inferior a todo el ancho
+  @include respond-below(md) {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  &__panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow: hidden;
+    background: $color-surface;
+    border-radius: $border-radius-lg;
+    box-shadow: $box-shadow-lg;
+    animation: dialog-slide-up 0.2s ease-out;
+
+    @include respond-below(md) {
+      max-width: none;
+      max-height: calc(100vh - env(safe-area-inset-top, 0px) - #{map.get($spacing-scale, 4)});
+      max-height: calc(100dvh - env(safe-area-inset-top, 0px) - #{map.get($spacing-scale, 4)});
+      border-radius: $border-radius-lg $border-radius-lg 0 0;
+    }
+  }
+
+  &__header {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 2) map.get($spacing-scale, 2) map.get($spacing-scale, 4);
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__title {
+    @include section-title;
+    @include truncate;
+  }
+
+  &__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    font-size: 1.25rem;
+    color: $color-gray-600;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &:hover {
+      background: $color-gray-100;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  // Zona con scroll; el pie queda fuera para no tapar campos
+  &__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 3);
+    min-height: 0;
+    padding: map.get($spacing-scale, 4);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    // Sin pie, el cuerpo es lo último: respeta la barra de inicio del iPhone
+    &:last-child {
+      padding-bottom: calc(#{map.get($spacing-scale, 4)} + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  &__footer {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    gap: map.get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
+    padding-bottom: calc(#{map.get($spacing-scale, 3)} + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid $color-border;
+  }
+}
+
+@keyframes dialog-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
