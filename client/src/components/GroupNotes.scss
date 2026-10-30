@@ -1,203 +1,227 @@
 @use 'sass:map';
-@use 'sass:color';
 @use 'abstracts/variables' as *;
 @use 'abstracts/mixins' as *;
-@use 'components/buttons';
-@use 'components/forms';
-@use 'components/cards';
 
-.group-notes-container {
-  padding: map.get($spacing-scale, 3);
-  font-family: $font-family-sans;
+// ============================================
+// PESTAÑA NOTAS (BEM: .group-notes)
+// ============================================
 
-  h3 {
-    color: $color-primary;
-    text-align: center;
-    margin-bottom: map.get($spacing-scale, 4);
+.group-notes {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 4);
+  padding: 0 map.get($spacing-scale, 3) map.get($spacing-scale, 6);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 3);
+    min-height: 2.75rem;
   }
 
-  .add-note-button {
-    display: block;
-    width: fit-content;
-    margin: map.get($spacing-scale, 3) auto map.get($spacing-scale, 4) auto;
-    padding: map.get($spacing-scale, 3) map.get($spacing-scale, 5);
-    background-color: $color-primary;
-    color: white;
-    border: none;
-    @include component-border-radius();
-    font-size: map.get($font-sizes, base);
-    cursor: pointer;
-    transition: background-color $transition-base;
+  &__heading {
+    margin: 0;
+    font-size: map.get($font-sizes, xl);
+    font-weight: map.get($font-weights, bold);
+    color: $color-gray-900;
+  }
 
-    &:hover {
-      background-color: color.scale($color-primary, $lightness: -10%);
+  &__icon-button {
+    @include icon-button;
+  }
+
+  &__card {
+    @include section-card;
+  }
+
+  &__title {
+    @include section-title;
+    overflow-wrap: anywhere;
+
+    &--untitled {
+      font-weight: map.get($font-weights, medium);
+      color: $color-text-muted;
     }
   }
 
-  .note-form {
-    background-color: $color-gray-100;
-    padding: map.get($spacing-scale, 5);
-    @include component-border-radius();
-    @include component-shadow();
-    margin-bottom: map.get($spacing-scale, 6);
+  &__form {
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__field {
     display: flex;
     flex-direction: column;
-    gap: map.get($spacing-scale, 3);
+    gap: map.get($spacing-scale, 2);
+  }
 
-    input[type="text"],
-    textarea {
-      width: 100%;
+  &__label {
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  // 16px: por debajo, iOS hace zoom al enfocar
+  &__input {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 map.get($spacing-scale, 3);
+    font-family: inherit;
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-900;
+    background: $color-surface;
+    border: 1.5px solid $color-gray-300;
+    border-radius: $border-radius;
+
+    &::placeholder {
+      color: $color-gray-500;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
+    }
+
+    &--textarea {
       padding: map.get($spacing-scale, 3);
-      border: 1px solid $color-gray-300;
-      @include component-border-radius(sm);
-      font-size: map.get($font-sizes, base);
-      box-sizing: border-box;
+      line-height: $line-height-base;
       resize: vertical;
     }
+  }
 
-    .form-group {
-      label {
-        font-weight: map.get($font-weights, semibold);
-        margin-bottom: map.get($spacing-scale, 2);
-        display: block;
-      }
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__button {
+    @include action-button;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
-    .note-form-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: map.get($spacing-scale, 3);
-      margin-top: map.get($spacing-scale, 3);
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
 
-      button {
-        padding: map.get($spacing-scale, 3) map.get($spacing-scale, 5);
-        border: none;
-        @include component-border-radius(sm);
-        cursor: pointer;
-        font-size: map.get($font-sizes, base);
-        transition: background-color $transition-base;
-
-        &[type="submit"] {
-          background-color: $color-primary;
-          color: white;
-          &:hover:not(:disabled) {
-            background-color: color.scale($color-primary, $lightness: -10%);
-          }
-        }
-
-        &[type="button"] {
-          background-color: $color-secondary;
-          color: $color-gray-900;
-          &:hover:not(:disabled) {
-            background-color: color.scale($color-secondary, $lightness: -10%);
-          }
-        }
-
-        &:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-      }
+    &--secondary {
+      color: $color-gray-700;
+      background: $color-surface;
+      border-color: $color-gray-300;
     }
   }
 
-  .notes-list {
-    list-style: none;
-    padding: 0;
-    display: grid;
-    gap: map.get($spacing-scale, 5);
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
   }
 
-  .note-item {
-    background-color: white;
-    padding: map.get($spacing-scale, 5);
-    @include component-border-radius();
-    @include component-shadow();
-    transition: transform 0.2s ease-in-out;
-
-    &:hover {
-      transform: translateY(-3px);
-    }
-
-    .note-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: map.get($spacing-scale, 3);
-
-      h4 {
-        margin: 0;
-        color: $color-gray-900;
-        font-size: map.get($font-sizes, xl);
-      }
-
-      .note-actions {
-        display: flex;
-        gap: map.get($spacing-scale, 2);
-
-        button {
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-size: map.get($font-sizes, base);
-          padding: map.get($spacing-scale, 2);
-          transition: color 0.2s ease;
-
-          &.edit-btn {
-            color: $color-secondary;
-            &:hover {
-              color: color.scale($color-secondary, $lightness: -20%);
-            }
-          }
-          &.delete-btn {
-            color: $color-danger;
-            &:hover {
-              color: color.scale($color-danger, $lightness: -20%);
-            }
-          }
-        }
-      }
-    }
-
-    .note-content {
-      color: $color-gray-800;
-      line-height: $line-height-base;
-      margin-bottom: map.get($spacing-scale, 3);
-      white-space: pre-wrap;
-    }
-
-    .note-footer {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      font-size: map.get($font-sizes, xs);
-      color: $color-gray-900;
-      border-top: 1px solid $color-gray-300;
-      padding-top: map.get($spacing-scale, 3);
-      gap: map.get($spacing-scale, 2);
-
-      .note-meta {
-        background-color: $color-gray-200;
-        padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
-        @include component-border-radius(sm);
-      }
-    }
+  &__status {
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    color: $color-text-muted;
   }
 
-  .error-message {
-    color: $color-danger;
+  &__empty {
+    align-items: center;
+    padding: map.get($spacing-scale, 5) map.get($spacing-scale, 4);
     text-align: center;
-    margin: map.get($spacing-scale, 3) 0;
   }
-}
 
-// Responsive adjustments
-@include respond-above(md) {
-  .group-notes-container {
-    padding: map.get($spacing-scale, 4) map.get($spacing-scale, 5);
+  &__list {
+    display: grid;
+    gap: map.get($spacing-scale, 3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
 
-    .notes-list {
+    @include respond-above(md) {
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     }
+  }
+
+  &__note {
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__note-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  // Los botones sobresalen un poco para alinear el icono con el borde de la tarjeta
+  &__note-actions {
+    display: flex;
+    flex-shrink: 0;
+    margin: (-(map.get($spacing-scale, 2))) (-(map.get($spacing-scale, 2))) 0 0;
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    font-size: 1.125rem;
+    color: $color-gray-600;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-primary;
+      background: $color-gray-100;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &--delete:hover {
+      color: $color-negative;
+    }
+  }
+
+  &__content {
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    line-height: $line-height-base;
+    color: $color-gray-800;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+    border-top: 1px solid $color-border;
   }
 }
