@@ -1,110 +1,140 @@
 @use 'sass:map';
 @use 'abstracts/variables' as *;
 @use 'abstracts/mixins' as *;
-@use 'components/buttons';
-@use 'components/forms';
-@use 'components/cards';
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: $color-overlay;
+// ============================================
+// FILTROS AVANZADOS DE GASTOS (BEM: .advanced-filters), dentro de un Dialog
+// ============================================
+
+.advanced-filters {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: $z-index-modal-backdrop;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 4);
 
-  .modal-content {
-    background-color: white;
-    padding: map.get($spacing-scale, 4);
-    @include component-border-radius();
-    @include component-shadow(lg);
-    width: 90%;
-    max-width: 500px;
-    max-height: 90vh;
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+    min-width: 0;
+  }
+
+  &__field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 2);
+    min-height: 2rem;
+  }
+
+  &__label {
+    @include field-label;
+  }
+
+  &__link {
+    padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, semibold);
+    color: $color-primary;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+    }
+  }
+
+  // Muchas categorías: la lista hace scroll propio en vez de alargar el diálogo
+  &__categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: map.get($spacing-scale, 2);
+    max-height: 11rem;
     overflow-y: auto;
+  }
 
-    h3 {
-      margin-top: 0;
-      color: $color-primary;
-      margin-bottom: map.get($spacing-scale, 3);
-      text-align: center;
+  &__category {
+    min-height: 2.25rem;
+    padding: 0 map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+    background: $color-surface;
+    border: 1.5px solid $color-gray-300;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 1px;
     }
 
-    .filter-fields {
-      display: flex;
-      flex-direction: column;
-      gap: map.get($spacing-scale, 3);
-      margin-bottom: map.get($spacing-scale, 3);
+    &--selected {
+      color: white;
+      background: $color-primary;
+      border-color: $color-primary;
+    }
+  }
+
+  &__input {
+    @include text-input;
+  }
+
+  &__select {
+    @include select-input;
+  }
+
+  &__dates {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__date {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__clear-date {
+    position: absolute;
+    right: map.get($spacing-scale, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    font-size: 1rem;
+    color: $color-gray-600;
+    background: $color-surface;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &:hover {
+      background: $color-gray-100;
+    }
+  }
+
+  &__button {
+    @include action-button;
+
+    @include respond-below(md) {
+      flex: 1;
     }
 
-    .filter-field {
-      display: flex;
-      flex-direction: column;
-      gap: map.get($spacing-scale, 1);
-
-      > span {
-        font-size: 0.875rem;
-        font-weight: map.get($font-weights, medium);
-        color: $color-gray-700;
-      }
-
-      input[type="text"],
-      input[type="date"],
-      select {
-        @extend .form-control;
-        margin: 0;
-      }
-
-      > button {
-        @extend .btn;
-        @extend .btn-outline-primary;
-        text-align: left;
-        border-width: 1px;
-      }
+    &--primary {
+      color: white;
+      background: $color-primary;
     }
 
-    .date-filter-container {
-      display: flex;
-      align-items: center;
-      gap: map.get($spacing-scale, 1);
-
-      .clear-date-btn {
-        @extend .btn;
-        @extend .btn-sm;
-        padding: map.get($spacing-scale, 1) map.get($spacing-scale, 2);
-        min-width: auto;
-        background-color: $color-gray-200;
-        color: $color-gray-700;
-        border: none;
-
-        &:hover {
-          background-color: $color-gray-300;
-        }
-      }
-    }
-
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: map.get($spacing-scale, 2);
-      flex-wrap: wrap;
-
-      button {
-        @extend .btn;
-      }
-
-      .clear-all-btn {
-        @extend .btn-secondary;
-        margin-right: auto;
-      }
-
-      .save-filters-btn {
-        @extend .btn-primary;
-      }
+    &--secondary {
+      color: $color-gray-700;
+      background: $color-surface;
+      border-color: $color-gray-300;
     }
   }
 }

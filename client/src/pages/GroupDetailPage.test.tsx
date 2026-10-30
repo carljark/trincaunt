@@ -28,9 +28,6 @@ vi.mock('../components/PaymentHistoryModal', () => ({
   default: () => <div>PaymentHistoryModal</div>,
 }));
 
-vi.mock('../components/CategoryModal', () => ({
-  default: () => <div>CategoryModal</div>,
-}));
 
 vi.mock('../components/BulkEditForm', () => ({
   default: () => <div>BulkEditForm</div>,

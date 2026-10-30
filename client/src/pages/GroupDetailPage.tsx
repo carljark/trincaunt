@@ -5,7 +5,6 @@ import { useSocket } from '../contexts/SocketContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import AddExpenseModal from '../components/AddExpenseModal';
-import CategoryModal from '../components/CategoryModal';
 import BulkEditForm, { IBulkUpdateData } from '../components/BulkEditForm';
 import ConfirmationModal from '../components/ConfirmationModal';
 import AdvancedFiltersModal from '../components/AdvancedFiltersModal';
@@ -41,10 +40,7 @@ import './GroupDetailPage.scss';
 import ExpenseFilters from '../components/ExpenseFilters';
 import ExpenseList from '../components/ExpenseList';
 import '../components/AddExpenseModal.scss';
-import '../components/CategoryModal.scss';
 import '../components/BulkEditForm.scss';
-import '../components/ConfirmationModal.scss';
-import '../components/AdvancedFiltersModal.scss';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -81,7 +77,6 @@ const GroupDetailPage: React.FC = () => {
   const [payerFilter, setPayerFilter] = useState('all');
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [categoryAliases, setCategoryAliases] = useState<{ [alias: string]: string[] }>({});
-  const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [bulkUpdateData, setBulkUpdateData] = useState<IBulkUpdateData | null>(null);
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
@@ -345,7 +340,9 @@ const GroupDetailPage: React.FC = () => {
   const totalFilteredExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.monto, 0);
 
   // Filtros del modal avanzado; las fechas solo cuentan si no vienen de un periodo rápido
-  const hasAdvancedFilters = categoryFilter.length > 0 || !!descriptionFilter || !!localizationFilter ||
+  // Tener todas las categorías marcadas no filtra nada
+  const hasCategoryFilter = categoryFilter.length > 0 && !allCategories.every(c => categoryFilter.includes(c));
+  const hasAdvancedFilters = hasCategoryFilter || !!descriptionFilter || !!localizationFilter ||
     payerFilter !== 'all' || (!dateFilterPreset && (!!dateFromFilter || !!dateToFilter));
 
   const handleExportXLSX = useCallback(async () => {
@@ -912,18 +909,11 @@ const GroupDetailPage: React.FC = () => {
         />
       )}
 
-      {showCategoryModal && (
-        <CategoryModal
-          allCategories={allCategories}
-          selectedCategories={categoryFilter}
-          onChange={setCategoryFilter}
-          onClose={() => setShowCategoryModal(false)}
-        />
-      )}
-
       {showAdvancedFiltersModal && (
         <AdvancedFiltersModal
           categoryFilter={categoryFilter}
+          allCategories={allCategories}
+          onCategoryChange={setCategoryFilter}
           localizationFilter={localizationFilter}
           payerFilter={payerFilter}
           dateFromFilter={dateFromFilter}
@@ -937,13 +927,14 @@ const GroupDetailPage: React.FC = () => {
           onClearAll={clearAllFilters}
           onSave={() => setShowAdvancedFiltersModal(false)}
           onClose={() => setShowAdvancedFiltersModal(false)}
-          onOpenCategoryModal={() => { setShowAdvancedFiltersModal(false); setShowCategoryModal(true); }}
         />
       )}
 
       {showConfirmationModal && (
         <ConfirmationModal
-          message="¿Estás seguro de que quieres aplicar estos cambios a todos los gastos filtrados?"
+          title="Editar gastos filtrados"
+          message={`Se aplicarán estos cambios a los ${filteredExpenses.length} gastos que se ven ahora con los filtros actuales.`}
+          confirmLabel="Aplicar cambios"
           onConfirm={confirmBulkUpdate}
           onCancel={() => setShowConfirmationModal(false)}
         />
