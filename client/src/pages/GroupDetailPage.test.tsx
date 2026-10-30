@@ -7,7 +7,7 @@ import * as AuthContext from '../contexts/AuthContext';
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ groupId: 'test-group-id' }),
   useNavigate: () => vi.fn(),
-  Link: ({ children, to }: { children: React.ReactNode, to: string }) => <a href={to}>{children}</a>,
+  Link: ({ children, to, ...props }: { children: React.ReactNode, to: string }) => <a href={to} {...props}>{children}</a>,
 }));
 
 // Mock AddExpenseModal to capture props
@@ -267,3 +267,33 @@ describe('GroupDetailPage - Sockets', () => {
     // limpiemos la suite de tests
   });
 });
+
+describe('GroupDetailPage - header and tabs', () => {
+  beforeEach(() => {
+    setupFetchMock();
+  });
+
+  it('shows a back link, the member count and accessible tabs', async () => {
+    const mockUser = { _id: 'user-1', nombre: 'User 1', email: 'test@test.com', fecha_registro: '2022-01-01T00:00:00.000Z' };
+    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+      token: 'test-token',
+      user: mockUser,
+      login: vi.fn(),
+      logout: vi.fn(),
+      isAuthenticated: true,
+    });
+
+    render(<GroupDetailPage />);
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Group' })).toBeInTheDocument());
+
+    expect(screen.getByRole('link', { name: 'Volver al inicio' })).toHaveAttribute('href', '/');
+    expect(screen.getByText(/\d+ miembros?/)).toBeInTheDocument();
+    const expensesTab = screen.getByRole('tab', { name: 'Gastos' });
+    expect(expensesTab).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Saldos' }));
+    expect(screen.getByRole('tab', { name: 'Saldos' })).toHaveAttribute('aria-selected', 'true');
+    expect(expensesTab).toHaveAttribute('aria-selected', 'false');
+  });
+});
+

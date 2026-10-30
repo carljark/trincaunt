@@ -1,119 +1,157 @@
 @use 'sass:map';
 @use 'abstracts/variables' as *;
 @use 'abstracts/mixins' as *;
-@use 'components/buttons';
-@use 'components/forms';
 
-.group-detail-page {
-  padding: 0;
-  position: relative;
+// ============================================
+// PÁGINA DE GRUPO: CABECERA Y PESTAÑAS (BEM: .group-detail)
+// El contenido de cada pestaña trae su propio bloque y margen lateral.
+// ============================================
 
-  .header-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: map.get($spacing-scale, 3);
-    width: 100%;
-
-    .back-button {
-      @extend .btn;
-      @extend .btn-secondary;
-    }
-  }
-
-  h2, .tab-navigation {
-    padding: 0 map.get($spacing-scale, 3);
-  }
-
-  .tab-navigation-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    margin-bottom: map.get($spacing-scale, 4);
-    border-bottom: 2px solid $color-gray-300;
-
-    .scroll-arrow {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      background: linear-gradient(90deg, rgba(255,255,255,1) 40%, rgba(255,255,255,0));
-      width: 30px;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      cursor: pointer;
-      color: $color-primary;
-      font-weight: map.get($font-weights, bold);
-      z-index: 2;
-
-      &.left {
-        left: 0;
-        padding-left: map.get($spacing-scale, 2);
-      }
-
-      &.right {
-        right: 0;
-        justify-content: flex-end;
-        padding-right: map.get($spacing-scale, 2);
-        background: linear-gradient(270deg, rgba(255,255,255,1) 40%, rgba(255,255,255,0));
-      }
-    }
-  }
-
-  .tab-navigation {
-    display: flex;
-    justify-content: flex-start;
-    padding-bottom: map.get($spacing-scale, 2);
-    overflow-x: auto;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    gap: map.get($spacing-scale, 2);
-    padding: 0 map.get($spacing-scale, 3);
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-    scrollbar-width: none;
-
-    button {
-      @extend .btn;
-      flex-shrink: 0;
-      white-space: nowrap;
-
-      &.active {
-        @extend .btn-primary;
-      }
-    }
-  }
-
-  h2 {
-    text-align: center;
-    margin-bottom: map.get($spacing-scale, 4);
-  }
-
-  .fixed-add-expense-button-container {
-    position: fixed;
-    bottom: calc(#{map.get($spacing-scale, 3)} + env(safe-area-inset-bottom, 0px));
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    width: fit-content;
-    z-index: $z-index-fixed;
-    display: flex;
-    gap: map.get($spacing-scale, 3);
-    align-items: center;
-
-    .add-expense-button {
-      @extend .btn;
-      @extend .btn-primary;
-      @extend .btn-lg;
-      box-shadow: $box-shadow-lg;
-    }
-  }
+.group-detail {
+  position: relative; // Ancla del UserMenu
+  padding-top: map.get($spacing-scale, 4);
 
   @include respond-above(md) {
     max-width: 800px;
     margin: 0 auto;
+  }
+
+  // Hueco a la derecha para la campana y el menú de usuario
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+    min-height: 2.75rem;
+    padding: 0 6.5rem 0 map.get($spacing-scale, 1);
+  }
+
+  &__back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.5rem;
+    color: $color-gray-700;
+    border-radius: 50%;
+
+    &:hover {
+      background: $color-gray-200;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+    }
+  }
+
+  &__heading {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__title {
+    @include truncate;
+    margin: 0;
+    font-size: map.get($font-sizes, 2xl);
+    font-weight: map.get($font-weights, bold);
+    line-height: $line-height-tight;
+    color: $color-gray-900;
+  }
+
+  &__subtitle {
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: map.get($spacing-scale, 3) map.get($spacing-scale, 3) 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  // Barra de pestañas con scroll horizontal; los bordes se difuminan si hay más pestañas fuera
+  &__tabs {
+    display: flex;
+    gap: map.get($spacing-scale, 1);
+    margin: map.get($spacing-scale, 3) 0 map.get($spacing-scale, 4);
+    padding: 0 map.get($spacing-scale, 3);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid $color-border;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &--fade-right {
+      -webkit-mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+      mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+    }
+
+    &--fade-left {
+      -webkit-mask-image: linear-gradient(to left, black calc(100% - 2.5rem), transparent);
+      mask-image: linear-gradient(to left, black calc(100% - 2.5rem), transparent);
+    }
+
+    &--fade-left#{&}--fade-right {
+      -webkit-mask-image: linear-gradient(to right, transparent, black 2.5rem, black calc(100% - 2.5rem), transparent);
+      mask-image: linear-gradient(to right, transparent, black 2.5rem, black calc(100% - 2.5rem), transparent);
+    }
+  }
+
+  &__tab {
+    position: relative;
+    flex-shrink: 0;
+    min-height: 2.75rem;
+    padding: 0 map.get($spacing-scale, 3);
+    font-family: inherit;
+    font-size: map.get($font-sizes, base);
+    font-weight: map.get($font-weights, medium);
+    white-space: nowrap;
+    color: $color-text-muted;
+    background: none;
+    border: none;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-gray-900;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: -2px;
+      border-radius: $border-radius;
+    }
+
+    // Subrayado de la pestaña activa, encima del borde de la barra
+    &--active {
+      font-weight: map.get($font-weights, semibold);
+      color: $color-primary;
+
+      &::after {
+        content: '';
+        position: absolute;
+        right: map.get($spacing-scale, 2);
+        bottom: 0;
+        left: map.get($spacing-scale, 2);
+        height: 3px;
+        background: $color-primary;
+        border-radius: 3px 3px 0 0;
+      }
+    }
+  }
+
+  &__status {
+    margin: 0;
+    padding: map.get($spacing-scale, 6) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, base);
+    text-align: center;
+    color: $color-text-muted;
   }
 }

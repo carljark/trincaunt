@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
@@ -11,6 +11,7 @@ import AdvancedFiltersModal from '../components/AdvancedFiltersModal';
 import ExpenseGraph from '../components/ExpenseGraph'; // Import the new component
 import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes component
 import UserMenu from '../components/UserMenu';
+import { ChevronLeftIcon } from '../components/icons';
 import QuickExpenseFAB from '../components/QuickExpenseFAB';
 import GroupSettingsTab from '../components/GroupSettingsTab';
 import BalancesTab from '../components/BalancesTab';
@@ -725,63 +726,60 @@ const GroupDetailPage: React.FC = () => {
   }, [socket, groupId, isGlobal, fetchGroupData]);
 
 
-  if (loading && !initialDataLoaded) return <p>Cargando...</p>;
-  if (!group && !isGlobal) return <p>Grupo no encontrado.</p>;
+  if (loading && !initialDataLoaded) return <p className="group-detail__status">Cargando...</p>;
+  if (!group && !isGlobal) return <p className="group-detail__status">Grupo no encontrado.</p>;
+
+  const tabs: { id: typeof activeTab; label: string }[] = [
+    { id: 'expenses', label: 'Gastos' },
+    { id: 'balances', label: 'Saldos' },
+    { id: 'group', label: 'Grupo' },
+    { id: 'graph', label: 'Gráfico' },
+    { id: 'notes', label: 'Notas' },
+    ...(user?._id === group?.creado_por ? [{ id: 'edit' as const, label: 'Edición Múltiple' }] : []),
+  ];
+  const memberCount = group?.miembros.length ?? 0;
 
   return (
-    <div className="group-detail-page">
+    <div className="group-detail">
       <UserMenu onExportXLSX={handleExportXLSX} />
-      <div className="header-actions">
-        <button onClick={() => navigate(-1)} className="back-button">Volver</button>
-      </div>
-      <h2>{isGlobal ? 'Resumen Global' : group?.nombre}</h2>
-      
-      {error && <p className="error-message">Error: {error}</p>}
+      <header className="group-detail__header">
+        <Link to="/" className="group-detail__back" aria-label="Volver al inicio" title="Volver al inicio">
+          <ChevronLeftIcon />
+        </Link>
+        <div className="group-detail__heading">
+          <h1 className="group-detail__title">{isGlobal ? 'Todos los grupos' : group?.nombre}</h1>
+          <span className="group-detail__subtitle">
+            {isGlobal ? 'Tu parte de cada gasto' : `${memberCount} ${memberCount === 1 ? 'miembro' : 'miembros'}`}
+          </span>
+        </div>
+      </header>
+
+      {error && <p className="group-detail__error" role="alert">Error: {error}</p>}
 
       {!isGlobal && (
-        <div className="tab-navigation-wrapper">
-          {canScrollLeft && <div className="scroll-arrow left" onClick={() => tabRef.current?.scrollBy({ left: -100, behavior: 'smooth' })}>❮</div>}
-          <div className="tab-navigation" ref={tabRef} onScroll={checkTabScroll}>
+        <div
+          className={`group-detail__tabs ${canScrollLeft ? 'group-detail__tabs--fade-left' : ''} ${canScrollRight ? 'group-detail__tabs--fade-right' : ''}`}
+          role="tablist"
+          aria-label="Secciones del grupo"
+          ref={tabRef}
+          onScroll={checkTabScroll}
+        >
+          {tabs.map(tab => (
             <button
-              className={activeTab === 'expenses' ? 'active' : ''}
-              onClick={() => setActiveTab('expenses')}
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className={`group-detail__tab ${activeTab === tab.id ? 'group-detail__tab--active' : ''}`}
+              onClick={(e) => {
+                setActiveTab(tab.id);
+                // Que la pestaña elegida no quede medio cortada en el borde
+                e.currentTarget.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+              }}
             >
-              Gastos
+              {tab.label}
             </button>
-            <button
-              className={activeTab === 'balances' ? 'active' : ''}
-              onClick={() => setActiveTab('balances')}
-            >
-              Saldos
-            </button>
-            <button
-              className={activeTab === 'group' ? 'active' : ''}
-              onClick={() => setActiveTab('group')}
-            >
-              Grupo
-            </button>
-            <button
-              className={activeTab === 'graph' ? 'active' : ''}
-              onClick={() => setActiveTab('graph')}
-            >
-              Gráfico
-            </button>
-            <button
-              className={activeTab === 'notes' ? 'active' : ''}
-              onClick={() => setActiveTab('notes')}
-            >
-              Notas
-            </button>
-            {user?._id === group?.creado_por && (
-              <button
-                className={activeTab === 'edit' ? 'active' : ''}
-                onClick={() => setActiveTab('edit')}
-              >
-                Edición Múltiple
-              </button>
-            )}
-          </div>
-          {canScrollRight && <div className="scroll-arrow right" onClick={() => tabRef.current?.scrollBy({ left: 100, behavior: 'smooth' })}>❯</div>}
+          ))}
         </div>
       )}
 
