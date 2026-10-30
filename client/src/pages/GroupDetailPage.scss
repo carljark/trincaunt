@@ -92,11 +92,6 @@
     margin-bottom: map.get($spacing-scale, 4);
   }
 
-  // Edición múltiple (filtros y lista de gastos traen su propio margen lateral)
-  .expenses-tab-content .form-section {
-    padding: 0 map.get($spacing-scale, 3);
-  }
-
   .fixed-add-expense-button-container {
     position: fixed;
     bottom: calc(#{map.get($spacing-scale, 3)} + env(safe-area-inset-bottom, 0px));

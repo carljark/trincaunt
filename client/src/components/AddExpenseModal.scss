@@ -1,199 +1,49 @@
 @use 'sass:map';
-@use 'sass:color';
 @use 'abstracts/variables' as *;
 @use 'abstracts/mixins' as *;
 
 // ============================================
-// MODAL DE GASTOS (BEM: .expense-modal)
+// AÑADIR / EDITAR GASTO (BEM: .expense-modal), dentro de un Dialog
 // ============================================
 
-$pastel-blue-light: #e3f2fd;
-$pastel-blue: #bbdefb;
-$pastel-blue-dark: #90caf9;
-$pastel-teal-light: #e0f2f1;
-$pastel-teal: #b2dfdb;
-$pastel-green-light: #e8f5e9;
-$pastel-green: #c8e6c9;
-$pastel-gray-light: #fafafa;
-$pastel-gray: #f5f5f5;
-
-// Altura de los controles: compacta, pero con font-size 16px (inputs y selects) para que iOS no haga zoom al enfocar.
-$control-height: 2.5rem;
-
 .expense-modal {
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(135deg, rgba($pastel-blue-dark, 0.4) 0%, rgba($pastel-teal-light, 0.4) 100%);
-  backdrop-filter: blur(4px);
   display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: $z-index-modal-backdrop;
-  padding: map.get($spacing-scale, 3);
-  animation: expense-modal-fade-in 0.2s ease-out;
-
-  // En móvil, hoja inferior a todo el ancho
-  @include respond-below(md) {
-    align-items: flex-end;
-    padding: 0;
-  }
-
-  &__panel {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 520px;
-    max-height: 90vh;
-    max-height: 90dvh;
-    overflow: hidden;
-    background: linear-gradient(180deg, white 0%, $pastel-gray-light 100%);
-    border-radius: $border-radius-lg;
-    box-shadow:
-      0 25px 50px -12px rgba($color-gray-900, 0.15),
-      0 0 0 1px rgba($pastel-blue, 0.3);
-    animation: expense-modal-slide-up 0.3s ease-out;
-
-    // Franja decorativa superior
-    &::before {
-      content: '';
-      flex-shrink: 0;
-      height: 4px;
-      background: linear-gradient(90deg, $pastel-blue-dark 0%, $pastel-teal 50%, $pastel-green 100%);
-    }
-
-    @include respond-below(md) {
-      max-width: none;
-      max-height: calc(100vh - env(safe-area-inset-top, 0px) - #{map.get($spacing-scale, 3)});
-      max-height: calc(100dvh - env(safe-area-inset-top, 0px) - #{map.get($spacing-scale, 3)});
-      border-radius: $border-radius-lg $border-radius-lg 0 0;
-    }
-  }
-
-  &__header {
-    flex-shrink: 0;
-    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 4);
-    text-align: center;
-    border-bottom: 1px solid $pastel-gray;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 1.15rem;
-    font-weight: 600;
-    background: linear-gradient(135deg, $color-primary 0%, $color-info 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: map.get($spacing-scale, 2);
-
-    &::before {
-      content: '💰';
-      -webkit-text-fill-color: initial;
-    }
-  }
-
-  &__form {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-  }
-
-  // Zona con scroll; el footer queda fuera para no tapar campos
-  &__body {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: map.get($spacing-scale, 3) map.get($spacing-scale, 4);
-    display: flex;
-    flex-direction: column;
-    gap: map.get($spacing-scale, 2);
-
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: $pastel-blue;
-      border-radius: 3px;
-    }
-  }
+  flex-direction: column;
+  gap: map.get($spacing-scale, 3);
 
   &__error {
-    background: linear-gradient(135deg, rgba($color-danger, 0.1) 0%, rgba($color-danger, 0.05) 100%);
-    border: 1px solid rgba($color-danger, 0.2);
-    color: color.adjust($color-danger, $lightness: -15%);
-    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
-    border-radius: $border-radius;
-    font-size: 0.875rem;
-    text-align: center;
     margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
   }
 
-  // Dos campos en la misma línea
   &__row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: map.get($spacing-scale, 2);
   }
 
   &__field {
+    position: relative; // Ancla de las sugerencias
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: map.get($spacing-scale, 1);
     min-width: 0;
-    position: relative;
   }
 
   &__label {
-    font-weight: 500;
-    color: $color-gray-600;
-    font-size: 0.8rem;
-    line-height: 1.3;
+    @include field-label;
   }
 
   &__input {
-    width: 100%;
-    min-width: 0;
-    font-size: 1rem;
-    background-color: white;
-    border: 1.5px solid $pastel-blue;
-    border-radius: $border-radius;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-    &:focus {
-      outline: none;
-      border-color: $pastel-blue-dark;
-      box-shadow: 0 0 0 3px rgba($pastel-blue-dark, 0.2);
-    }
-
-    &:disabled {
-      background-color: $pastel-gray;
-      cursor: not-allowed;
-    }
-  }
-
-  &__input {
-    height: $control-height;
-    padding: 0 map.get($spacing-scale, 3);
-
-    &::placeholder {
-      color: $color-gray-400;
-    }
+    @include text-input;
 
     &--amount {
-      font-weight: 600;
-    }
-
-    // iOS da a los date vacíos/rellenos una altura propia; lo forzamos al resto
-    &--date {
-      -webkit-appearance: none;
-      appearance: none;
-      cursor: pointer;
+      font-weight: map.get($font-weights, semibold);
+      font-variant-numeric: tabular-nums;
     }
   }
 
@@ -202,143 +52,100 @@ $control-height: 2.5rem;
     top: 100%;
     left: 0;
     right: 0;
-    background: white;
-    border: 1.5px solid $pastel-blue;
-    border-radius: $border-radius;
-    list-style: none;
-    padding: map.get($spacing-scale, 1) 0;
-    margin: map.get($spacing-scale, 1) 0 0;
-    max-height: 160px;
-    overflow-y: auto;
     z-index: $z-index-dropdown;
-    box-shadow: 0 10px 40px rgba($color-gray-900, 0.1);
-    animation: expense-modal-fade-in 0.15s ease;
+    max-height: 12rem;
+    margin: map.get($spacing-scale, 1) 0 0;
+    padding: map.get($spacing-scale, 1) 0;
+    overflow-y: auto;
+    list-style: none;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+    box-shadow: $box-shadow-md;
+
+    &:empty {
+      display: none;
+    }
   }
 
   &__suggestion {
     padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-800;
     cursor: pointer;
-    transition: background-color 0.15s ease;
-    font-size: 0.9rem;
 
     &:hover {
-      background-color: $pastel-blue-light;
+      color: $color-primary;
+      background: $color-gray-100;
     }
 
     &--add {
+      font-weight: map.get($font-weights, medium);
       color: $color-primary;
-      font-weight: 500;
-      border-top: 1px dashed $pastel-blue;
-
-      &:hover {
-        background-color: $pastel-teal-light;
-      }
     }
   }
 
   &__chips {
     display: flex;
     flex-wrap: wrap;
-    gap: map.get($spacing-scale, 1);
-    margin-top: map.get($spacing-scale, 1);
+    gap: map.get($spacing-scale, 2);
   }
 
   &__chip {
     display: inline-flex;
     align-items: center;
     gap: map.get($spacing-scale, 1);
-    padding: 2px map.get($spacing-scale, 2);
-    border-radius: $border-radius-pill;
-    font-size: 0.8rem;
-    font-weight: 500;
-    animation: expense-modal-pop-in 0.2s ease;
-
-    // Colores pastel rotativos
-    &:nth-child(4n+1) {
-      background-color: $pastel-blue-light;
-      color: color.adjust($color-primary, $lightness: -10%);
-      border: 1px solid $pastel-blue;
-    }
-    &:nth-child(4n+2) {
-      background-color: $pastel-teal-light;
-      color: color.adjust(#26a69a, $lightness: -15%);
-      border: 1px solid $pastel-teal;
-    }
-    &:nth-child(4n+3) {
-      background-color: $pastel-green-light;
-      color: color.adjust($color-success-dark, $lightness: -15%);
-      border: 1px solid $pastel-green;
-    }
-    &:nth-child(4n+4) {
-      background-color: rgba($color-secondary, 0.1);
-      color: color.adjust($color-secondary, $lightness: -10%);
-      border: 1px solid rgba($color-secondary, 0.2);
-    }
+    min-height: 2.25rem;
+    padding: 0 map.get($spacing-scale, 1) 0 map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-primary;
+    background: rgba($color-primary, 0.08);
+    border-radius: 999px;
   }
 
   &__chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    font-size: 1.125rem;
+    line-height: 1;
+    color: inherit;
     background: none;
     border: none;
+    border-radius: 50%;
     cursor: pointer;
-    padding: 0;
-    font-size: 0.75rem;
-    line-height: 1;
-    opacity: 0.6;
-    transition: opacity 0.15s ease;
 
     &:hover {
-      opacity: 1;
+      background: rgba($color-primary, 0.15);
     }
   }
 
+  // Toda la fila es pulsable (objetivo táctil de 44px)
   &__checkbox {
     display: flex;
     align-items: center;
-    gap: map.get($spacing-scale, 2);
-    margin: 0;
-    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
-    background: linear-gradient(135deg, $pastel-teal-light 0%, $pastel-blue-light 100%);
-    border: 1px solid $pastel-teal;
-    border-radius: $border-radius;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: $color-gray-700;
+    gap: map.get($spacing-scale, 3);
+    min-height: 2.75rem;
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-800;
     cursor: pointer;
   }
 
   &__checkbox-input {
     flex-shrink: 0;
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 1.25rem;
+    height: 1.25rem;
     margin: 0;
     accent-color: $color-primary;
     cursor: pointer;
   }
 
-  &__footer {
-    flex-shrink: 0;
-    display: flex;
-    justify-content: flex-end;
-    gap: map.get($spacing-scale, 2);
-    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 4);
-    background: linear-gradient(180deg, $pastel-gray-light 0%, $pastel-gray 100%);
-    border-top: 1px solid rgba($pastel-blue, 0.3);
-
-    @include respond-below(md) {
-      padding-bottom: calc(#{map.get($spacing-scale, 2)} + env(safe-area-inset-bottom, 0px));
-    }
-  }
-
   &__button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: map.get($spacing-scale, 1);
-    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 4);
-    border-radius: $border-radius;
-    font-weight: 500;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
+    @include action-button;
 
     @include respond-below(md) {
       flex: 1;
@@ -350,62 +157,14 @@ $control-height: 2.5rem;
     }
 
     &--primary {
-      background: linear-gradient(135deg, $color-primary 0%, color.adjust($color-primary, $lightness: -5%) 100%);
       color: white;
-      border: none;
-      box-shadow: 0 2px 8px rgba($color-primary, 0.3);
-
-      &:hover:not(:disabled) {
-        background: linear-gradient(135deg, color.adjust($color-primary, $lightness: -3%) 0%, color.adjust($color-primary, $lightness: -8%) 100%);
-        box-shadow: 0 4px 12px rgba($color-primary, 0.4);
-        transform: translateY(-1px);
-      }
-
-      &:active:not(:disabled) {
-        transform: translateY(0);
-      }
+      background: $color-primary;
     }
 
     &--secondary {
-      background: white;
-      color: $color-gray-600;
-      border: 1.5px solid $pastel-gray;
-
-      &:hover:not(:disabled) {
-        background: $pastel-gray-light;
-        border-color: $color-gray-400;
-        color: $color-gray-700;
-      }
+      color: $color-gray-700;
+      background: $color-surface;
+      border-color: $color-gray-300;
     }
-  }
-}
-
-@keyframes expense-modal-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes expense-modal-slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes expense-modal-pop-in {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
   }
 }

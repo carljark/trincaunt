@@ -13,7 +13,7 @@ Every component that gets its styles touched ends up with its own BEM block. Old
 
 ## SCSS
 - One block per `.scss` file, written as a single root rule with `&__element` / `&--modifier` nesting. Keep selectors flat: one class per selector, no tag selectors (`input`, `label`) and no descendant chains.
-- The one allowed exception: matching the look of a child component that has no BEM API of its own (e.g. `MultiSelect`), via a modifier-scoped descendant like `&__field--payers .multi-select-container input`, with a comment saying why.
+- The one allowed exception: matching the look of a child component that has no BEM API of its own (e.g. a third-party widget), via a modifier-scoped descendant like `&__field--payers .widget-container input`, with a comment saying why.
 - Prefix `@keyframes` with the block name (`expense-modal-fade-in`) so they don't collide with other files.
 - Use the shared tokens from `abstracts/variables` and mixins (`respond-below(md)` etc.) as in the existing files.
 
@@ -27,4 +27,4 @@ Every component that gets its styles touched ends up with its own BEM block. Old
 - Modals render inside `components/Dialog` (bottom sheet on mobile, title + close, Escape, scroll lock, optional `footer` and `onSubmit`) and keep only their content in their own block. Don't build a new overlay.
 
 ## Mobile
-The main target is an iPhone in Safari (about 428x746 CSS px of usable viewport). Never take the text of an `input`, `select` or `textarea` below `font-size: 1rem` (16px), even when making a form more compact: iOS zooms in when they get focus and the layout breaks. Compact with padding, height, gaps and label size instead, and check the computed font-size of every focusable control (including ones inside child components like `MultiSelect`). Use `dvh` with a `vh` fallback, and add `env(safe-area-inset-*)` to padding at screen edges. After visual changes, check the result in the browser at that size.
+The main target is an iPhone in Safari (about 428x746 CSS px of usable viewport). Never take the text of an `input`, `select` or `textarea` below `font-size: 1rem` (16px), even when making a form more compact: iOS zooms in when they get focus and the layout breaks. Compact with padding, height, gaps and label size instead, and check the computed font-size of every focusable control (including ones inside child components). Use `dvh` with a `vh` fallback, and add `env(safe-area-inset-*)` to padding at screen edges. After visual changes, check the result in the browser at that size.

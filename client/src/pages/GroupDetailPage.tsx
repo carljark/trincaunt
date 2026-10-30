@@ -39,8 +39,6 @@ export const sumTransactionsToMe = (
 import './GroupDetailPage.scss';
 import ExpenseFilters from '../components/ExpenseFilters';
 import ExpenseList from '../components/ExpenseList';
-import '../components/AddExpenseModal.scss';
-import '../components/BulkEditForm.scss';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -811,15 +809,13 @@ const GroupDetailPage: React.FC = () => {
           />
 
           {activeTab === 'edit' && !isGlobal && (
-            <div className="form-section">
-              <h3>Edición Masiva</h3>
-              <BulkEditForm
-                members={group?.miembros || []}
-                onBulkUpdate={handleBulkUpdate}
-                token={token!}
-                groupId={groupId!}
-              />
-            </div>
+            <BulkEditForm
+              members={group?.miembros || []}
+              expenseCount={filteredExpenses.length}
+              onBulkUpdate={handleBulkUpdate}
+              token={token!}
+              groupId={groupId!}
+            />
           )}
 
           {activeTab === 'expenses' && (

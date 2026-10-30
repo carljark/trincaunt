@@ -257,7 +257,6 @@ describe('GroupDetailPage - AddExpenseModal paidByInitial prop', () => {
 
     await waitFor(() => {
       expect(screen.getByText('BulkEditForm')).toBeInTheDocument();
-      expect(screen.getByText('Edición Masiva')).toBeInTheDocument();
     });
   });
 });
