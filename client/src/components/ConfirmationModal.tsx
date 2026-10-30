@@ -1,22 +1,33 @@
 import React from 'react';
+import Dialog from './Dialog';
+import './ConfirmationModal.scss';
 
 interface ConfirmationModalProps {
   message: string;
+  title?: string;
+  confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ message, onConfirm, onCancel }) => {
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ message, title = '¿Confirmar?', confirmLabel = 'Confirmar', onConfirm, onCancel }) => {
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <p>{message}</p>
-        <div className="modal-actions">
-          <button onClick={onConfirm}>Confirmar</button>
-          <button onClick={onCancel}>Cancelar</button>
-        </div>
-      </div>
-    </div>
+    <Dialog
+      title={title}
+      onClose={onCancel}
+      footer={
+        <>
+          <button type="button" className="confirmation__button confirmation__button--secondary" onClick={onCancel}>
+            Cancelar
+          </button>
+          <button type="button" className="confirmation__button confirmation__button--primary" onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+        </>
+      }
+    >
+      <p className="confirmation__message">{message}</p>
+    </Dialog>
   );
 };
 
