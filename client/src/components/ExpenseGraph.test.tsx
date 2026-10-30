@@ -95,7 +95,8 @@ describe('ExpenseGraph', () => {
       expect(screen.queryByText('Cargando datos del gráfico...')).not.toBeInTheDocument();
     });
     
-    const startDateInput = screen.getByLabelText(/Desde:/);
+    fireEvent.click(screen.getByRole('button', { name: 'Más filtros' }));
+    const startDateInput = screen.getByLabelText('Desde');
     fireEvent.change(startDateInput, { target: { value: '2023-01-01' } });
 
     await waitFor(() => {
@@ -115,7 +116,8 @@ describe('ExpenseGraph', () => {
       expect(screen.queryByText('Cargando datos del gráfico...')).not.toBeInTheDocument();
     });
     
-    const endDateInput = screen.getByLabelText(/Hasta:/);
+    fireEvent.click(screen.getByRole('button', { name: 'Más filtros' }));
+    const endDateInput = screen.getByLabelText('Hasta');
     fireEvent.change(endDateInput, { target: { value: '2023-01-31' } });
 
     await waitFor(() => {
@@ -134,8 +136,8 @@ describe('ExpenseGraph', () => {
       expect(screen.queryByText('Cargando datos del gráfico...')).not.toBeInTheDocument();
     });
 
-    const mondayCheckbox = screen.getByLabelText('Lun');
-    fireEvent.click(mondayCheckbox); // Select Monday
+    fireEvent.click(screen.getByRole('button', { name: 'Más filtros' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lun' })); // Select Monday
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -153,10 +155,9 @@ describe('ExpenseGraph', () => {
       expect(screen.queryByText('Cargando datos del gráfico...')).not.toBeInTheDocument();
     });
 
-    const mondayCheckbox = screen.getByLabelText('Lun');
-    const tuesdayCheckbox = screen.getByLabelText('Mar');
-    fireEvent.click(mondayCheckbox);
-    fireEvent.click(tuesdayCheckbox);
+    fireEvent.click(screen.getByRole('button', { name: 'Más filtros' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lun' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mar' }));
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -198,5 +199,58 @@ describe('ExpenseGraph', () => {
       expect(screen.getByText('No hay datos disponibles para el rango de fechas y filtros seleccionados.')).toBeInTheDocument();
     });
     expect((Line as Mock)).not.toHaveBeenCalled(); // No chart should be rendered if no data
+  });
+
+  it('shows the total, the days with expenses and the daily average', async () => {
+    render(<ExpenseGraph groupId={mockGroupId} token={mockToken} />);
+    expect(await screen.findByText(/250,00\s€/)).toBeInTheDocument();
+    expect(screen.getByText(/2 días con gastos · media 125,00\s€\/día/)).toBeInTheDocument();
+    expect(screen.getByText('Gasto del grupo · Todo el historial')).toBeInTheDocument();
+  });
+
+  it('hides the legend for a single series', async () => {
+    render(<ExpenseGraph groupId={mockGroupId} token={mockToken} />);
+    await waitFor(() => expect(Line as Mock).toHaveBeenCalled());
+    const { options } = (Line as Mock).mock.calls.at(-1)![0];
+    expect(options.plugins.legend.display).toBe(false);
+  });
+
+  it('filters by period with the segmented control, and a second tap clears it', async () => {
+    render(<ExpenseGraph groupId={mockGroupId} token={mockToken} />);
+    await screen.findByText(/250,00\s€/);
+
+    const month = screen.getByRole('button', { name: 'Mes' });
+    fireEvent.click(month);
+    expect(month).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(global.fetch).toHaveBeenLastCalledWith(
+      expect.stringMatching(/startDate=\d{4}-\d{2}-01&endDate=\d{4}-\d{2}-\d{2}&$/),
+      expect.anything()
+    ));
+
+    fireEvent.click(month);
+    expect(month).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('keeps each category colour when another one is removed', async () => {
+    render(<ExpenseGraph groupId={mockGroupId} token={mockToken} />);
+    await screen.findByText(/250,00\s€/);
+    fireEvent.click(screen.getByRole('button', { name: 'Más filtros' }));
+    const input = screen.getByLabelText('Categorías');
+    for (const cat of ['Food', 'Rent']) {
+      fireEvent.change(input, { target: { value: cat } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+    }
+
+    const colorOf = (label: string) => {
+      const { data } = (Line as Mock).mock.calls.at(-1)![0];
+      return data.datasets.find((d: { label: string }) => d.label === label)?.borderColor;
+    };
+    await waitFor(() => expect(colorOf('Rent')).toBeDefined());
+    const rentColor = colorOf('Rent');
+    expect(rentColor).not.toBe(colorOf('Food'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar Food' }));
+    await waitFor(() => expect(colorOf('Food')).toBeUndefined());
+    expect(colorOf('Rent')).toBe(rentColor);
   });
 });

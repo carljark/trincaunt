@@ -1,279 +1,331 @@
+@use 'sass:map';
 @use 'abstracts/variables' as *;
 @use 'abstracts/mixins' as *;
 
-.expense-graph-container {
-  padding: 0; // Remove padding to use full width
-  background-color: transparent; // Make it blend with parent if needed
-  border-radius: 0; // Remove border radius for full width look
-  box-shadow: none; // Remove shadow
-  margin-top: 1rem;
-  border: none;
-  width: 100%;
+// ============================================
+// PESTAÑA GRÁFICO (BEM: .expense-graph)
+// ============================================
 
-  .filters {
+$control-height: 2.75rem;
+
+.expense-graph {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 4);
+  padding: 0 map.get($spacing-scale, 3) map.get($spacing-scale, 6);
+
+  // Periodo y botón de filtros en una fila, encima del gráfico
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  // Control segmentado (mismo aspecto que en la lista de gastos)
+  &__presets {
+    display: grid;
+    flex: 1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2px;
+    padding: 2px;
+    background: $color-gray-200;
+    border-radius: $border-radius;
+  }
+
+  &__preset {
+    min-height: 2.5rem;
+    padding: 0 map.get($spacing-scale, 1);
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+    background: transparent;
+    border: none;
+    border-radius: calc(#{$border-radius} - 2px);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 1px;
+    }
+
+    &--active {
+      color: $color-primary;
+      font-weight: map.get($font-weights, semibold);
+      background: $color-surface;
+      box-shadow: $box-shadow-sm;
+    }
+  }
+
+  &__filters-toggle {
+    @include icon-button;
+    position: relative;
+
+    &--open {
+      color: white;
+      background: $color-primary;
+
+      &:hover {
+        background: $color-primary;
+      }
+    }
+
+    // Punto que avisa de filtros aplicados aunque el panel esté cerrado
+    &--active::after {
+      content: '';
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 0.5rem;
+      height: 0.5rem;
+      background: $color-warning;
+      border: 2px solid $color-surface;
+      border-radius: 50%;
+    }
+  }
+
+  &__card {
+    @include section-card;
+  }
+
+  &__card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__title {
+    @include section-title;
+  }
+
+  &__clear {
+    min-height: 2.25rem;
+    padding: 0 map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, semibold);
+    color: $color-primary;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+    }
+  }
+
+  &__dates {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__field {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background-color: #f8fafc;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
+    gap: map.get($spacing-scale, 1);
+    min-width: 0;
 
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .filter-label {
-      font-weight: 600;
-      color: #4a5568;
-      margin-bottom: 0.3rem;
-      display: block;
-      font-size: 0.85rem;
-    }
-
-    .date-presets-container {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .date-presets {
-      display: flex;
-      gap: 0.5rem;
-
-      .preset-btn {
-        flex: 1;
-        max-width: 50px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid #e2e8f0;
-        background-color: white;
-        color: #4a5568;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
-
-        &:hover {
-          border-color: $primary-color;
-          color: $primary-color;
-        }
-
-        &.active {
-          background-color: $primary-color;
-          color: white;
-          border-color: $primary-color;
-        }
-      }
-    }
-
-    .custom-dates {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      align-items: flex-end;
-
-      label {
-        display: flex;
-        flex-direction: column;
-        gap: 0.2rem;
-        font-weight: 600;
-        color: #4a5568;
-        font-size: 0.8rem;
-        flex: 1;
-        min-width: 120px;
-
-        input[type="date"] {
-          padding: 0.5rem;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          background-color: white;
-          color: #2d3748;
-          font-family: inherit;
-          font-size: 0.85rem;
-          height: 38px;
-          box-sizing: border-box;
-
-          &:disabled {
-            background-color: #f1f5f9;
-            color: #94a3b8;
-          }
-        }
-      }
-
-      .clear-preset {
-        padding: 0.5rem 0.75rem;
-        background-color: #e2e8f0;
-        color: #4a5568;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 0.8rem;
-        height: 38px;
-      }
-    }
-
-    .category-container {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-
-      input[type="text"] {
-        padding: 0.6rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        font-size: 0.9rem;
-        width: 100%;
-        box-sizing: border-box;
-
-        &:focus {
-          border-color: $primary-color;
-          outline: none;
-        }
-      }
-
-      .suggestions-list {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background-color: white;
-        border: 1px solid #e2e8f0;
-        border-top: none;
-        border-radius: 0 0 6px 6px;
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        max-height: 200px;
-        overflow-y: auto;
-        z-index: 10;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-
-        li {
-          padding: 0.6rem 1rem;
-          cursor: pointer;
-          font-size: 0.9rem;
-
-          &:hover {
-            background-color: #f1f5f9;
-            color: $primary-color;
-          }
-        }
-      }
-
-      .selected-categories {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-        margin-top: 0.5rem;
-
-        .selected-category {
-          background-color: $primary-color;
-          color: white;
-          padding: 0.25rem 0.6rem;
-          border-radius: 15px;
-          font-size: 0.8rem;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-
-          button {
-            background: none;
-            border: none;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            padding: 0;
-            line-height: 1;
-            font-size: 1rem;
-          }
-        }
-      }
-    }
-
-    .weekday-filters {
-      .weekdays-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-      }
-
-      .weekday-checkbox {
-        display: flex;
-        align-items: center;
-        padding: 0.3rem 0.6rem;
-        background-color: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 15px;
-        cursor: pointer;
-        font-size: 0.8rem;
-        color: #4a5568;
-
-        input[type="checkbox"] {
-          display: none;
-        }
-
-        &.checked {
-          background-color: $secondary-color;
-          color: white;
-          border-color: $secondary-color;
-        }
-      }
+    &--categories {
+      position: relative; // Ancla de las sugerencias
     }
   }
 
-  .chart-wrapper {
+  &__label {
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  // 16px: por debajo, iOS hace zoom al enfocar
+  &__input {
     width: 100%;
-    height: 350px; // Fixed height for mobile
-    background-color: white;
-    padding: 0.5rem;
-    border-radius: 8px;
-    box-sizing: border-box;
-  }
+    min-width: 0;
+    height: $control-height;
+    padding: 0 map.get($spacing-scale, 3);
+    font-family: inherit;
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-900;
+    background: $color-surface;
+    border: 1.5px solid $color-gray-300;
+    border-radius: $border-radius;
+    -webkit-appearance: none;
+    appearance: none;
 
-  .loading-state, .no-data {
-    text-align: center;
-    padding: 2rem 1rem;
-    color: #718096;
-    background-color: #f8fafc;
-    border-radius: 8px;
-  }
-
-  @include respond-above(md) {
-    padding: 1rem;
-    
-    .chart-wrapper {
-      height: 450px;
-      padding: 1.5rem;
+    &::placeholder {
+      color: $color-gray-500;
     }
 
-    .filters {
-      flex-direction: row;
-      flex-wrap: wrap;
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
+    }
 
-      .filter-group {
-        flex-direction: row;
-        align-items: flex-start;
-        flex: 1 1 100%;
-      }
+    &:disabled {
+      color: $color-gray-500;
+      background: $color-gray-100;
+    }
+  }
 
-      .date-presets-container {
-        flex: 0 0 auto;
-      }
+  &__suggestions {
+    position: absolute;
+    top: calc(100% - #{map.get($spacing-scale, 1)});
+    left: 0;
+    right: 0;
+    z-index: $z-index-dropdown;
+    max-height: 12rem;
+    margin: 0;
+    padding: map.get($spacing-scale, 1) 0;
+    overflow-y: auto;
+    list-style: none;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+    box-shadow: $box-shadow-md;
+  }
 
-      .custom-dates {
-        flex: 1 1 auto;
-      }
+  &__suggestion {
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-800;
+    cursor: pointer;
 
-      .category-container {
-        flex: 1 1 100%;
-      }
+    &:hover {
+      color: $color-primary;
+      background: $color-gray-100;
+    }
+  }
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  // El nombre identifica la serie; el punto de color la enlaza con la línea
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+    min-height: 2.25rem;
+    padding: 0 map.get($spacing-scale, 1) 0 map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-800;
+    background: $color-gray-100;
+    border: 1px solid $color-border;
+    border-radius: 999px;
+  }
+
+  &__swatch {
+    flex-shrink: 0;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+  }
+
+  &__chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    font-size: 1.125rem;
+    line-height: 1;
+    color: $color-gray-600;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-negative;
+      background: $color-gray-200;
+    }
+  }
+
+  &__weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: map.get($spacing-scale, 1);
+  }
+
+  &__weekday {
+    min-height: 2.5rem;
+    padding: 0;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+    background: $color-surface;
+    border: 1.5px solid $color-gray-300;
+    border-radius: $border-radius;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 1px;
+    }
+
+    &--active {
+      color: white;
+      background: $color-primary;
+      border-color: $color-primary;
+    }
+  }
+
+  &__summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__summary-label {
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__total {
+    @include money;
+    font-size: map.get($font-sizes, 3xl);
+    line-height: $line-height-tight;
+    color: $color-gray-900;
+  }
+
+  &__summary-meta {
+    font-size: map.get($font-sizes, sm);
+    font-variant-numeric: tabular-nums;
+    color: $color-text-muted;
+  }
+
+  // Chart.js necesita un contenedor con altura fija (maintainAspectRatio: false)
+  &__chart {
+    position: relative;
+    height: 16rem;
+
+    @include respond-above(md) {
+      height: 24rem;
+    }
+  }
+
+  &__status {
+    margin: 0;
+    padding: map.get($spacing-scale, 5) 0;
+    font-size: map.get($font-sizes, base);
+    text-align: center;
+    color: $color-text-muted;
+
+    &--error {
+      color: $color-negative;
     }
   }
 }
