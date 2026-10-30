@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import Dialog from './Dialog';
+import './RecordPaymentModal.scss';
 
 interface RecordPaymentModalProps {
   groupId: string;
@@ -12,6 +14,12 @@ interface RecordPaymentModalProps {
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
+const formatEuros = (amount: number) =>
+  amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+// Admite coma decimal, como se escribe en España
+const parseAmount = (value: string) => parseFloat(value.replace(',', '.'));
+
 const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ groupId, token, members, onClose, onPaymentRecorded }) => {
   const [fromUser, setFromUser] = useState<string>('');
   const [toUser, setToUser] = useState<string>('');
@@ -19,31 +27,32 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ groupId, token,
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
+  const parsedAmount = parseAmount(amount);
+  const nameOf = (id: string) => members.find(m => m._id === id)?.nombre;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
-    if (!fromUser || !toUser || !amount || parseFloat(amount) <= 0) {
+    if (!fromUser || !toUser || !(parsedAmount > 0)) {
       setError('Por favor, selecciona ambos usuarios y un monto válido.');
-      setLoading(false);
       return;
     }
 
     if (fromUser === toUser) {
       setError('No puedes registrar un pago a ti mismo.');
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
     try {
       await axios.post(
         `${apiHost}${apiBaseUrl}/debt-transactions`,
         {
           group: groupId,
-          from: fromUser, 
+          from: fromUser,
           to: toUser,
-          amount: parseFloat(amount),
+          amount: parsedAmount,
         },
         {
           headers: {
@@ -62,59 +71,72 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ groupId, token,
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h3>Registrar Nuevo Pago</h3>
-        {error && <p className="error-message">{error}</p>}
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="fromUser">Pagador:</label>
-            <select id="fromUser" value={fromUser} onChange={(e) => setFromUser(e.target.value)} required>
-              <option value="">Seleccionar...</option>
-              {members.map((member) => (
-                <option key={member._id} value={member._id}>
-                  {member.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
+    <Dialog
+      title="Registrar pago"
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      busy={loading}
+      footer={
+        <>
+          <button type="button" className="record-payment__button record-payment__button--secondary" onClick={onClose} disabled={loading}>
+            Cancelar
+          </button>
+          <button type="submit" className="record-payment__button record-payment__button--primary" disabled={loading}>
+            {loading ? 'Registrando...' : 'Registrar pago'}
+          </button>
+        </>
+      }
+    >
+      <div className="record-payment">
+        {error && <p className="record-payment__error" role="alert">{error}</p>}
 
-          <div className="form-group">
-            <label htmlFor="toUser">Receptor:</label>
-            <select id="toUser" value={toUser} onChange={(e) => setToUser(e.target.value)} required>
-              <option value="">Seleccionar...</option>
-              {members.map((member) => (
-                <option key={member._id} value={member._id}>
-                  {member.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
+        <label className="record-payment__field">
+          <span className="record-payment__label">Quién paga</span>
+          <select className="record-payment__select" value={fromUser} onChange={(e) => setFromUser(e.target.value)} required>
+            <option value="">Elige a alguien</option>
+            {members.map((member) => (
+              <option key={member._id} value={member._id}>
+                {member.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
 
-          <div className="form-group">
-            <label htmlFor="amount">Monto:</label>
+        <label className="record-payment__field">
+          <span className="record-payment__label">A quién</span>
+          <select className="record-payment__select" value={toUser} onChange={(e) => setToUser(e.target.value)} required>
+            <option value="">Elige a alguien</option>
+            {members.map((member) => (
+              <option key={member._id} value={member._id} disabled={member._id === fromUser}>
+                {member.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="record-payment__field">
+          <span className="record-payment__label">Importe</span>
+          <span className="record-payment__amount">
             <input
-              type="number"
-              id="amount"
+              className="record-payment__input"
+              type="text"
+              inputMode="decimal"
+              placeholder="0,00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              min="0.01"
-              step="0.01"
               required
             />
-          </div>
+            <span className="record-payment__currency" aria-hidden="true">€</span>
+          </span>
+        </label>
 
-          <div className="modal-actions">
-            <button type="submit" disabled={loading}>
-              {loading ? 'Registrando...' : 'Registrar Pago'}
-            </button>
-            <button type="button" onClick={onClose} disabled={loading}>
-              Cancelar
-            </button>
-          </div>
-        </form>
+        {fromUser && toUser && fromUser !== toUser && parsedAmount > 0 && (
+          <p className="record-payment__summary">
+            {nameOf(fromUser)} paga {formatEuros(parsedAmount)} a {nameOf(toUser)}
+          </p>
+        )}
       </div>
-    </div>
+    </Dialog>
   );
 };
 

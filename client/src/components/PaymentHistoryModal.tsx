@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import Dialog from './Dialog';
+import { TrashIcon } from './icons';
+import './PaymentHistoryModal.scss';
 
 interface PaymentHistoryModalProps {
   groupId: string;
@@ -18,9 +21,11 @@ interface DebtTransaction {
   createdAt: string;
 }
 
-const formatCurrency = (amount: number) => {
-  return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
+const formatEuros = (amount: number) =>
+  amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -82,34 +87,43 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ groupId, toke
     return member ? member.nombre : 'Usuario Desconocido';
   };
 
+  const sortedPayments = [...payments].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h3>Historial de Pagos</h3>
-        {error && <p className="error-message">{error}</p>}
+    <Dialog title="Historial de pagos" onClose={onClose}>
+      <div className="payment-history">
+        {error && <p className="payment-history__error" role="alert">{error}</p>}
         {loading ? (
-          <p>Cargando historial de pagos...</p>
+          <p className="payment-history__status">Cargando historial de pagos...</p>
         ) : payments.length === 0 ? (
-          <p>No hay historial de pagos registrado.</p>
+          <p className="payment-history__status">No hay historial de pagos registrado.</p>
         ) : (
-          <ul className="payment-history-list">
-            {payments.map((payment) => (
-              <li key={payment._id}>
-                {getUserName(payment.from._id)} pagó {formatCurrency(payment.amount)}€ a {getUserName(payment.to._id)} el{' '}
-                {new Date(payment.createdAt).toLocaleDateString()}
-                <button onClick={() => handleDeletePayment(payment._id)} className="delete-payment-button">Eliminar</button>
-              </li>
-            ))}
+          <ul className="payment-history__list">
+            {sortedPayments.map((payment) => {
+              const description = `${getUserName(payment.from._id)} pagó a ${getUserName(payment.to._id)}`;
+              return (
+                <li key={payment._id} className="payment-history__item">
+                  <span className="payment-history__text">
+                    <span className="payment-history__who">{description}</span>
+                    <span className="payment-history__date">{formatDate(payment.createdAt)}</span>
+                  </span>
+                  <span className="payment-history__amount">{formatEuros(payment.amount)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePayment(payment._id)}
+                    className="payment-history__delete"
+                    aria-label={`Eliminar pago: ${description}, ${formatEuros(payment.amount)}`}
+                    title="Eliminar"
+                  >
+                    <TrashIcon />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
-
-        <div className="modal-actions">
-          <button type="button" onClick={onClose}>
-            Cerrar
-          </button>
-        </div>
       </div>
-    </div>
+    </Dialog>
   );
 };
 

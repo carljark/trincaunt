@@ -90,3 +90,9 @@ export const ChevronLeftIcon: React.FC<IconProps> = (props) => (
     <path d="m15 6-6 6 6 6" />
   </svg>
 );
+
+export const CloseIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
