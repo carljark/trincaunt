@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
-import Group, { IGroup, IGroupPresupuesto, PRESUPUESTO_POR_DEFECTO } from '../models/Group';
+import Group, { IGroup, IGroupPresupuesto, ILimiteCategoria, PRESUPUESTO_POR_DEFECTO } from '../models/Group';
+import CategoryAlias from '../models/CategoryAlias';
 import Expense, { IExpense } from '../models/Expense';
 import Income, { IIncome } from '../models/Income';
 import RecurringItem, { IRecurringItem } from '../models/RecurringItem';
@@ -41,6 +42,14 @@ export interface BudgetLine<E> {
   movimiento_id?: string; // Gasto o ingreso real, si existe
 }
 
+export interface CategoryLimitStatus {
+  categoria: string;
+  limite: number;
+  gastado: number;
+  restante: number;   // negativo si te has pasado
+  porcentaje: number; // gastado / limite * 100, redondeado
+}
+
 export interface BudgetSummary {
   ciclo: {
     inicio: string;
@@ -62,7 +71,10 @@ export interface BudgetSummary {
   porDia: number | null;
   porSemana: number | null;
   ritmo: { gastoIdeal: number; desviacion: number } | null; // desviacion > 0: vas por encima
+  limitesCategoria: CategoryLimitStatus[];
 }
+
+const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 
 const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo'] as const;
 const INCOME_FIELDS = ['descripcion', 'monto', 'fecha'] as const;
@@ -142,8 +154,11 @@ export class BudgetService {
       'previsto'
     );
 
-    const gastosVariables = sum(expenses.filter(e => !e.recurrente_id).map(e => userShareOf(e, userId)));
-    const otrosGrupos = config.incluirOtrosGrupos ? await this.otherGroupsShare(groupId, userId, cycle) : null;
+    const variables = expenses.filter(e => !e.recurrente_id);
+    const gastosVariables = sum(variables.map(e => userShareOf(e, userId)));
+    const otros = config.incluirOtrosGrupos ? await this.otherGroupsShare(groupId, userId, cycle) : null;
+    const otrosGrupos = otros && { total: otros.total, grupos: otros.grupos };
+    const limitesCategoria = await this.categoryLimits(config.limitesCategoria, [...variables, ...(otros?.expenses ?? [])], userId);
 
     const ingresosTotal = sum(ingresos.map(l => l.importe));
     const facturasTotal = sum(facturas.map(l => l.importe));
@@ -183,8 +198,41 @@ export class BudgetService {
       disponible,
       porDia,
       porSemana,
-      ritmo: isCurrent ? { gastoIdeal, desviacion: round2(gastado - gastoIdeal) } : null
+      ritmo: isCurrent ? { gastoIdeal, desviacion: round2(gastado - gastoIdeal) } : null,
+      limitesCategoria
     };
+  }
+
+  /**
+   * Lo gastado del ciclo en cada categoría con límite: tus gastos variables (no las
+   * facturas) y, si está activado, tu parte de los de otros grupos. Un gasto cuenta en
+   * una categoría si la lleva o si lleva un alias suyo (del mismo grupo o global).
+   */
+  private async categoryLimits(limits: ILimiteCategoria[], expenses: IExpense[], userId: string): Promise<CategoryLimitStatus[]> {
+    if (!limits.length) return [];
+
+    const groupIds = [...new Set(expenses.map(e => idOf(e.grupo_id)))];
+    const aliases = groupIds.length
+      ? await CategoryAlias.find({ $or: [{ grupo_id: { $in: groupIds } }, { grupo_id: null }] }).lean()
+      : [];
+
+    const spent = new Map<string, number>(limits.map(l => [normalize(l.categoria), 0]));
+    for (const expense of expenses) {
+      const share = userShareOf(expense, userId);
+      if (!share) continue;
+      const own = new Set((expense.categoria ?? []).map(normalize));
+      const cats = new Set(own);
+      for (const alias of aliases) {
+        if (alias.grupo_id && idOf(alias.grupo_id) !== idOf(expense.grupo_id)) continue;
+        if (own.has(normalize(alias.alias))) alias.mainCategories.forEach(c => cats.add(normalize(c)));
+      }
+      for (const key of cats) if (spent.has(key)) spent.set(key, spent.get(key)! + share);
+    }
+
+    return limits.map(({ categoria, limite }) => {
+      const gastado = round2(spent.get(normalize(categoria)) ?? 0);
+      return { categoria, limite, gastado, restante: round2(limite - gastado), porcentaje: Math.round(gastado / limite * 100) };
+    });
   }
 
   /**
@@ -222,7 +270,7 @@ export class BudgetService {
   /** Tu parte de los gastos del ciclo en tus grupos compartidos (no en otros personales). */
   private async otherGroupsShare(groupId: string, userId: string, cycle: Cycle) {
     const groups = await Group.find({ miembros: userId, _id: { $ne: groupId }, tipo: { $ne: 'personal' } });
-    if (groups.length === 0) return { total: 0, grupos: [] };
+    if (groups.length === 0) return { total: 0, grupos: [], expenses: [] };
 
     const expenses = await Expense.find({
       grupo_id: { $in: groups.map(g => g._id) },
@@ -237,7 +285,7 @@ export class BudgetService {
       }))
       .filter(g => g.total > 0);
 
-    return { total: sum(grupos.map(g => g.total)), grupos };
+    return { total: sum(grupos.map(g => g.total)), grupos, expenses };
   }
 
   // ---------- Partidas recurrentes ----------

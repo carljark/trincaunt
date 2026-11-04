@@ -907,6 +907,7 @@ const GroupDetailPage: React.FC = () => {
           tipo={group.tipo ?? 'compartido'}
           presupuesto={group.presupuesto}
           onUpdateBudget={handleUpdateBudget}
+          categories={allCategories}
         />
       )}
 

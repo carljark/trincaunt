@@ -199,7 +199,7 @@ describe('GroupService', () => {
       await groupService.updateGroup('group-1', { tipo: 'personal', presupuesto: { diaInicioCiclo: 28 } } as any, 'user-123');
 
       expect(group.tipo).toBe('personal');
-      expect((group as any).presupuesto).toEqual({ diaInicioCiclo: 28, ahorroObjetivo: 0, incluirOtrosGrupos: false });
+      expect((group as any).presupuesto).toEqual({ diaInicioCiclo: 28, ahorroObjetivo: 0, incluirOtrosGrupos: false, limitesCategoria: [] });
       expect(group.save).toHaveBeenCalled();
     });
 
@@ -228,8 +228,15 @@ describe('GroupService', () => {
 
   describe('validatePresupuesto', () => {
     it('merges partial changes into the current config', () => {
-      expect(validatePresupuesto({ ahorroObjetivo: 150.555 }, { diaInicioCiclo: 25, ahorroObjetivo: 0, incluirOtrosGrupos: true }))
-        .toEqual({ diaInicioCiclo: 25, ahorroObjetivo: 150.56, incluirOtrosGrupos: true });
+      expect(validatePresupuesto({ ahorroObjetivo: 150.555 }, { diaInicioCiclo: 25, ahorroObjetivo: 0, incluirOtrosGrupos: true } as any))
+        .toEqual({ diaInicioCiclo: 25, ahorroObjetivo: 150.56, incluirOtrosGrupos: true, limitesCategoria: [] });
+    });
+
+    it('cleans the category limits and keeps them when not sent', () => {
+      const result = validatePresupuesto({ limitesCategoria: [{ categoria: ' Ocio ', limite: 99.999 }] });
+      expect(result.limitesCategoria).toEqual([{ categoria: 'Ocio', limite: 100 }]);
+      expect(validatePresupuesto({ ahorroObjetivo: 10 }, result).limitesCategoria).toEqual([{ categoria: 'Ocio', limite: 100 }]);
+      expect(validatePresupuesto({ limitesCategoria: [] }, result).limitesCategoria).toEqual([]);
     });
 
     it.each([
@@ -238,6 +245,12 @@ describe('GroupService', () => {
       ['non-integer day', { diaInicioCiclo: 2.5 }],
       ['negative savings', { ahorroObjetivo: -1 }],
       ['non-boolean flag', { incluirOtrosGrupos: 'yes' }],
+      ['limits not a list', { limitesCategoria: 'Ocio' }],
+      ['limit without category', { limitesCategoria: [{ categoria: ' ', limite: 10 }] }],
+      ['zero limit', { limitesCategoria: [{ categoria: 'Ocio', limite: 0 }] }],
+      ['limit as text', { limitesCategoria: [{ categoria: 'Ocio', limite: '10' }] }],
+      ['duplicated category', { limitesCategoria: [{ categoria: 'Ocio', limite: 10 }, { categoria: 'ocio', limite: 20 }] }],
+      ['too many limits', { limitesCategoria: Array.from({ length: 31 }, (_, i) => ({ categoria: `C${i}`, limite: 1 })) }],
       ['not an object', 'x']
     ])('rejects %s', (_label, input) => {
       expect(() => validatePresupuesto(input)).toThrow();

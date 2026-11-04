@@ -18,12 +18,14 @@ interface GroupSettingsTabProps {
   presupuesto?: IBudgetConfig;
   // Sin esta prop no se muestra la tarjeta de presupuesto
   onUpdateBudget?: (change: BudgetSettingsChange) => Promise<boolean>;
+  // Sugerencias para los límites por categoría
+  categories?: string[];
 }
 
 const initialOf = (name: string) => name.trim().charAt(0).toUpperCase() || '?';
 
 const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({
-  groupName, members, isOwner, creatorName, onRename, onAddMember, onLeave, tipo = 'compartido', presupuesto, onUpdateBudget
+  groupName, members, isOwner, creatorName, onRename, onAddMember, onLeave, tipo = 'compartido', presupuesto, onUpdateBudget, categories = []
 }) => {
   const isPersonal = tipo === 'personal';
   const [isEditingName, setIsEditingName] = useState(false);
@@ -102,6 +104,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({
           memberCount={members.length}
           isOwner={isOwner}
           onSave={onUpdateBudget}
+          categories={categories}
         />
       )}
 

@@ -4,8 +4,10 @@ import Group from '../../src/models/Group';
 import Expense from '../../src/models/Expense';
 import Income from '../../src/models/Income';
 import RecurringItem from '../../src/models/RecurringItem';
+import CategoryAlias from '../../src/models/CategoryAlias';
 
 vi.mock('../../src/models/Group');
+vi.mock('../../src/models/CategoryAlias');
 vi.mock('../../src/models/Expense');
 vi.mock('../../src/models/Income');
 vi.mock('../../src/models/RecurringItem');
@@ -116,7 +118,7 @@ describe('BudgetService', () => {
       (Group.findById as vi.Mock).mockResolvedValue({ ...personalGroup(), presupuesto: undefined });
       const summary = await service.getSummary(groupId, userId);
 
-      expect(summary.configuracion).toEqual({ diaInicioCiclo: 1, ahorroObjetivo: 0, incluirOtrosGrupos: false });
+      expect(summary.configuracion).toEqual({ diaInicioCiclo: 1, ahorroObjetivo: 0, incluirOtrosGrupos: false, limitesCategoria: [] });
       expect(summary.ciclo).toMatchObject({ inicio: '2026-11-01', fin: '2026-12-01' });
     });
 
@@ -160,6 +162,59 @@ describe('BudgetService', () => {
       expect(summary.otrosGrupos).toEqual({ total: 30, grupos: [{ _id: pisoId.toString(), nombre: 'Piso', total: 30 }] });
       expect(summary.gastado).toBe(180);
       expect(summary.disponible).toBe(910);
+    });
+
+    it('has no category limits by default', async () => {
+      const summary = await service.getSummary(groupId, userId);
+      expect(summary.limitesCategoria).toEqual([]);
+      expect(CategoryAlias.find).not.toHaveBeenCalled();
+    });
+
+    it('tracks each category limit with its aliases, leaving bills out', async () => {
+      (Group.findById as vi.Mock).mockResolvedValue(personalGroup({
+        diaInicioCiclo: 28, ahorroObjetivo: 0, incluirOtrosGrupos: false,
+        limitesCategoria: [{ categoria: 'Ocio', limite: 100 }, { categoria: 'Hogar', limite: 50 }, { categoria: 'Ropa', limite: 80 }]
+      }));
+      (Expense.find as vi.Mock).mockResolvedValue([
+        // Factura: no cuenta aunque sea de Hogar
+        { _id: oid(), grupo_id: groupId, monto: 700, fecha: d('2026-11-01'), pagado_por: me, participantes: me, asume_gasto: false, recurrente_id: alquilerId, categoria: ['Hogar'] },
+        { _id: oid(), grupo_id: groupId, monto: 60, fecha: d('2026-11-02'), pagado_por: me, participantes: me, asume_gasto: false, categoria: ['ocio'] },
+        // "Cervezas" es un alias de Ocio y Hogar a la vez
+        { _id: oid(), grupo_id: groupId, monto: 55.5, fecha: d('2026-11-03'), pagado_por: me, participantes: me, asume_gasto: false, categoria: ['Cervezas'] },
+        // Alias de otro grupo: no se aplica aquí
+        { _id: oid(), grupo_id: groupId, monto: 10, fecha: d('2026-11-03'), pagado_por: me, participantes: me, asume_gasto: false, categoria: ['Zapatos'] }
+      ]);
+      (CategoryAlias.find as vi.Mock).mockReturnValue({
+        lean: async () => [
+          { alias: 'cervezas', mainCategories: ['Ocio', 'Hogar'], grupo_id: new mongoose.Types.ObjectId(groupId) },
+          { alias: 'Zapatos', mainCategories: ['Ropa'], grupo_id: oid() }
+        ]
+      });
+
+      const summary = await service.getSummary(groupId, userId);
+
+      expect(summary.limitesCategoria).toEqual([
+        { categoria: 'Ocio', limite: 100, gastado: 115.5, restante: -15.5, porcentaje: 116 },
+        { categoria: 'Hogar', limite: 50, gastado: 55.5, restante: -5.5, porcentaje: 111 },
+        { categoria: 'Ropa', limite: 80, gastado: 0, restante: 80, porcentaje: 0 }
+      ]);
+    });
+
+    it('counts my share of other groups in the limits when enabled', async () => {
+      (Group.findById as vi.Mock).mockResolvedValue(personalGroup({
+        diaInicioCiclo: 28, ahorroObjetivo: 0, incluirOtrosGrupos: true, limitesCategoria: [{ categoria: 'Restaurantes', limite: 100 }]
+      }));
+      const pisoId = oid();
+      (Group.find as vi.Mock).mockResolvedValue([{ _id: pisoId, nombre: 'Piso' }]);
+      (Expense.find as vi.Mock).mockImplementation(async (query: any) => query.grupo_id?.$in
+        ? [{ grupo_id: pisoId, monto: 90, pagado_por: [oid()], participantes: [new mongoose.Types.ObjectId(userId), oid(), oid()], asume_gasto: false, categoria: ['Restaurantes'] }]
+        : [{ _id: oid(), grupo_id: groupId, monto: 20, fecha: d('2026-11-02'), pagado_por: me, participantes: me, asume_gasto: false, categoria: ['Restaurantes'] }]);
+      (CategoryAlias.find as vi.Mock).mockReturnValue({ lean: async () => [] });
+
+      const summary = await service.getSummary(groupId, userId);
+
+      expect(summary.limitesCategoria[0]).toMatchObject({ gastado: 50, restante: 50, porcentaje: 50 });
+      expect(summary.otrosGrupos).toEqual({ total: 30, grupos: [{ _id: pisoId.toString(), nombre: 'Piso', total: 30 }] });
     });
 
     it('rejects users that are not members', async () => {

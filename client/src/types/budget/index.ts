@@ -1,10 +1,22 @@
 export type Frecuencia = 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual';
 export type RecurringTipo = 'ingreso' | 'factura';
 
+export interface ILimiteCategoria {
+  categoria: string;
+  limite: number;
+}
+
 export interface IBudgetConfig {
   diaInicioCiclo: number;
   ahorroObjetivo: number;
   incluirOtrosGrupos: boolean;
+  limitesCategoria?: ILimiteCategoria[];
+}
+
+export interface ICategoryLimitStatus extends ILimiteCategoria {
+  gastado: number;
+  restante: number;   // negativo si te has pasado
+  porcentaje: number;
 }
 
 export interface IRecurringItem {
@@ -59,6 +71,7 @@ export interface IBudgetSummary {
   porDia: number | null;
   porSemana: number | null;
   ritmo: { gastoIdeal: number; desviacion: number } | null;
+  limitesCategoria?: ICategoryLimitStatus[];
 }
 
 export const FRECUENCIA_LABELS: Record<Frecuencia, string> = {

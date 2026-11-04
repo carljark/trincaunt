@@ -1,0 +1,130 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// LÍMITES POR CATEGORÍA (BEM: .category-limits), tarjeta de la pestaña Grupo
+// ============================================
+
+.category-limits {
+  @include section-card;
+
+  &__title {
+    @include section-title;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    @include list-row;
+  }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-800;
+  }
+
+  &__empty {
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    color: $color-text-muted;
+  }
+
+  &__add {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  // Importe con el símbolo de euro dentro del campo
+  &__amount {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 0 0 7rem;
+  }
+
+  &__input {
+    @include text-input;
+    padding-right: 2rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+
+    &--category {
+      flex: 1;
+      padding-right: map.get($spacing-scale, 3);
+      text-align: left;
+    }
+  }
+
+  &__currency {
+    position: absolute;
+    right: map.get($spacing-scale, 3);
+    color: $color-text-muted;
+    pointer-events: none;
+  }
+
+  &__icon-button {
+    @include icon-button;
+    color: $color-gray-600;
+    background: transparent;
+
+    &--add {
+      color: $color-primary;
+      background: rgba($color-primary, 0.08);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__saved {
+    font-size: map.get($font-sizes, sm);
+    color: $color-positive;
+  }
+
+  &__button {
+    @include action-button;
+    color: white;
+    background: $color-primary;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+}
