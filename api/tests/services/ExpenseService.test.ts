@@ -94,6 +94,18 @@ describe('ExpenseService Filtering', () => {
         categoria: { $in: ['Leisure', 'Cinema'] }
       }));
     });
+
+    it('leaves personal budget groups out of the global share', async () => {
+      GroupMock.find.mockResolvedValue([{ _id: 'shared-1' }] as any);
+      const populate = vi.fn();
+      populate.mockReturnValueOnce({ populate }).mockReturnValueOnce({ populate }).mockReturnValueOnce(Promise.resolve([]));
+      ExpenseMock.find.mockReturnValue({ populate } as any);
+
+      await expenseService.getGlobalExpenses('user-123');
+
+      expect(Group.find).toHaveBeenCalledWith({ miembros: 'user-123', tipo: { $ne: 'personal' } });
+      expect(Expense.find).toHaveBeenCalledWith(expect.objectContaining({ grupo_id: { $in: ['shared-1'] } }));
+    });
   });
 
   describe('Aggregation Methods', () => {
