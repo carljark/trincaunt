@@ -10,6 +10,17 @@ import * as DbController from '../controllers/DbController';
 import * as PushController from '../controllers/PushController';
 import * as BudgetController from '../controllers/BudgetController';
 import { protect } from '../middlewares/authMiddleware';
+import {
+  requireGroupMember,
+  requireMemberOfDoc,
+  requireMemberOfExpenses,
+  requireAliasAccess
+} from '../middlewares/groupAccess';
+import Expense from '../models/Expense';
+import DebtTransaction from '../models/DebtTransaction';
+
+// Miembro del grupo de la URL (/groups/:groupId/...)
+const groupMember = requireGroupMember('params', 'groupId');
 
 const router = Router();
 
@@ -25,42 +36,46 @@ router.get('/users/admin/all', protect, UserController.getAllUsers);
 router.patch('/users/admin/:id/ai', protect, UserController.toggleUserAI);
 
 // Category Alias Routes (Protected)
-router.get('/category-aliases', protect, CategoryAliasController.getAllAliases);
-router.post('/category-aliases', protect, CategoryAliasController.createAlias);
-router.put('/category-aliases/:aliasId', protect, CategoryAliasController.updateAlias);
-router.delete('/category-aliases/:aliasId', protect, CategoryAliasController.deleteAlias);
+router.get('/category-aliases', protect, requireGroupMember('query', 'groupId', { optional: true }), CategoryAliasController.getAllAliases);
+router.post('/category-aliases', protect, requireAliasAccess('create'), CategoryAliasController.createAlias);
+router.put('/category-aliases/:aliasId', protect, requireAliasAccess('change'), CategoryAliasController.updateAlias);
+router.delete('/category-aliases/:aliasId', protect, requireAliasAccess('change'), CategoryAliasController.deleteAlias);
 
 // Group Routes (Protected)
 router.post('/groups', protect, GroupController.createGroup);
 router.get('/groups', protect, GroupController.getMyGroups);
-router.get('/groups/:groupId', protect, GroupController.getGroupById);
-router.put('/groups/:groupId', protect, GroupController.updateGroup); // New route for updating a group
-router.post('/groups/:groupId/members', protect, GroupController.addMember);
-router.delete('/groups/:groupId', protect, GroupController.deleteGroup); // New route for deleting a group
-router.delete('/groups/:groupId/members/:memberId', protect, GroupController.removeMember); // New route for removing a member
+router.get('/groups/:groupId', protect, groupMember, GroupController.getGroupById);
+router.put('/groups/:groupId', protect, groupMember, GroupController.updateGroup); // Solo el creador (lo comprueba el servicio)
+router.post('/groups/:groupId/members', protect, groupMember, GroupController.addMember);
+router.delete('/groups/:groupId', protect, groupMember, GroupController.deleteGroup); // Solo el creador
+router.delete('/groups/:groupId/members/:memberId', protect, groupMember, GroupController.removeMember); // Solo uno mismo
 
 import multer from 'multer';
 
 // Expense Routes (Protected)
 const uploadMemory = multer({ storage: multer.memoryStorage() });
-router.post('/expenses/ai-parse', protect, uploadMemory.single('media'), ExpenseController.parseExpenseWithAI);
-router.post('/expenses', protect, ExpenseController.createExpense);
-router.patch('/expenses/bulk-update', protect, ExpenseController.bulkUpdate);
-router.put('/expenses/:expenseId', protect, ExpenseController.updateExpense);
-router.delete('/expenses/:expenseId', protect, ExpenseController.deleteExpense);
-router.get('/expenses/categories', protect, ExpenseController.getExpenseCategories);
+const expenseMember = requireMemberOfDoc(Expense, 'expenseId', 'grupo_id', 'Gasto');
+// multer va antes: el grupo llega en el cuerpo multipart
+router.post('/expenses/ai-parse', protect, uploadMemory.single('media'), requireGroupMember('body', 'grupo_id'), ExpenseController.parseExpenseWithAI);
+router.post('/expenses', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpense);
+router.patch('/expenses/bulk-update', protect, requireMemberOfExpenses, ExpenseController.bulkUpdate);
+router.put('/expenses/:expenseId', protect, expenseMember, ExpenseController.updateExpense);
+router.delete('/expenses/:expenseId', protect, expenseMember, ExpenseController.deleteExpense);
+// Sin groupId: categorías y lugares de todos tus grupos (no de toda la base de datos)
+router.get('/expenses/categories', protect, requireGroupMember('query', 'groupId', { optional: true }), ExpenseController.getExpenseCategories);
 router.get('/expenses/locations', protect, ExpenseController.getExpenseLocations);
 router.get('/expenses/global', protect, ExpenseController.getGlobalExpenses);
-router.get('/groups/:groupId/expenses', protect, ExpenseController.getGroupExpenses);
-router.get('/groups/:groupId/expenses/chart', protect, ExpenseController.getChartExpenses);
-router.get('/groups/:groupId/balance', protect, ExpenseController.getGroupBalance);
-router.get('/groups/:groupId/settle', protect, ExpenseController.settleGroupDebts);
+router.get('/groups/:groupId/expenses', protect, groupMember, ExpenseController.getGroupExpenses);
+router.get('/groups/:groupId/expenses/chart', protect, groupMember, ExpenseController.getChartExpenses);
+router.get('/groups/:groupId/balance', protect, groupMember, ExpenseController.getGroupBalance);
+router.get('/groups/:groupId/settle', protect, groupMember, ExpenseController.settleGroupDebts);
 
 // Debt Transaction Routes (Protected)
-router.post('/debt-transactions', protect, DebtTransactionController.createDebtTransaction);
-router.get('/groups/:groupId/debt-transactions', protect, DebtTransactionController.getGroupDebtTransactions);
-router.patch('/debt-transactions/:transactionId/pay', protect, DebtTransactionController.markDebtTransactionAsPaid);
-router.delete('/debt-transactions/:transactionId', protect, DebtTransactionController.deleteDebtTransaction); // New route for deleting a debt transaction
+const debtMember = requireMemberOfDoc(DebtTransaction, 'transactionId', 'group', 'Transacción de deuda');
+router.post('/debt-transactions', protect, requireGroupMember('body', 'group'), DebtTransactionController.createDebtTransaction);
+router.get('/groups/:groupId/debt-transactions', protect, groupMember, DebtTransactionController.getGroupDebtTransactions);
+router.patch('/debt-transactions/:transactionId/pay', protect, debtMember, DebtTransactionController.markDebtTransactionAsPaid);
+router.delete('/debt-transactions/:transactionId', protect, debtMember, DebtTransactionController.deleteDebtTransaction);
 
 // User Preferences Routes (Protected)
 router.get('/user-preferences', protect, UserPreferencesController.getPreferences);
@@ -68,8 +83,8 @@ router.post('/user-preferences', protect, UserPreferencesController.savePreferen
 router.put('/user-preferences/group-order', protect, UserPreferencesController.saveGroupOrder);
 
 // Note Routes (Protected)
-router.post('/groups/:groupId/notes', protect, NoteController.createNote);
-router.get('/groups/:groupId/notes', protect, NoteController.getGroupNotes);
+router.post('/groups/:groupId/notes', protect, groupMember, NoteController.createNote);
+router.get('/groups/:groupId/notes', protect, groupMember, NoteController.getGroupNotes);
 router.put('/notes/:noteId', protect, NoteController.updateNote);
 router.delete('/notes/:noteId', protect, NoteController.deleteNote);
 

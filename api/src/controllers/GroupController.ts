@@ -52,6 +52,10 @@ export const getGroupById = async (req: Request, res: Response, next: NextFuncti
 export const deleteGroup = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { groupId } = req.params;
+    // Borra los datos de todos los miembros: solo quien lo creó
+    if (res.locals.group?.creado_por?.toString() !== (req as any).user.id) {
+      throw new AppError('Solo el creador del grupo puede borrarlo', 403);
+    }
     await groupService.deleteGroup(groupId);
     res.status(204).json({ status: 'success', data: null });
   } catch (error) {

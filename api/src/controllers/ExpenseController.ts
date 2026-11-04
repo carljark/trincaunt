@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getIO } from '../config/socket';
 import { ExpenseService } from '../services/ExpenseService';
+import Group from '../models/Group';
 import { CategoryAliasService } from '../services/CategoryAliasService';
 import PushService, { formatAmount } from '../services/PushService';
 
@@ -101,10 +102,16 @@ export const settleGroupDebts = async (req: Request, res: Response, next: NextFu
 
 
 
+// El grupo comprobado por el middleware o, si no se pidió uno, todos los del usuario
+const scopeGroupIds = async (req: Request, res: Response): Promise<string[]> => {
+  if (res.locals.group) return [res.locals.group._id.toString()];
+  const ids = await Group.find({ miembros: (req as any).user.id }).distinct('_id');
+  return ids.map(id => id.toString());
+};
+
 export const getExpenseCategories = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { groupId } = req.query;
-    const categories = await expenseService.getExpenseCategories(groupId as string);
+    const categories = await expenseService.getExpenseCategories(await scopeGroupIds(req, res));
     res.status(200).json({ status: 'success', data: categories });
   } catch (error) {
     next(error);
@@ -113,7 +120,7 @@ export const getExpenseCategories = async (req: Request, res: Response, next: Ne
 
 export const getExpenseLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const locations = await expenseService.getExpenseLocations();
+    const locations = await expenseService.getExpenseLocations(await scopeGroupIds(req, res));
     res.status(200).json({ status: 'success', data: locations });
   } catch (error) {
     next(error);
