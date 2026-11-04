@@ -2,6 +2,7 @@ import { ExpenseService } from '../../src/services/ExpenseService';
 import Expense from '../../src/models/Expense';
 import CategoryAlias from '../../src/models/CategoryAlias';
 import Group from '../../src/models/Group';
+import mongoose from 'mongoose';
 
 vi.mock('../../src/models/Expense');
 vi.mock('../../src/models/CategoryAlias');
@@ -115,7 +116,9 @@ describe('ExpenseService Filtering', () => {
         { category: 'Transport', count: 5 }
       ]);
 
-      const result = await expenseService.getExpenseCategories();
+      const groupId = new mongoose.Types.ObjectId();
+      const result = await expenseService.getExpenseCategories([groupId.toString()]);
+      expect((Expense.aggregate as any).mock.calls[0][0][0]).toEqual({ $match: { grupo_id: { $in: [groupId] } } });
 
       expect(result).toHaveLength(2);
       expect(result[0].category).toBe('Food');
@@ -132,12 +135,14 @@ describe('ExpenseService Filtering', () => {
         { localization: 'Gas Station', count: 2 }
       ]);
 
-      const result = await expenseService.getExpenseLocations();
+      const groupId = new mongoose.Types.ObjectId();
+      const result = await expenseService.getExpenseLocations([groupId.toString()]);
 
       expect(result).toHaveLength(2);
       expect(result[0].localization).toBe('Supermarket');
+      // Solo los grupos del usuario, no toda la base de datos
       expect(Expense.aggregate).toHaveBeenCalledWith(expect.arrayContaining([
-        { $match: { localization: { $nin: [null, ""] } } },
+        { $match: { grupo_id: { $in: [groupId] }, localization: { $nin: [null, ""] } } },
         { $group: { _id: "$localization", count: { $sum: 1 } } },
       ]));
     });

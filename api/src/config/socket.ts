@@ -1,6 +1,8 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import Group from '../models/Group';
 
 let io: SocketIOServer;
 
@@ -32,9 +34,19 @@ export const initSocket = (server: HttpServer) => {
     console.log(`Usuario conectado al socket: ${(socket as any).user.id}`);
 
     // Cuando el cliente entra a la pantalla de un grupo
-    socket.on('join_group', (groupId: string) => {
-      socket.join(`group_${groupId}`);
-      console.log(`Usuario ${(socket as any).user.id} se unió a la sala group_${groupId}`);
+    // Solo los miembros reciben los avisos en vivo del grupo
+    socket.on('join_group', async (groupId: string) => {
+      const userId = (socket as any).user.id;
+      try {
+        if (!mongoose.isValidObjectId(groupId) || !(await Group.exists({ _id: groupId, miembros: userId }))) {
+          console.warn(`Usuario ${userId} intentó unirse a la sala group_${groupId} sin ser miembro`);
+          return;
+        }
+        socket.join(`group_${groupId}`);
+        console.log(`Usuario ${userId} se unió a la sala group_${groupId}`);
+      } catch (error) {
+        console.error('Error al unirse a la sala del grupo:', error);
+      }
     });
 
     // Cuando el cliente sale de la pantalla de un grupo

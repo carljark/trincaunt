@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { DebtTransactionService } from '../services/DebtTransactionService';
 import PushService, { formatAmount } from '../services/PushService';
 import User from '../models/User';
+import { AppError } from '../utils/AppError';
 
 const debtTransactionService = new DebtTransactionService();
 
@@ -19,6 +20,11 @@ export const getGroupDebtTransactions = async (req: Request, res: Response, next
 export const createDebtTransaction = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { from, to, group, amount } = req.body;
+    // El grupo ya está comprobado (middleware); quien paga y quien cobra también deben ser miembros
+    const members: string[] = res.locals.group.miembros.map((m: unknown) => String(m));
+    if (!members.includes(String(from)) || !members.includes(String(to))) {
+      throw new AppError('Quien paga y quien cobra deben pertenecer al grupo', 400);
+    }
     const transaction = await debtTransactionService.createDebtTransaction({ from, to, group, amount });
     void notifyPayment((req as any).user.id, from, to, group, amount);
     res.status(201).json({ status: 'success', data: transaction });

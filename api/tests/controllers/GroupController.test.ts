@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { createGroup, addMember, getMyGroups } from '../../src/controllers/GroupController';
+import { createGroup, addMember, getMyGroups, deleteGroup } from '../../src/controllers/GroupController';
 import { GroupService } from '../../src/services/GroupService';
 import { AppError } from '../../src/utils/AppError';
 
@@ -80,6 +80,30 @@ describe('GroupController', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ status: 'success', data: groups });
       expect(GroupService.prototype.getGroupsForUser).toHaveBeenCalledWith(userId);
+    });
+  });
+
+  describe('deleteGroup', () => {
+    const withGroup = (creator: string) => {
+      const r = mockResponse();
+      (r as any).locals = { group: { creado_por: { toString: () => creator } } };
+      return r;
+    };
+
+    it('lets the creator delete the group', async () => {
+      req = mockRequest({}, { groupId: 'group-1' }, {}, { id: 'user-1' });
+      res = withGroup('user-1');
+      await deleteGroup(req, res, next);
+      expect(GroupService.prototype.deleteGroup).toHaveBeenCalledWith('group-1');
+      expect(res.status).toHaveBeenCalledWith(204);
+    });
+
+    it('refuses other members', async () => {
+      req = mockRequest({}, { groupId: 'group-1' }, {}, { id: 'user-2' });
+      res = withGroup('user-1');
+      await deleteGroup(req, res, next);
+      expect(GroupService.prototype.deleteGroup).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403 }));
     });
   });
 });

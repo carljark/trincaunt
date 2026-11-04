@@ -382,11 +382,9 @@ export class ExpenseService {
 
   
 
-    async getExpenseCategories(groupId?: string): Promise<{ category: string, count: number }[]> {
-      const matchStage: any = {};
-      if (groupId) {
-        matchStage.grupo_id = new mongoose.Types.ObjectId(groupId);
-      }
+    /** Categorías usadas en los grupos indicados (ya comprobados como del usuario). */
+    async getExpenseCategories(groupIds: string[]): Promise<{ category: string, count: number }[]> {
+      const matchStage = { grupo_id: { $in: groupIds.map(id => new mongoose.Types.ObjectId(id)) } };
 
       const categories = await Expense.aggregate([
         { $match: matchStage },
@@ -399,9 +397,10 @@ export class ExpenseService {
       return categories;
     }
 
-    async getExpenseLocations(): Promise<{ localization: string, count: number }[]> {
+    /** Lugares usados en los grupos indicados (ya comprobados como del usuario). */
+    async getExpenseLocations(groupIds: string[]): Promise<{ localization: string, count: number }[]> {
       const locations = await Expense.aggregate([
-        { $match: { localization: { $nin: [null, ""] } } },
+        { $match: { grupo_id: { $in: groupIds.map(id => new mongoose.Types.ObjectId(id)) }, localization: { $nin: [null, ""] } } },
         { $group: { _id: "$localization", count: { $sum: 1 } } },
         { $sort: { count: -1, _id: 1 } },
         { $project: { _id: 0, localization: "$_id", count: 1 } }
