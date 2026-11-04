@@ -1,8 +1,10 @@
-import { GroupService, sortByUserOrder } from '../../src/services/GroupService';
+import { GroupService, sortByUserOrder, validatePresupuesto } from '../../src/services/GroupService';
 import Group from '../../src/models/Group';
 import User from '../../src/models/User';
 import Expense from '../../src/models/Expense';
 import UserPreferences from '../../src/models/UserPreferences';
+import RecurringItem from '../../src/models/RecurringItem';
+import Income from '../../src/models/Income';
 import { AppError } from '../../src/utils/AppError';
 import mongoose from 'mongoose';
 
@@ -10,6 +12,9 @@ vi.mock('../../src/models/Group');
 vi.mock('../../src/models/User');
 vi.mock('../../src/models/Expense');
 vi.mock('../../src/models/UserPreferences');
+vi.mock('../../src/models/RecurringItem');
+vi.mock('../../src/models/Income');
+vi.mock('../../src/models/DebtTransaction');
 
 const GroupMock = Group as vi.Mocked<typeof Group>;
 const UserMock = User as vi.Mocked<typeof User>;
@@ -176,5 +181,66 @@ describe('GroupService', () => {
       expect(result[0]._id).toBe(id);
     });
   });
-});
 
+  describe('personal groups and budget', () => {
+    const groupDoc = (extra: object = {}) => ({
+      _id: 'group-1',
+      creado_por: { toString: () => 'user-123' },
+      miembros: [{ toString: () => 'user-123' }],
+      tipo: 'compartido',
+      save: vi.fn().mockResolvedValue(undefined),
+      ...extra
+    });
+
+    it('turns a single-member group into a personal one with its budget config', async () => {
+      const group = groupDoc();
+      GroupMock.findById.mockResolvedValue(group as any);
+
+      await groupService.updateGroup('group-1', { tipo: 'personal', presupuesto: { diaInicioCiclo: 28 } } as any, 'user-123');
+
+      expect(group.tipo).toBe('personal');
+      expect((group as any).presupuesto).toEqual({ diaInicioCiclo: 28, ahorroObjetivo: 0, incluirOtrosGrupos: false });
+      expect(group.save).toHaveBeenCalled();
+    });
+
+    it('refuses to make a group with several members personal', async () => {
+      GroupMock.findById.mockResolvedValue(groupDoc({ miembros: [{ toString: () => 'user-123' }, { toString: () => 'user-9' }] }) as any);
+
+      await expect(groupService.updateGroup('group-1', { tipo: 'personal' } as any, 'user-123')).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it('refuses new members in a personal group', async () => {
+      GroupMock.findById.mockResolvedValue(groupDoc({ tipo: 'personal' }) as any);
+
+      await expect(groupService.addMember('group-1', 'new@member.com')).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it('deletes the budget data together with the group', async () => {
+      GroupMock.findById.mockResolvedValue(groupDoc({ tipo: 'personal' }) as any);
+
+      const groupId = new mongoose.Types.ObjectId().toString();
+      await groupService.deleteGroup(groupId);
+
+      expect(RecurringItem.deleteMany).toHaveBeenCalledWith({ grupo_id: groupId });
+      expect(Income.deleteMany).toHaveBeenCalledWith({ grupo_id: groupId });
+    });
+  });
+
+  describe('validatePresupuesto', () => {
+    it('merges partial changes into the current config', () => {
+      expect(validatePresupuesto({ ahorroObjetivo: 150.555 }, { diaInicioCiclo: 25, ahorroObjetivo: 0, incluirOtrosGrupos: true }))
+        .toEqual({ diaInicioCiclo: 25, ahorroObjetivo: 150.56, incluirOtrosGrupos: true });
+    });
+
+    it.each([
+      ['day 0', { diaInicioCiclo: 0 }],
+      ['day 32', { diaInicioCiclo: 32 }],
+      ['non-integer day', { diaInicioCiclo: 2.5 }],
+      ['negative savings', { ahorroObjetivo: -1 }],
+      ['non-boolean flag', { incluirOtrosGrupos: 'yes' }],
+      ['not an object', 'x']
+    ])('rejects %s', (_label, input) => {
+      expect(() => validatePresupuesto(input)).toThrow();
+    });
+  });
+});

@@ -40,6 +40,7 @@ describe('HomePage', () => {
       }
       if (url.endsWith('/groups')) return { ok: true, json: async () => ({ data: groups }) };
       if (url.endsWith('/expenses/global')) return { ok: true, json: async () => ({ data: [{ monto: 40 }, { monto: 2.5 }] }) };
+      if (url.includes('/budget')) return { ok: true, json: async () => ({ data: { disponible: -12.4, ciclo: { diasRestantes: 1 } } }) };
       return { ok: true, json: async () => ({ data: [] }) };
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -149,5 +150,24 @@ describe('HomePage', () => {
     act(() => triggerDragEnd?.({ active: { id: 'g1' }, over: { id: 'g1' } }));
 
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/group-order'), expect.anything());
+  });
+
+  it('shows what is left instead of the totals for a personal group', async () => {
+    const personal = { _id: 'g9', nombre: 'Mis gastos', tipo: 'personal', miembros: [{ _id: 'u1' }], totalExpenses: 500, userShare: 500 };
+    const baseFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/groups')) return { ok: true, json: async () => ({ data: [...groups, personal] }) };
+      return baseFetch(url, init);
+    });
+    renderPage();
+
+    const link = await screen.findByRole('link', { name: /Mis gastos/ });
+    await waitFor(() => expect(normalize(link.textContent)).toContain('-12,40 €'));
+    expect(normalize(link.textContent)).toContain('disponible');
+    expect(normalize(link.textContent)).toContain('Quedan 1 día');
+    expect(link.querySelector('.home__group-total--negative')).not.toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/groups/g9/budget?offset=0'), expect.anything());
+    // Los compartidos no piden presupuesto
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/groups/g1/budget'), expect.anything());
   });
 });

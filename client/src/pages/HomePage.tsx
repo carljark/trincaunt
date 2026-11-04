@@ -22,6 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { ChevronRightIcon, GripIcon, PlusIcon } from '../components/icons';
 import { reorderById } from '../utils/reorder';
+import { budgetApi } from '../utils/budgetApi';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IUserPopulated } from '../types/user';
@@ -48,12 +49,19 @@ interface IGlobalExpense extends Omit<IExpensePopulated, 'pagado_por'> {
 // La lista solo se mueve en vertical
 const restrictToVerticalAxis: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 
+// Lo que muestra la home de un grupo personal: lo que queda del ciclo actual
+interface IBudgetGlance {
+  disponible: number;
+  diasRestantes: number;
+}
+
 interface SortableGroupProps {
   group: IGroupSummary;
   sortable: boolean;
+  budget?: IBudgetGlance;
 }
 
-const SortableGroup: React.FC<SortableGroupProps> = ({ group: g, sortable }) => {
+const SortableGroup: React.FC<SortableGroupProps> = ({ group: g, sortable, budget }) => {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: g._id, disabled: !sortable });
 
@@ -68,13 +76,24 @@ const SortableGroup: React.FC<SortableGroupProps> = ({ group: g, sortable }) => 
         <span className="home__group-text">
           <span className="home__group-name">{g.nombre}</span>
           <span className="home__group-meta">
-            {g.miembros.length} {g.miembros.length === 1 ? 'miembro' : 'miembros'}
+            {g.tipo === 'personal'
+              ? (budget ? `Quedan ${budget.diasRestantes} ${budget.diasRestantes === 1 ? 'día' : 'días'}` : 'Presupuesto')
+              : `${g.miembros.length} ${g.miembros.length === 1 ? 'miembro' : 'miembros'}`}
           </span>
         </span>
-        <span className="home__group-amounts">
-          <span className="home__group-total">{formatEuros(g.totalExpenses)}</span>
-          <span className="home__group-share">tu parte {formatEuros(g.userShare)}</span>
-        </span>
+        {g.tipo === 'personal' && budget ? (
+          <span className="home__group-amounts">
+            <span className={`home__group-total ${budget.disponible < 0 ? 'home__group-total--negative' : ''}`}>
+              {formatEuros(budget.disponible)}
+            </span>
+            <span className="home__group-share">disponible</span>
+          </span>
+        ) : (
+          <span className="home__group-amounts">
+            <span className="home__group-total">{formatEuros(g.totalExpenses)}</span>
+            <span className="home__group-share">tu parte {formatEuros(g.userShare)}</span>
+          </span>
+        )}
         <ChevronRightIcon className="home__chevron" />
       </Link>
       {sortable && (
@@ -102,6 +121,7 @@ const HomePage: React.FC = () => {
   const [newGroupName, setNewGroupName] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [budgets, setBudgets] = useState<Record<string, IBudgetGlance>>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -130,6 +150,7 @@ const HomePage: React.FC = () => {
       const data = await res.json();
       if(res.ok) {
         setGroups(data.data);
+        fetchBudgets(data.data);
       } else {
         throw new Error(data.message || 'Failed to fetch groups');
       }
@@ -137,6 +158,20 @@ const HomePage: React.FC = () => {
       console.error(error);
       // Optional: handle error in UI
     }
+  };
+
+  // Si falla el de un grupo, ese grupo muestra sus totales normales
+  const fetchBudgets = async (list: IGroupSummary[]) => {
+    if (!token) return;
+    const personal = list.filter(g => g.tipo === 'personal');
+    const results = await Promise.allSettled(personal.map(g => budgetApi.getSummary(token, g._id)));
+    const next: Record<string, IBudgetGlance> = {};
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled') {
+        next[personal[i]._id] = { disponible: result.value.disponible, diasRestantes: result.value.ciclo.diasRestantes };
+      }
+    });
+    setBudgets(next);
   };
 
   const fetchGlobalExpenses = async () => {
@@ -313,7 +348,7 @@ const HomePage: React.FC = () => {
             <SortableContext items={groups.map(g => g._id)} strategy={verticalListSortingStrategy}>
               <ul className="home__groups">
                 {groups.map(g => (
-                  <SortableGroup key={g._id} group={g} sortable={groups.length > 1} />
+                  <SortableGroup key={g._id} group={g} sortable={groups.length > 1} budget={budgets[g._id]} />
                 ))}
               </ul>
             </SortableContext>

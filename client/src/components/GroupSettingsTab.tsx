@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { IUser } from '../types/user';
 import { PencilIcon, UserPlusIcon } from './icons';
+import BudgetSettings, { BudgetSettingsChange } from './BudgetSettings';
+import { IBudgetConfig } from '../types/budget';
 import './GroupSettingsTab.scss';
 
 interface GroupSettingsTabProps {
@@ -12,11 +14,18 @@ interface GroupSettingsTabProps {
   onRename: (name: string) => Promise<boolean>;
   onAddMember: (email: string) => Promise<boolean>;
   onLeave: () => void;
+  tipo?: 'compartido' | 'personal';
+  presupuesto?: IBudgetConfig;
+  // Sin esta prop no se muestra la tarjeta de presupuesto
+  onUpdateBudget?: (change: BudgetSettingsChange) => Promise<boolean>;
 }
 
 const initialOf = (name: string) => name.trim().charAt(0).toUpperCase() || '?';
 
-const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupName, members, isOwner, creatorName, onRename, onAddMember, onLeave }) => {
+const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({
+  groupName, members, isOwner, creatorName, onRename, onAddMember, onLeave, tipo = 'compartido', presupuesto, onUpdateBudget
+}) => {
+  const isPersonal = tipo === 'personal';
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(groupName);
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -86,24 +95,38 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupName, members,
         )}
       </section>
 
+      {onUpdateBudget && (
+        <BudgetSettings
+          tipo={tipo}
+          presupuesto={presupuesto}
+          memberCount={members.length}
+          isOwner={isOwner}
+          onSave={onUpdateBudget}
+        />
+      )}
+
       <section className="group-settings__card">
         <div className="group-settings__header">
           <h3 className="group-settings__title">
             Miembros <span className="group-settings__count">{members.length}</span>
           </h3>
-          <button
-            type="button"
-            className={`group-settings__icon-button ${isAddingMember ? 'group-settings__icon-button--active' : ''}`}
-            onClick={() => setIsAddingMember(open => !open)}
-            aria-label="Añadir miembro"
-            aria-expanded={isAddingMember}
-            title="Añadir miembro"
-          >
-            <UserPlusIcon />
-          </button>
+          {!isPersonal && (
+            <button
+              type="button"
+              className={`group-settings__icon-button ${isAddingMember ? 'group-settings__icon-button--active' : ''}`}
+              onClick={() => setIsAddingMember(open => !open)}
+              aria-label="Añadir miembro"
+              aria-expanded={isAddingMember}
+              title="Añadir miembro"
+            >
+              <UserPlusIcon />
+            </button>
+          )}
         </div>
 
-        {isAddingMember && (
+        {isPersonal && <p className="group-settings__hint">Es un grupo personal: no admite más miembros.</p>}
+
+        {isAddingMember && !isPersonal && (
           <form className="group-settings__form" onSubmit={submitMember}>
             <input
               className="group-settings__input"

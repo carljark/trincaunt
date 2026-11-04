@@ -1,0 +1,140 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// AJUSTES DEL PRESUPUESTO (BEM: .budget-settings), tarjeta de la pestaña Grupo
+// ============================================
+
+.budget-settings {
+  @include section-card;
+
+  &__title {
+    @include section-title;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-700;
+  }
+
+  &__hint {
+    display: block;
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, regular);
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+    min-width: 0;
+  }
+
+  &__label {
+    @include field-label;
+  }
+
+  &__select {
+    @include select-input;
+  }
+
+  &__amount {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__input {
+    @include text-input;
+    padding-right: 2.25rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__currency {
+    position: absolute;
+    right: map.get($spacing-scale, 3);
+    color: $color-text-muted;
+    pointer-events: none;
+  }
+
+  &__check {
+    display: flex;
+    align-items: flex-start;
+    gap: map.get($spacing-scale, 2);
+    cursor: pointer;
+  }
+
+  &__checkbox {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 2px 0 0;
+    accent-color: $color-primary;
+  }
+
+  &__check-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: map.get($font-sizes, base);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-800;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__saved {
+    font-size: map.get($font-sizes, sm);
+    color: $color-positive;
+  }
+
+  &__button {
+    @include action-button;
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-gray-700;
+      background: white;
+      border-color: $color-gray-300;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+}
