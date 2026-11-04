@@ -1,8 +1,9 @@
 services:
   trincaunt-app:
-    # En el EC2 la imagen llega ya construida (scripts/sync_to_ec2.sh) y se arranca con --no-build;
+    # En el EC2 la imagen llega ya construida: la publica GitHub Actions en GHCR
+    # (.github/workflows/deploy.yml) o la envía ./deploy.sh --local. Se arranca con --no-build;
     # `build` queda para levantarla en local con `docker compose up --build`.
-    image: trincaunt-app:latest
+    image: ghcr.io/carljark/trincaunt:latest
     build: .
     container_name: trincaunt-app
     restart: unless-stopped

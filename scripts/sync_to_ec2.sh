@@ -1,8 +1,9 @@
 #!/bin/bash
 # ==========================================
-# SINCRONIZAR EL COMMIT ACTUAL CON EL EC2 Y LEVANTAR LA APP
-# Pieza interna de ./deploy.sh (que antes hace PR, CI y merge). Úsalo a mano solo
-# para casos especiales, como reinstalar nginx. NO toca la base de datos:
+# SINCRONIZAR EL COMMIT ACTUAL CON EL EC2 Y LEVANTAR LA APP (DESPLIEGUE MANUAL)
+# Lo normal es que despliegue GitHub Actions (.github/workflows/deploy.yml). Esto es la
+# alternativa manual: lo usa ./deploy.sh --local, p. ej. si GitHub Actions no está disponible.
+# Úsalo a mano solo para casos especiales, como reinstalar nginx. NO toca la base de datos:
 # para copiar tu BD local al EC2 (una sola vez) usa scripts/migrate_db_to_ec2.sh
 # El certificado SSL se emite aparte, una vez: scripts/setup_ssl.sh
 #
@@ -34,7 +35,7 @@ fi
 EXPORT_DIR=$(mktemp -d)
 trap 'rm -rf "${EXPORT_DIR:?}"' EXIT
 git archive HEAD | tar -x -C "$EXPORT_DIR"
-IMAGE=trincaunt-app:latest  # el mismo nombre que `image:` en docker-compose.yml
+IMAGE=ghcr.io/carljark/trincaunt:latest  # el mismo nombre que `image:` en docker-compose.yml
 
 # Se construye antes de tocar el EC2: si falla, el servidor queda como estaba
 echo "🐳 [1/3] Construyendo la imagen del commit $(git rev-parse --short HEAD) para linux/amd64..."
@@ -54,29 +55,5 @@ rsync -avz --delete -e "$SSH_CMD" \
   "$EXPORT_DIR/" $EC2_USER@$EC2_HOST:$TARGET_DIR/
 
 echo "☁️  [3/3] Conectando al EC2 para levantar la app..."
-$SSH_CMD $EC2_USER@$EC2_HOST "FORCE_NGINX=${FORCE_NGINX:-0} bash -s" << 'SSH_EOF'
-  set -e
-  cd trincaunt
-
-  if [ ! -f .env ]; then
-    echo "❌ Falta ~/trincaunt/.env en el EC2. Créalo allí a partir de .env.example. Abortando."
-    exit 1
-  fi
-
-  echo "=> Levantando aplicación con Docker Compose..."
-  docker compose up -d --no-build
-  # Las versiones anteriores quedan sin etiqueta; se borran solo las de esta app (LABEL del Dockerfile)
-  docker image prune -f --filter label=app=trincaunt
-
-  if [ ! -f /etc/nginx/sites-available/trincaunt ] || [ "$FORCE_NGINX" = "1" ]; then
-    echo "=> Instalando site de NGINX de Trincaunt (sin tocar las otras apps)..."
-    sudo cp nginx/trincaunt.conf /etc/nginx/sites-available/trincaunt
-    sudo ln -sf /etc/nginx/sites-available/trincaunt /etc/nginx/sites-enabled/trincaunt
-    sudo nginx -t && sudo systemctl reload nginx
-    echo "   (Si ya tenías HTTPS, vuelve a ejecutar ./scripts/setup_ssl.sh)"
-  else
-    echo "=> Site de NGINX ya instalado; no se toca (FORCE_NGINX=1 para reinstalarlo)."
-  fi
-
-  echo "✅ ¡Todo listo! La aplicación Trincaunt está corriendo en la nube."
-SSH_EOF
+# Sin PULL_REF: usa la imagen recién cargada con docker load
+$SSH_CMD $EC2_USER@$EC2_HOST "FORCE_NGINX=${FORCE_NGINX:-0} bash $TARGET_DIR/scripts/remote_up.sh"

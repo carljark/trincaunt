@@ -1,0 +1,153 @@
+name: Deploy
+
+# Despliega en el EC2 cada commit de main que pasa el CI (es decir, cada PR fusionado).
+# También se puede lanzar a mano desde la pestaña Actions ("Run workflow"), p. ej. para
+# volver a una versión anterior indicando su commit.
+#
+# La imagen se construye aquí (runner amd64, como el EC2) y se publica en GHCR; el EC2 solo
+# descarga las capas que cambian. Configuración necesaria en el repo (Settings):
+#   - Secret   EC2_SSH_KEY      clave privada SSH dedicada a este workflow
+#   - Variable EC2_HOST         IP o nombre del EC2
+#   - Variable EC2_USER         usuario SSH (ubuntu)
+#   - Variable EC2_KNOWN_HOSTS  huella del host (ssh-keyscan), para no aceptar uno falso
+#   - Variable DOMAIN           dominio público, para comprobar que responde
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit, rama o etiqueta a desplegar
+        required: false
+        default: main
+
+# Un despliegue cada vez, sin cancelar el que está en marcha
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    name: Construir y publicar la imagen
+    # Solo commits de main con el CI en verde (o lanzado a mano)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.ref }}
+
+      - id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ steps.sha.outputs.sha }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.sha.outputs.sha }}
+          # Caché de capas entre ejecuciones: si solo cambia el cliente, la API no se recompila
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Desplegar en el EC2
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ vars.DOMAIN }}
+    permissions:
+      contents: read
+      packages: read
+    env:
+      SHA: ${{ needs.build.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.sha }}
+
+      - name: Preparar SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_KNOWN_HOSTS: ${{ vars.EC2_KNOWN_HOSTS }}
+          EC2_HOST: ${{ vars.EC2_HOST }}
+          EC2_USER: ${{ vars.EC2_USER }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<CONFIG
+          Host ec2
+            HostName $EC2_HOST
+            User $EC2_USER
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+          CONFIG
+
+      # El servidor queda igual que el commit; lo que solo existe allí está excluido
+      # (mismos --exclude que scripts/sync_to_ec2.sh)
+      - name: Copiar el commit al EC2
+        run: |
+          mkdir -p /tmp/release
+          git archive HEAD | tar -x -C /tmp/release
+          ssh ec2 'mkdir -p ~/trincaunt'
+          rsync -az --delete \
+            --exclude '.env' --exclude '.env.local' --exclude '.env.*.local' \
+            --exclude 'node_modules' --exclude 'client/dist' --exclude 'api/dist' --exclude '.git' \
+            --exclude '/temp' --exclude '/mongodb_backups' --exclude '/backups' \
+            /tmp/release/ ec2:trincaunt/
+
+      # El token de GitHub solo vale mientras dura este job; se usa para descargar la imagen
+      # y se borra del EC2 al terminar
+      - name: Descargar la imagen y levantar la app
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh ec2 "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+          ssh ec2 "PULL_REF='$IMAGE:sha-$SHA' bash ~/trincaunt/scripts/remote_up.sh"
+
+      - name: Cerrar sesión de GHCR en el EC2
+        if: always()
+        run: ssh ec2 'docker logout ghcr.io' || true
+
+      # Tras recrear el contenedor la app tarda unos segundos en arrancar (migraciones) y nginx da 502
+      - name: Comprobar que responde
+        env:
+          DOMAIN: ${{ vars.DOMAIN }}
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$DOMAIN/" || true)
+            if [ "$code" = "200" ]; then echo "https://$DOMAIN responde 200"; exit 0; fi
+            echo "Intento $i: $code"; sleep 5
+          done
+          echo "::error::https://$DOMAIN responde '$code' tras el despliegue. Revisa: docker logs trincaunt-app"
+          exit 1
