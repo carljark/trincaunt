@@ -1,6 +1,7 @@
 import Group, { IGroup, IGroupPresupuesto, ILimiteCategoria, MAX_LIMITES_CATEGORIA, PRESUPUESTO_POR_DEFECTO } from '../models/Group';
 import RecurringItem from '../models/RecurringItem';
 import Income from '../models/Income';
+import BudgetAlert from '../models/BudgetAlert';
 import User from '../models/User';
 import Expense from '../models/Expense'; // Import Expense model
 import DebtTransaction from '../models/DebtTransaction'; // Import DebtTransaction model
@@ -59,11 +60,13 @@ export const validatePresupuesto = (input: unknown, current?: IGroupPresupuesto 
   if (typeof merged.incluirOtrosGrupos !== 'boolean') {
     throw new AppError('incluirOtrosGrupos debe ser verdadero o falso', 400);
   }
+  if (typeof merged.avisos !== 'boolean') throw new AppError('avisos debe ser verdadero o falso', 400);
   return {
     diaInicioCiclo: merged.diaInicioCiclo,
     ahorroObjetivo: Math.round(merged.ahorroObjetivo * 100) / 100,
     incluirOtrosGrupos: merged.incluirOtrosGrupos,
-    limitesCategoria: validateLimites(merged.limitesCategoria)
+    limitesCategoria: validateLimites(merged.limitesCategoria),
+    avisos: merged.avisos
   };
 };
 
@@ -150,6 +153,7 @@ export class GroupService {
     // Delete the budget data of personal groups
     await RecurringItem.deleteMany({ grupo_id: groupId });
     await Income.deleteMany({ grupo_id: groupId });
+    await BudgetAlert.deleteMany({ grupo_id: groupId });
 
     // Finally, delete the group itself
     await Group.deleteOne({ _id: groupId });

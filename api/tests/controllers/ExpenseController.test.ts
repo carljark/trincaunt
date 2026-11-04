@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import * as ExpenseController from '../../src/controllers/ExpenseController';
 import AiService from '../../src/services/AiService';
 import PushService from '../../src/services/PushService';
+import BudgetAlertService from '../../src/services/BudgetAlertService';
 
 vi.mock('../../src/services/AiService', () => {
   return {
@@ -15,6 +16,10 @@ vi.mock('../../src/services/AiService', () => {
 vi.mock('../../src/services/PushService', () => ({
   default: { notifyGroupMembers: vi.fn() },
   formatAmount: (amount: number) => `${amount} €`
+}));
+
+vi.mock('../../src/services/BudgetAlertService', () => ({
+  default: { checkAfterExpenseChange: vi.fn() }
 }));
 
 vi.mock('../../src/config/socket', () => ({
@@ -90,6 +95,8 @@ describe('ExpenseController (TDD)', () => {
       // Un único aviso push para todo el lote, excluyendo a quien lo sube
       expect(PushService.notifyGroupMembers).toHaveBeenCalledTimes(1);
       expect(PushService.notifyGroupMembers).toHaveBeenCalledWith('group123', 'user123', expect.any(Function));
+      // Y una comprobación de los avisos de presupuesto
+      expect(BudgetAlertService.checkAfterExpenseChange).toHaveBeenCalledWith(['group123']);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ status: 'success' }));
     });

@@ -4,6 +4,8 @@ import { ExpenseService } from '../services/ExpenseService';
 import Group from '../models/Group';
 import { CategoryAliasService } from '../services/CategoryAliasService';
 import PushService, { formatAmount } from '../services/PushService';
+import BudgetAlertService from '../services/BudgetAlertService';
+import Expense from '../models/Expense';
 
 const expenseService = new ExpenseService();
 const aliasService = new CategoryAliasService();
@@ -18,6 +20,7 @@ export const createExpense = async (req: Request, res: Response, next: NextFunct
       body: `${(req as any).user.nombre} añadió «${req.body.descripcion}»: ${formatAmount(Number(req.body.monto))}`,
       url: `/group/${req.body.grupo_id}`
     }));
+    void BudgetAlertService.checkAfterExpenseChange([req.body.grupo_id]);
     res.status(201).json({ status: 'success', data: expense });
   } catch (error) {
     next(error);
@@ -50,7 +53,10 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
   try {
     const { expenseId } = req.params;
     const updatedExpense = await expenseService.updateExpense(expenseId, req.body);
-    if (updatedExpense) getIO().to(`group_${updatedExpense.grupo_id}`).emit('expenses_updated', { message: 'Gasto actualizado' });
+    if (updatedExpense) {
+      getIO().to(`group_${updatedExpense.grupo_id}`).emit('expenses_updated', { message: 'Gasto actualizado' });
+      void BudgetAlertService.checkAfterExpenseChange([updatedExpense.grupo_id]);
+    }
     res.status(200).json({ status: 'success', data: updatedExpense });
   } catch (error) {
     next(error);
@@ -73,6 +79,10 @@ export const bulkUpdate = async (req: Request, res: Response, next: NextFunction
   try {
     const { expenseIds, updateData } = req.body;
     await expenseService.bulkUpdate(expenseIds, updateData);
+    // Después de actualizar: si se han movido, cuentan en su grupo nuevo
+    void Expense.distinct('grupo_id', { _id: { $in: expenseIds } })
+      .then(groupIds => BudgetAlertService.checkAfterExpenseChange(groupIds))
+      .catch(error => console.error('Error comprobando avisos de presupuesto:', error));
     res.status(200).json({ status: 'success', message: 'Expenses updated successfully.' });
   } catch (error) {
     next(error);
@@ -219,6 +229,7 @@ export const parseExpenseWithAI = async (req: Request, res: Response, next: Next
           : `${(req as any).user.nombre} añadió ${createdExpenses.length} gastos (${formatAmount(total)})`,
         url: `/group/${grupo_id}`
       }));
+      void BudgetAlertService.checkAfterExpenseChange([grupo_id]);
     }
     res.status(200).json({ status: 'success', data: createdExpenses });
   } catch (error) {

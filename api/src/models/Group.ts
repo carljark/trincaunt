@@ -21,13 +21,15 @@ export interface IGroupPresupuesto {
   ahorroObjetivo: number;      // Lo que se quiere apartar cada ciclo
   incluirOtrosGrupos: boolean; // Sumar tu parte de los gastos de tus grupos compartidos
   limitesCategoria: ILimiteCategoria[];
+  avisos: boolean;             // Push al llegar al 80 % y al 100 % del presupuesto o de un límite
 }
 
 export const PRESUPUESTO_POR_DEFECTO: IGroupPresupuesto = {
   diaInicioCiclo: 1,
   ahorroObjetivo: 0,
   incluirOtrosGrupos: false,
-  limitesCategoria: []
+  limitesCategoria: [],
+  avisos: true
 };
 
 export const MAX_LIMITES_CATEGORIA = 30;
@@ -61,7 +63,8 @@ const GroupSchema: Schema = new Schema({
           limite: { type: Number, required: true, min: 0.01 }
         }, { _id: false })],
         default: []
-      }
+      },
+      avisos: { type: Boolean, default: true }
     }, { _id: false }),
     required: false
   }
