@@ -15,6 +15,9 @@ import { ChevronLeftIcon } from '../components/icons';
 import QuickExpenseFAB from '../components/QuickExpenseFAB';
 import GroupSettingsTab from '../components/GroupSettingsTab';
 import BalancesTab from '../components/BalancesTab';
+import BudgetTab from '../components/BudgetTab';
+import { BudgetSettingsChange } from '../components/BudgetSettings';
+import { budgetApi } from '../utils/budgetApi';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IBalance } from '../types/balance';
@@ -65,7 +68,10 @@ const GroupDetailPage: React.FC = () => {
   const [myTotalDebt, setMyTotalDebt] = useState<number>(0);
   const [myTotalSettledIncome, setMyTotalSettledIncome] = useState<number>(0);
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'group' | 'graph' | 'notes' | 'edit'>('expenses');
+  const [activeTab, setActiveTab] = useState<'budget' | 'expenses' | 'balances' | 'group' | 'graph' | 'notes' | 'edit'>('expenses');
+  // Sube cada vez que se recargan los datos del grupo, para que el presupuesto se recalcule
+  const [budgetVersion, setBudgetVersion] = useState(0);
+  const initialTabChosen = useRef(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState<boolean>(false);
   const [expenseToEdit, setExpenseToEdit] = useState<IExpensePopulated | undefined>(undefined);
@@ -541,6 +547,7 @@ const GroupDetailPage: React.FC = () => {
       setMyTotalSettledIncome(settledIncome);
 
       setGroup(groupData.data);
+      setBudgetVersion(v => v + 1);
       setExpenses(expensesData.data);
       const calculatedTotalExpenses = expensesData.data.reduce((sum, expense) => sum + expense.monto, 0);
       setTotalExpenses(calculatedTotalExpenses);
@@ -603,6 +610,34 @@ const GroupDetailPage: React.FC = () => {
       setLoading(false);
     }
   }, [token, groupId, user?._id, navigate]);
+
+  const handleUpdateBudget = async (change: BudgetSettingsChange): Promise<boolean> => {
+    if (!token || !groupId) return false;
+    try {
+      await budgetApi.updateGroup(token, groupId, change);
+      setError('');
+      await fetchGroupData();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar el presupuesto');
+      return false;
+    }
+  };
+
+  const isPersonal = group?.tipo === 'personal';
+
+  // Un grupo personal se abre en Presupuesto. Si deja de serlo, esa pestaña desaparece
+  // (y si pasa a serlo, la de Saldos).
+  useEffect(() => {
+    if (!group) return;
+    if (!initialTabChosen.current) {
+      initialTabChosen.current = true;
+      if (group.tipo === 'personal') setActiveTab('budget');
+      return;
+    }
+    if (group.tipo !== 'personal' && activeTab === 'budget') setActiveTab('group');
+    if (group.tipo === 'personal' && activeTab === 'balances') setActiveTab('budget');
+  }, [group, activeTab]);
 
   const handleAddMember = async (email: string): Promise<boolean> => {
     if (!token || !groupId || !email) return false;
@@ -729,14 +764,24 @@ const GroupDetailPage: React.FC = () => {
   if (loading && !initialDataLoaded) return <p className="group-detail__status">Cargando...</p>;
   if (!group && !isGlobal) return <p className="group-detail__status">Grupo no encontrado.</p>;
 
-  const tabs: { id: typeof activeTab; label: string }[] = [
-    { id: 'expenses', label: 'Gastos' },
-    { id: 'balances', label: 'Saldos' },
-    { id: 'group', label: 'Grupo' },
-    { id: 'graph', label: 'Gráfico' },
-    { id: 'notes', label: 'Notas' },
-    ...(user?._id === group?.creado_por ? [{ id: 'edit' as const, label: 'Edición Múltiple' }] : []),
-  ];
+  const editTab = user?._id === group?.creado_por ? [{ id: 'edit' as const, label: 'Edición Múltiple' }] : [];
+  const tabs: { id: typeof activeTab; label: string }[] = isPersonal
+    ? [
+      { id: 'budget', label: 'Presupuesto' },
+      { id: 'expenses', label: 'Gastos' },
+      { id: 'graph', label: 'Gráfico' },
+      { id: 'notes', label: 'Notas' },
+      { id: 'group', label: 'Grupo' },
+      ...editTab,
+    ]
+    : [
+      { id: 'expenses', label: 'Gastos' },
+      { id: 'balances', label: 'Saldos' },
+      { id: 'group', label: 'Grupo' },
+      { id: 'graph', label: 'Gráfico' },
+      { id: 'notes', label: 'Notas' },
+      ...editTab,
+    ];
   const memberCount = group?.miembros.length ?? 0;
 
   return (
@@ -749,7 +794,7 @@ const GroupDetailPage: React.FC = () => {
         <div className="group-detail__heading">
           <h1 className="group-detail__title">{isGlobal ? 'Todos los grupos' : group?.nombre}</h1>
           <span className="group-detail__subtitle">
-            {isGlobal ? 'Tu parte de cada gasto' : `${memberCount} ${memberCount === 1 ? 'miembro' : 'miembros'}`}
+            {isGlobal ? 'Tu parte de cada gasto' : isPersonal ? 'Presupuesto personal' : `${memberCount} ${memberCount === 1 ? 'miembro' : 'miembros'}`}
           </span>
         </div>
       </header>
@@ -781,6 +826,10 @@ const GroupDetailPage: React.FC = () => {
             </button>
           ))}
         </div>
+      )}
+
+      {!isGlobal && isPersonal && activeTab === 'budget' && groupId && token && (
+        <BudgetTab groupId={groupId} token={token} refreshKey={budgetVersion} onExpensesChanged={fetchGroupData} />
       )}
 
       {activeTab === 'graph' && (
@@ -832,7 +881,7 @@ const GroupDetailPage: React.FC = () => {
         </div>
       )}
 
-      {!isGlobal && activeTab === 'balances' && (
+      {!isGlobal && !isPersonal && activeTab === 'balances' && (
         <BalancesTab
           totalExpenses={totalExpenses}
           myShare={myTotalExpenses}
@@ -855,10 +904,13 @@ const GroupDetailPage: React.FC = () => {
           onRename={handleRenameGroup}
           onAddMember={handleAddMember}
           onLeave={handleLeaveGroup}
+          tipo={group.tipo ?? 'compartido'}
+          presupuesto={group.presupuesto}
+          onUpdateBudget={handleUpdateBudget}
         />
       )}
 
-      {!isGlobal && (activeTab === 'expenses' || activeTab === 'edit') && (
+      {!isGlobal && (activeTab === 'expenses' || activeTab === 'edit' || activeTab === 'budget') && (
         <>
           <QuickExpenseFAB 
             groupId={groupId!} 

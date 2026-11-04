@@ -1,0 +1,398 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// PESTAÑA PRESUPUESTO (BEM: .budget)
+// ============================================
+
+.budget {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 4);
+  // Hueco al final para que el botón flotante de gasto rápido no tape la última fila
+  padding: 0 map.get($spacing-scale, 3) calc(8rem + env(safe-area-inset-bottom, 0px));
+
+  &__status {
+    padding: map.get($spacing-scale, 6) map.get($spacing-scale, 3);
+    text-align: center;
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  // ---- Navegación entre ciclos ----
+  &__cycle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__cycle-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+  }
+
+  &__cycle-title {
+    font-size: map.get($font-sizes, base);
+    font-weight: map.get($font-weights, semibold);
+    color: $color-gray-900;
+  }
+
+  &__cycle-range {
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__today {
+    align-self: center;
+    margin-top: -(map.get($spacing-scale, 2));
+    padding: map.get($spacing-scale, 1) map.get($spacing-scale, 3);
+    font-family: inherit;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-primary;
+    background: rgba($color-primary, 0.08);
+    border: none;
+    border-radius: $border-radius-pill;
+    cursor: pointer;
+  }
+
+  // ---- Tarjeta principal: lo que te queda ----
+  &__hero {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 4);
+    color: white;
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+    border-radius: $border-radius-lg;
+    box-shadow: $box-shadow-md;
+
+    &--negative {
+      background: linear-gradient(135deg, $color-negative 0%, #e8590c 100%);
+    }
+  }
+
+  &__hero-label {
+    font-size: map.get($font-sizes, sm);
+    opacity: 0.9;
+  }
+
+  &__hero-amount {
+    @include money;
+    font-size: map.get($font-sizes, 4xl);
+    line-height: $line-height-tight;
+  }
+
+  &__hero-sub {
+    font-size: map.get($font-sizes, sm);
+    opacity: 0.9;
+  }
+
+  &__progress {
+    height: 0.5rem;
+    overflow: hidden;
+    background: rgba(white, 0.25);
+    border-radius: $border-radius-pill;
+  }
+
+  &__progress-bar {
+    display: block;
+    height: 100%;
+    background: white;
+    border-radius: $border-radius-pill;
+    transition: width 0.3s ease;
+  }
+
+  &__rates {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: map.get($spacing-scale, 2);
+    margin: map.get($spacing-scale, 1) 0 0;
+  }
+
+  &__rate {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: map.get($spacing-scale, 2);
+    background: rgba(white, 0.15);
+    border-radius: $border-radius;
+  }
+
+  &__rate-label {
+    @include truncate;
+    font-size: map.get($font-sizes, xs);
+    opacity: 0.9;
+  }
+
+  &__rate-value {
+    @include money;
+    @include truncate;
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+  }
+
+  &__pace {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    border-radius: $border-radius;
+
+    &--under {
+      background: rgba(white, 0.15);
+    }
+
+    &--over {
+      font-weight: map.get($font-weights, medium);
+      background: rgba($color-gray-900, 0.2);
+    }
+  }
+
+  // ---- Tarjetas ----
+  &__card {
+    @include section-card;
+
+    &--intro {
+      border-color: rgba($color-primary, 0.3);
+      background: rgba($color-primary, 0.04);
+    }
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__title {
+    @include section-title;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__subtitle {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, semibold);
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  &__badge {
+    padding: 2px map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, xs);
+    font-weight: map.get($font-weights, semibold);
+    font-variant-numeric: tabular-nums;
+    color: $color-warning-dark;
+    background: rgba($color-warning, 0.15);
+    border-radius: $border-radius-pill;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    color: $color-text-muted;
+  }
+
+  &__intro-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__button {
+    @include action-button;
+    flex: 1;
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-gray-700;
+      background: white;
+      border-color: $color-gray-300;
+    }
+  }
+
+  &__icon-button {
+    @include icon-button;
+
+    &--muted {
+      color: $color-gray-500;
+      background: transparent;
+
+      &:hover {
+        color: $color-negative;
+        background: rgba($color-negative, 0.08);
+      }
+    }
+  }
+
+  // ---- Desglose de la cuenta ----
+  &__breakdown {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+  }
+
+  &__breakdown-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 3);
+    padding: map.get($spacing-scale, 1) 0;
+    font-size: map.get($font-sizes, base);
+    color: $color-gray-700;
+
+    &--total {
+      margin-top: map.get($spacing-scale, 1);
+      padding-top: map.get($spacing-scale, 2);
+      font-weight: map.get($font-weights, semibold);
+      color: $color-gray-900;
+      border-top: 1px solid $color-border;
+    }
+  }
+
+  &__breakdown-amount {
+    @include money;
+    margin: 0;
+    color: $color-gray-900;
+
+    &--positive {
+      color: $color-positive;
+    }
+
+    &--negative {
+      color: $color-negative;
+    }
+  }
+
+  // ---- Listas de facturas, ingresos y partidas ----
+  &__items {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+  }
+
+  &__lines {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__line {
+    @include list-row;
+    justify-content: flex-start;
+
+    &--inactive {
+      opacity: 0.55;
+    }
+  }
+
+  // Círculo de estado: vacío si falta, con check si está hecho
+  &__line-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.875rem;
+    color: white;
+    border: 2px solid $color-gray-300;
+    border-radius: 50%;
+
+    &--done {
+      background: $color-positive;
+      border-color: $color-positive;
+    }
+  }
+
+  &__line-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__line-name {
+    @include truncate;
+    color: $color-gray-900;
+  }
+
+  &__line-meta {
+    @include truncate;
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+
+    &--overdue {
+      color: $color-warning-dark;
+    }
+  }
+
+  &__line-amount {
+    @include money;
+    flex-shrink: 0;
+    color: $color-gray-900;
+  }
+
+  &__line-action {
+    @include action-button;
+    flex-shrink: 0;
+    min-height: 2.25rem;
+    padding: 0 map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-primary;
+    background: rgba($color-primary, 0.08);
+  }
+
+  // La fila entera de una partida fija abre su edición
+  &__item-button {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 3);
+    width: 100%;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+    text-align: left;
+    color: inherit;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+      border-radius: $border-radius;
+    }
+  }
+
+  &__chevron {
+    flex-shrink: 0;
+    font-size: 1.125rem;
+    color: $color-gray-400;
+  }
+}

@@ -1,0 +1,169 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// PARTIDA FIJA (BEM: .recurring-item), dentro de un Dialog
+// ============================================
+
+.recurring-item {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 3);
+
+  &__error,
+  &__warning {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  // Selector de tipo en dos mitades
+  &__types {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: map.get($spacing-scale, 1);
+    padding: map.get($spacing-scale, 1);
+    background: $color-gray-100;
+    border-radius: $border-radius;
+  }
+
+  &__type {
+    min-height: 2.5rem;
+    padding: 0 map.get($spacing-scale, 2);
+    font-family: inherit;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+    background: transparent;
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+
+    &--active {
+      color: $color-primary;
+      background: white;
+      box-shadow: $box-shadow-sm;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 1px;
+    }
+  }
+
+  // Dos campos lado a lado; en pantallas muy estrechas, uno debajo de otro
+  &__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: map.get($spacing-scale, 3);
+
+    @media (max-width: 340px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+    min-width: 0;
+  }
+
+  &__label {
+    @include field-label;
+  }
+
+  &__input {
+    @include text-input;
+
+    &--amount {
+      padding-right: 2.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &__select {
+    @include select-input;
+  }
+
+  &__amount {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__currency {
+    position: absolute;
+    right: map.get($spacing-scale, 3);
+    color: $color-text-muted;
+    pointer-events: none;
+  }
+
+  &__hint {
+    margin: -(map.get($spacing-scale, 1)) 0 0;
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__check {
+    display: flex;
+    align-items: flex-start;
+    gap: map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, sm);
+    color: $color-gray-700;
+    cursor: pointer;
+  }
+
+  &__checkbox {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    accent-color: $color-primary;
+  }
+
+  &__button {
+    @include action-button;
+
+    @include respond-below(md) {
+      flex: 1;
+    }
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-gray-700;
+      background: white;
+      border-color: $color-gray-300;
+    }
+
+    &--danger {
+      color: white;
+      background: $color-negative;
+    }
+
+    // Borrar, discreto y separado del resto
+    &--ghost-danger {
+      margin-right: auto;
+      padding: 0 map.get($spacing-scale, 2);
+      color: $color-negative;
+      background: transparent;
+
+      @include respond-below(md) {
+        flex: 0 0 auto;
+      }
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+}

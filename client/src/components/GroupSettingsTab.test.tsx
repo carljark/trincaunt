@@ -74,4 +74,16 @@ describe('GroupSettingsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salir del grupo' }));
     expect(props.onLeave).toHaveBeenCalled();
   });
+
+  it('does not offer adding members to a personal group', () => {
+    renderTab({ members: [members[0]], tipo: 'personal', onUpdateBudget: vi.fn() });
+    expect(screen.queryByRole('button', { name: 'Añadir miembro' })).not.toBeInTheDocument();
+    expect(screen.getByText(/no admite más miembros/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Presupuesto personal' })).toBeInTheDocument();
+  });
+
+  it('hides the budget card when the page does not handle it', () => {
+    renderTab({ members: [members[0]] });
+    expect(screen.queryByRole('heading', { name: 'Presupuesto personal' })).not.toBeInTheDocument();
+  });
 });

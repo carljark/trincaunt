@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import GroupDetailPage from './GroupDetailPage';
 import * as AuthContext from '../contexts/AuthContext';
@@ -39,6 +39,12 @@ vi.mock('../components/ConfirmationModal', () => ({
 
 vi.mock('../components/ExpenseGraph', () => ({
   default: () => <div>ExpenseGraph</div>,
+}));
+
+vi.mock('../components/BudgetTab', () => ({
+  default: ({ groupId, refreshKey }: { groupId: string; refreshKey: number }) => (
+    <div data-testid="budget-tab" data-group={groupId} data-refresh={refreshKey}>BudgetTab</div>
+  ),
 }));
 
 vi.mock('../components/GroupNotes', () => ({
@@ -99,6 +105,9 @@ const mockCategoryAliasesResponse = {
   ]
 };
 
+// Permite que un test cambie el grupo que devuelve la API (p. ej. uno personal)
+let groupResponse: { data: Record<string, unknown> } = mockGroupResponse;
+
 const setupFetchMock = () => {
   global.fetch = vi.fn().mockImplementation((url: string) => {
     if (url.includes('/groups/') && url.includes('/expenses')) {
@@ -123,7 +132,7 @@ const setupFetchMock = () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [] }) });
     }
     if (url.includes('/groups/')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(mockGroupResponse) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(groupResponse) });
     }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
   });
@@ -297,3 +306,43 @@ describe('GroupDetailPage - header and tabs', () => {
   });
 });
 
+describe('GroupDetailPage - personal budget groups', () => {
+  const mockUser = { _id: 'user-1', nombre: 'User 1', email: 'test@test.com', fecha_registro: '2022-01-01T00:00:00.000Z' };
+
+  beforeEach(() => {
+    setupFetchMock();
+    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+      token: 'test-token',
+      user: mockUser,
+      login: vi.fn(),
+      logout: vi.fn(),
+      isAuthenticated: true,
+    });
+  });
+
+  afterEach(() => {
+    groupResponse = mockGroupResponse;
+  });
+
+  it('opens a personal group on the budget tab and hides balances', async () => {
+    groupResponse = {
+      data: { ...mockGroupResponse.data, miembros: [{ _id: 'user-1', nombre: 'User 1' }], tipo: 'personal', presupuesto: { diaInicioCiclo: 28, ahorroObjetivo: 0, incluirOtrosGrupos: false } }
+    };
+    render(<GroupDetailPage />);
+
+    expect(await screen.findByTestId('budget-tab')).toHaveAttribute('data-group', 'test-group-id');
+    expect(screen.getByRole('tab', { name: 'Presupuesto' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('tab', { name: 'Saldos' })).not.toBeInTheDocument();
+    expect(screen.getByText('Presupuesto personal')).toBeInTheDocument();
+    // El FAB también está en el presupuesto, para apuntar gastos del día a día
+    expect(screen.getByText('Añadir gasto')).toBeInTheDocument();
+  });
+
+  it('keeps shared groups as before, without a budget tab', async () => {
+    render(<GroupDetailPage />);
+
+    expect(await screen.findByRole('tab', { name: 'Saldos' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Presupuesto' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Gastos' })).toHaveAttribute('aria-selected', 'true');
+  });
+});
