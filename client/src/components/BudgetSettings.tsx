@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { IBudgetConfig } from '../types/budget';
+import CategoryLimits from './CategoryLimits';
 import './BudgetSettings.scss';
 
 export interface BudgetSettingsChange {
@@ -13,13 +14,14 @@ interface BudgetSettingsProps {
   memberCount: number;
   isOwner: boolean;
   onSave: (change: BudgetSettingsChange) => Promise<boolean>;
+  categories?: string[];
 }
 
 const DEFAULTS: IBudgetConfig = { diaInicioCiclo: 1, ahorroObjetivo: 0, incluirOtrosGrupos: false };
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 // Tarjeta de la pestaña Grupo: activar el modo presupuesto personal y configurarlo
-const BudgetSettings: React.FC<BudgetSettingsProps> = ({ tipo, presupuesto, memberCount, isOwner, onSave }) => {
+const BudgetSettings: React.FC<BudgetSettingsProps> = ({ tipo, presupuesto, memberCount, isOwner, onSave, categories = [] }) => {
   const config = { ...DEFAULTS, ...presupuesto };
   const [dia, setDia] = useState(config.diaInicioCiclo);
   const [ahorro, setAhorro] = useState(String(config.ahorroObjetivo));
@@ -83,80 +85,89 @@ const BudgetSettings: React.FC<BudgetSettingsProps> = ({ tipo, presupuesto, memb
   };
 
   return (
-    <section className="budget-settings">
-      <h3 className="budget-settings__title">Presupuesto personal</h3>
-      {error && <p className="budget-settings__error" role="alert">{error}</p>}
+    <>
+      <section className="budget-settings">
+        <h3 className="budget-settings__title">Presupuesto personal</h3>
+        {error && <p className="budget-settings__error" role="alert">{error}</p>}
 
-      <form className="budget-settings__form" onSubmit={submit}>
-        <div className="budget-settings__row">
-          <label className="budget-settings__field">
-            <span className="budget-settings__label">Día de cobro</span>
-            <select
-              className="budget-settings__select"
-              value={dia}
-              onChange={e => { setDia(Number(e.target.value)); setSaved(false); }}
-              disabled={!isOwner}
-            >
-              {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </label>
-          <label className="budget-settings__field">
-            <span className="budget-settings__label">Ahorro por ciclo</span>
-            <span className="budget-settings__amount">
-              <input
-                className="budget-settings__input"
-                type="text"
-                inputMode="decimal"
-                value={ahorro}
-                onChange={e => { setAhorro(e.target.value); setSaved(false); }}
+        <form className="budget-settings__form" onSubmit={submit}>
+          <div className="budget-settings__row">
+            <label className="budget-settings__field">
+              <span className="budget-settings__label">Día de cobro</span>
+              <select
+                className="budget-settings__select"
+                value={dia}
+                onChange={e => { setDia(Number(e.target.value)); setSaved(false); }}
                 disabled={!isOwner}
-              />
-              <span className="budget-settings__currency" aria-hidden="true">€</span>
+              >
+                {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </label>
+            <label className="budget-settings__field">
+              <span className="budget-settings__label">Ahorro por ciclo</span>
+              <span className="budget-settings__amount">
+                <input
+                  className="budget-settings__input"
+                  type="text"
+                  inputMode="decimal"
+                  value={ahorro}
+                  onChange={e => { setAhorro(e.target.value); setSaved(false); }}
+                  disabled={!isOwner}
+                />
+                <span className="budget-settings__currency" aria-hidden="true">€</span>
+              </span>
+            </label>
+          </div>
+          <p className="budget-settings__hint">
+            El ciclo va del día de cobro al día anterior del mes siguiente. Si un mes es más corto, empieza su último día.
+          </p>
+
+          <label className="budget-settings__check">
+            <input
+              className="budget-settings__checkbox"
+              type="checkbox"
+              checked={incluir}
+              onChange={e => { setIncluir(e.target.checked); setSaved(false); }}
+              disabled={!isOwner}
+            />
+            <span className="budget-settings__check-text">
+              Contar mi parte de los grupos compartidos
+              <span className="budget-settings__hint">
+                Resta del presupuesto lo que te toca de los gastos de tus otros grupos. No apuntes esos gastos también aquí
+                o contarán dos veces.
+              </span>
             </span>
           </label>
-        </div>
-        <p className="budget-settings__hint">
-          El ciclo va del día de cobro al día anterior del mes siguiente. Si un mes es más corto, empieza su último día.
-        </p>
 
-        <label className="budget-settings__check">
-          <input
-            className="budget-settings__checkbox"
-            type="checkbox"
-            checked={incluir}
-            onChange={e => { setIncluir(e.target.checked); setSaved(false); }}
-            disabled={!isOwner}
-          />
-          <span className="budget-settings__check-text">
-            Contar mi parte de los grupos compartidos
-            <span className="budget-settings__hint">
-              Resta del presupuesto lo que te toca de los gastos de tus otros grupos. No apuntes esos gastos también aquí
-              o contarán dos veces.
-            </span>
-          </span>
-        </label>
+          {isOwner && (
+            <div className="budget-settings__actions">
+              {saved && !dirty && <span className="budget-settings__saved" role="status">Guardado</span>}
+              <button type="submit" className="budget-settings__button budget-settings__button--primary" disabled={busy || !dirty}>
+                Guardar
+              </button>
+            </div>
+          )}
+        </form>
 
         {isOwner && (
-          <div className="budget-settings__actions">
-            {saved && !dirty && <span className="budget-settings__saved" role="status">Guardado</span>}
-            <button type="submit" className="budget-settings__button budget-settings__button--primary" disabled={busy || !dirty}>
-              Guardar
-            </button>
-          </div>
+          <button
+            type="button"
+            className="budget-settings__button budget-settings__button--secondary"
+            onClick={() => save({ tipo: 'compartido' })}
+            disabled={busy}
+          >
+            Volver a grupo compartido
+          </button>
         )}
-      </form>
+      </section>
 
-      {isOwner && (
-        <button
-          type="button"
-          className="budget-settings__button budget-settings__button--secondary"
-          onClick={() => save({ tipo: 'compartido' })}
-          disabled={busy}
-        >
-          Volver a grupo compartido
-        </button>
-      )}
-    </section>
+      <CategoryLimits
+        limites={presupuesto?.limitesCategoria ?? []}
+        categories={categories}
+        isOwner={isOwner}
+        onSave={limitesCategoria => onSave({ presupuesto: { limitesCategoria } })}
+      />
+    </>
   );
 };
 

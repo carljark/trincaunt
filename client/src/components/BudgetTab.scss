@@ -293,6 +293,88 @@
     gap: map.get($spacing-scale, 1);
   }
 
+  // Límites por categoría: barra verde, ámbar desde el 80 % y roja al pasarse
+  &__limits {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__limit {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+  }
+
+  &__limit-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__limit-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: map.get($font-sizes, base);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-800;
+  }
+
+  &__limit-left {
+    @include money;
+    font-size: map.get($font-sizes, sm);
+
+    &--ok {
+      color: $color-positive;
+    }
+
+    &--warning {
+      color: $color-warning-dark;
+    }
+
+    &--over {
+      color: $color-negative;
+    }
+  }
+
+  &__limit-track {
+    height: 0.5rem;
+    overflow: hidden;
+    background: $color-gray-200;
+    border-radius: $border-radius-pill;
+  }
+
+  &__limit-bar {
+    display: block;
+    height: 100%;
+    border-radius: $border-radius-pill;
+    transition: width 0.3s ease;
+
+    &--ok {
+      background: $color-positive;
+    }
+
+    &--warning {
+      background: $color-warning;
+    }
+
+    &--over {
+      background: $color-negative;
+    }
+  }
+
+  &__limit-detail {
+    font-size: map.get($font-sizes, sm);
+    font-variant-numeric: tabular-nums;
+    color: $color-text-muted;
+  }
+
   &__lines {
     display: flex;
     flex-direction: column;

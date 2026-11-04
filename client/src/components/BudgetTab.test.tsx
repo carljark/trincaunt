@@ -203,6 +203,31 @@ describe('BudgetTab', () => {
     await waitFor(() => expect(api.deleteRecurringItem).toHaveBeenCalledWith('tok', 'luz'));
   });
 
+  it('shows a bar per category limit, amber from 80 % and red when over', async () => {
+    api.getSummary.mockResolvedValue(summary({
+      limitesCategoria: [
+        { categoria: 'Ocio', limite: 100, gastado: 40, restante: 60, porcentaje: 40 },
+        { categoria: 'Ropa', limite: 50, gastado: 42.5, restante: 7.5, porcentaje: 85 },
+        { categoria: 'Restaurantes', limite: 80, gastado: 95, restante: -15, porcentaje: 119 }
+      ]
+    }));
+    renderTab();
+
+    const bars = await screen.findAllByRole('progressbar', { name: /^Gastado en / });
+    expect(bars.map(b => b.getAttribute('aria-valuenow'))).toEqual(['40', '85', '100']);
+    expect(bars[1].firstElementChild).toHaveClass('budget__limit-bar--warning');
+    expect(bars[2].firstElementChild).toHaveClass('budget__limit-bar--over');
+    expect(normalize(screen.getByText(/Quedan 60/).textContent)).toBe('Quedan 60,00 €');
+    expect(normalize(screen.getByText(/Te pasas/).textContent)).toBe('Te pasas 15,00 €');
+    expect(normalize(screen.getByText(/95,00 € de 80,00 €/).textContent)).toBe('95,00 € de 80,00 € · 119 %');
+  });
+
+  it('hides the limits card when there are none', async () => {
+    renderTab();
+    await screen.findByRole('region', { name: 'Lo que puedes gastar' });
+    expect(screen.queryByText('Límites por categoría')).not.toBeInTheDocument();
+  });
+
   it('shows my share of other groups when enabled', async () => {
     api.getSummary.mockResolvedValue(summary({ otrosGrupos: { total: 30, grupos: [{ _id: 'piso', nombre: 'Piso', total: 30 }] } }));
     renderTab();

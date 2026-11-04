@@ -277,6 +277,40 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
         </dl>
       </section>
 
+      {summary.limitesCategoria && summary.limitesCategoria.length > 0 && (
+        <section className="budget__card">
+          <h3 className="budget__title">Límites por categoría</h3>
+          <ul className="budget__limits">
+            {summary.limitesCategoria.map(l => {
+              const level = l.restante < 0 ? 'over' : l.porcentaje >= 80 ? 'warning' : 'ok';
+              return (
+                <li key={l.categoria} className="budget__limit">
+                  <div className="budget__limit-header">
+                    <span className="budget__limit-name">{l.categoria}</span>
+                    <span className={`budget__limit-left budget__limit-left--${level}`}>
+                      {l.restante < 0 ? `Te pasas ${formatEuros(-l.restante)}` : `Quedan ${formatEuros(l.restante)}`}
+                    </span>
+                  </div>
+                  <div
+                    className="budget__limit-track"
+                    role="progressbar"
+                    aria-label={`Gastado en ${l.categoria}`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.min(100, l.porcentaje)}
+                  >
+                    <span className={`budget__limit-bar budget__limit-bar--${level}`} style={{ width: `${Math.min(100, l.porcentaje)}%` }} />
+                  </div>
+                  <span className="budget__limit-detail">
+                    {formatEuros(l.gastado)} de {formatEuros(l.limite)} · {l.porcentaje} %
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <section className="budget__card">
         <div className="budget__header">
           <h3 className="budget__title">

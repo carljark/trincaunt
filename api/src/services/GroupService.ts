@@ -1,4 +1,4 @@
-import Group, { IGroup, IGroupPresupuesto, PRESUPUESTO_POR_DEFECTO } from '../models/Group';
+import Group, { IGroup, IGroupPresupuesto, ILimiteCategoria, MAX_LIMITES_CATEGORIA, PRESUPUESTO_POR_DEFECTO } from '../models/Group';
 import RecurringItem from '../models/RecurringItem';
 import Income from '../models/Income';
 import User from '../models/User';
@@ -23,6 +23,28 @@ export const sortByUserOrder = <T extends { _id: unknown }>(groups: T[], order: 
 };
 
 /** Mezcla los cambios con la configuración actual (o la de por defecto) y los valida. */
+const validateLimites = (input: unknown): ILimiteCategoria[] => {
+  if (input === undefined || input === null) return [];
+  if (!Array.isArray(input)) throw new AppError('Los límites por categoría deben ser una lista', 400);
+  if (input.length > MAX_LIMITES_CATEGORIA) {
+    throw new AppError(`Como mucho ${MAX_LIMITES_CATEGORIA} límites por categoría`, 400);
+  }
+  const seen = new Set<string>();
+  return input.map((raw) => {
+    const categoria = typeof raw?.categoria === 'string' ? raw.categoria.trim() : '';
+    if (!categoria) throw new AppError('Cada límite necesita una categoría', 400);
+    if (categoria.length > 60) throw new AppError('El nombre de la categoría es demasiado largo', 400);
+    const key = categoria.toLocaleLowerCase('es');
+    if (seen.has(key)) throw new AppError(`La categoría ${categoria} tiene dos límites`, 400);
+    seen.add(key);
+    const limite = Number(raw?.limite);
+    if (typeof raw?.limite !== 'number' || !(limite > 0) || !Number.isFinite(limite)) {
+      throw new AppError(`El límite de ${categoria} debe ser mayor a 0`, 400);
+    }
+    return { categoria, limite: Math.round(limite * 100) / 100 };
+  });
+};
+
 export const validatePresupuesto = (input: unknown, current?: IGroupPresupuesto | null): IGroupPresupuesto => {
   if (typeof input !== 'object' || input === null) throw new AppError('Configuración de presupuesto no válida', 400);
   const base = current ? JSON.parse(JSON.stringify(current)) : {};
@@ -40,7 +62,8 @@ export const validatePresupuesto = (input: unknown, current?: IGroupPresupuesto 
   return {
     diaInicioCiclo: merged.diaInicioCiclo,
     ahorroObjetivo: Math.round(merged.ahorroObjetivo * 100) / 100,
-    incluirOtrosGrupos: merged.incluirOtrosGrupos
+    incluirOtrosGrupos: merged.incluirOtrosGrupos,
+    limitesCategoria: validateLimites(merged.limitesCategoria)
   };
 };
 
