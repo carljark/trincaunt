@@ -159,12 +159,28 @@
     list-style: none;
   }
 
+  &__group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: $border-radius;
+
+    // Fila que se está arrastrando: por encima del resto y "levantada"
+    &--dragging {
+      z-index: 1;
+      box-shadow: $box-shadow-md;
+    }
+  }
+
   &__group + &__group {
     border-top: 1px solid $color-border;
   }
 
-  // Toda la fila es el enlace (objetivo táctil grande)
+  // Casi toda la fila es el enlace (objetivo táctil grande); el asa queda a la derecha
   &__group-link {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: map.get($spacing-scale, 3);
@@ -177,6 +193,41 @@
 
     &:hover {
       background: $color-gray-100;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: -2px;
+    }
+  }
+
+  // touch-action: none para que en iOS arrastrar el asa no haga scroll de la página
+  &__group-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    font-size: 1.25rem;
+    color: $color-gray-400;
+    background: transparent;
+    border: none;
+    border-radius: $border-radius;
+    cursor: grab;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+
+    &:hover {
+      color: $color-gray-700;
+      background: $color-gray-100;
+    }
+
+    &:active {
+      cursor: grabbing;
     }
 
     &:focus-visible {

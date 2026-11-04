@@ -4,6 +4,21 @@ import Expense from '../models/Expense'; // Import Expense model
 import DebtTransaction from '../models/DebtTransaction'; // Import DebtTransaction model
 import { AppError } from '../utils/AppError';
 import mongoose from 'mongoose'; // Import mongoose
+import UserPreferences from '../models/UserPreferences';
+
+/**
+ * Ordena los grupos según el orden guardado por el usuario. Los grupos que no
+ * aparecen en él (p. ej. recién creados o a los que le acaban de añadir) van al
+ * final, conservando el orden en que llegaron.
+ */
+export const sortByUserOrder = <T extends { _id: unknown }>(groups: T[], order: string[]): T[] => {
+  const position = new Map(order.map((id, index) => [id, index]));
+  const rank = (group: T) => position.get(String(group._id)) ?? Number.POSITIVE_INFINITY;
+  return groups
+    .map((group, index) => ({ group, index }))
+    .sort((a, b) => (rank(a.group) - rank(b.group)) || (a.index - b.index))
+    .map(({ group }) => group);
+};
 
 export class GroupService {
   async createGroup(data: Partial<IGroup>, userId: string): Promise<IGroup> {
@@ -62,7 +77,8 @@ export class GroupService {
         };
     }));
 
-    return groupsWithExpenses;
+    const preferences = await UserPreferences.findOne({ userId }).lean();
+    return sortByUserOrder(groupsWithExpenses, preferences?.groupOrder?.map(id => id.toString()) ?? []);
   }
 
   async getGroupById(groupId: string): Promise<IGroup | null> {

@@ -77,6 +77,15 @@ export const ChevronRightIcon: React.FC<IconProps> = (props) => (
   </svg>
 );
 
+// Asa de arrastre (dos columnas de puntos)
+export const GripIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <circle cx="9" cy="6" r="1" /><circle cx="15" cy="6" r="1" />
+    <circle cx="9" cy="12" r="1" /><circle cx="15" cy="12" r="1" />
+    <circle cx="9" cy="18" r="1" /><circle cx="15" cy="18" r="1" />
+  </svg>
+);
+
 export const MoreVerticalIcon: React.FC<IconProps> = (props) => (
   <svg {...baseProps} {...props}>
     <circle cx="12" cy="5" r="1" />

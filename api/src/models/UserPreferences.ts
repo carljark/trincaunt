@@ -15,6 +15,8 @@ export interface IUserPreferences extends Document {
         lastIcon?: string;
         prices?: Map<string, number>;
     };
+    // Orden de los grupos en la pantalla de inicio (propio de cada usuario)
+    groupOrder?: mongoose.Types.ObjectId[];
 }
 
 const UserPreferencesSchema: Schema = new Schema({
@@ -31,7 +33,8 @@ const UserPreferencesSchema: Schema = new Schema({
     quickExpense: {
         lastIcon: { type: String },
         prices: { type: Map, of: Number }
-    }
+    },
+    groupOrder: [{ type: Schema.Types.ObjectId, ref: 'Group' }]
 });
 
 export default mongoose.model<IUserPreferences>('UserPreferences', UserPreferencesSchema);

@@ -2,7 +2,26 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import UserMenu from '../components/UserMenu';
-import { ChevronRightIcon, PlusIcon } from '../components/icons';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type Announcements,
+  type DragEndEvent,
+  type Modifier
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { ChevronRightIcon, GripIcon, PlusIcon } from '../components/icons';
+import { reorderById } from '../utils/reorder';
 import { IExpensePopulated } from '../types/expense';
 import { IGroup } from '../types/group';
 import { IUserPopulated } from '../types/user';
@@ -26,6 +45,55 @@ interface IGlobalExpense extends Omit<IExpensePopulated, 'pagado_por'> {
   grupo?: { nombre: string };
 }
 
+// La lista solo se mueve en vertical
+const restrictToVerticalAxis: Modifier = ({ transform }) => ({ ...transform, x: 0 });
+
+interface SortableGroupProps {
+  group: IGroupSummary;
+  sortable: boolean;
+}
+
+const SortableGroup: React.FC<SortableGroupProps> = ({ group: g, sortable }) => {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id: g._id, disabled: !sortable });
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`home__group ${isDragging ? 'home__group--dragging' : ''}`}
+    >
+      <Link to={`/group/${g._id}`} className="home__group-link">
+        <span className="home__avatar" aria-hidden="true">{initialOf(g.nombre)}</span>
+        <span className="home__group-text">
+          <span className="home__group-name">{g.nombre}</span>
+          <span className="home__group-meta">
+            {g.miembros.length} {g.miembros.length === 1 ? 'miembro' : 'miembros'}
+          </span>
+        </span>
+        <span className="home__group-amounts">
+          <span className="home__group-total">{formatEuros(g.totalExpenses)}</span>
+          <span className="home__group-share">tu parte {formatEuros(g.userShare)}</span>
+        </span>
+        <ChevronRightIcon className="home__chevron" />
+      </Link>
+      {sortable && (
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          className="home__group-handle"
+          {...attributes}
+          {...listeners}
+          aria-label={`Mover ${g.nombre}`}
+          title="Arrastra para reordenar"
+        >
+          <GripIcon />
+        </button>
+      )}
+    </li>
+  );
+};
+
 const HomePage: React.FC = () => {
   const { user, token } = useAuth();
   const [groups, setGroups] = useState<IGroupSummary[]>([]);
@@ -33,6 +101,23 @@ const HomePage: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const groupName = (id: string | number) => groups.find(g => g._id === id)?.nombre ?? 'el grupo';
+  const positionOf = (id: string | number) => groups.findIndex(g => g._id === id) + 1;
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => `Moviendo ${groupName(active.id)}.`,
+    onDragOver: ({ active, over }) =>
+      over ? `${groupName(active.id)} en la posición ${positionOf(over.id)} de ${groups.length}.` : undefined,
+    onDragEnd: ({ active, over }) =>
+      over ? `${groupName(active.id)} colocado en la posición ${positionOf(over.id)}.` : `${groupName(active.id)} no se ha movido.`,
+    onDragCancel: ({ active }) => `Cancelado. ${groupName(active.id)} vuelve a su sitio.`
+  };
 
   const fetchGroups = async () => {
     if (!token) return;
@@ -96,6 +181,33 @@ const HomePage: React.FC = () => {
       console.error(error);
       setCreateError(error instanceof Error ? error.message : 'No se pudo crear el grupo');
     }
+  };
+
+  const saveGroupOrder = async (ordered: IGroupSummary[], previous: IGroupSummary[]) => {
+    try {
+      const res = await fetch(`${apiHost}/api/v1/user-preferences/group-order`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ groupOrder: ordered.map(g => g._id) })
+      });
+      if (!res.ok) throw new Error('No se pudo guardar el orden');
+    } catch (error) {
+      console.error(error);
+      setGroups(previous);
+      setOrderError('No se pudo guardar el nuevo orden. Inténtalo de nuevo.');
+    }
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    const ordered = reorderById(groups, String(active.id), over ? String(over.id) : null);
+    if (!ordered) return;
+    const previous = groups;
+    setOrderError(null);
+    setGroups(ordered);
+    saveGroupOrder(ordered, previous);
   };
 
   const handleExportXLSX = useCallback(async () => {
@@ -183,27 +295,29 @@ const HomePage: React.FC = () => {
           </form>
         )}
 
+        {orderError && <p className="home__error" role="alert">{orderError}</p>}
+
         {groups.length > 0 ? (
-          <ul className="home__groups">
-            {groups.map(g => (
-              <li key={g._id} className="home__group">
-                <Link to={`/group/${g._id}`} className="home__group-link">
-                  <span className="home__avatar" aria-hidden="true">{initialOf(g.nombre)}</span>
-                  <span className="home__group-text">
-                    <span className="home__group-name">{g.nombre}</span>
-                    <span className="home__group-meta">
-                      {g.miembros.length} {g.miembros.length === 1 ? 'miembro' : 'miembros'}
-                    </span>
-                  </span>
-                  <span className="home__group-amounts">
-                    <span className="home__group-total">{formatEuros(g.totalExpenses)}</span>
-                    <span className="home__group-share">tu parte {formatEuros(g.userShare)}</span>
-                  </span>
-                  <ChevronRightIcon className="home__chevron" />
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+            onDragEnd={handleDragEnd}
+            accessibility={{
+              announcements,
+              screenReaderInstructions: {
+                draggable: 'Pulsa espacio para coger el grupo, las flechas para moverlo y espacio otra vez para soltarlo. Escape cancela.'
+              }
+            }}
+          >
+            <SortableContext items={groups.map(g => g._id)} strategy={verticalListSortingStrategy}>
+              <ul className="home__groups">
+                {groups.map(g => (
+                  <SortableGroup key={g._id} group={g} sortable={groups.length > 1} />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         ) : (
           <p className="home__empty">Todavía no estás en ningún grupo. Crea uno con el botón +.</p>
         )}

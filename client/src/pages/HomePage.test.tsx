@@ -1,9 +1,23 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
 import HomePage from './HomePage';
+
+// jsdom no tiene layout, así que no se puede simular un arrastre real: capturamos
+// el onDragEnd que HomePage pasa a DndContext y lo invocamos a mano.
+let triggerDragEnd: ((event: { active: { id: string }; over: { id: string } | null }) => void) | undefined;
+vi.mock('@dnd-kit/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/core')>();
+  return {
+    ...actual,
+    DndContext: ({ onDragEnd, children }: { onDragEnd: typeof triggerDragEnd; children: React.ReactNode }) => {
+      triggerDragEnd = onDragEnd;
+      return <>{children}</>;
+    }
+  };
+});
 
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { _id: 'u1', nombre: 'Carlos' }, token: 'tok', logout: vi.fn() })
@@ -80,5 +94,60 @@ describe('HomePage', () => {
     fetchMock.mockImplementation(async () => ({ ok: true, json: async () => ({ data: [] }) }));
     renderPage();
     expect(await screen.findByText(/Todavía no estás en ningún grupo/)).toBeInTheDocument();
+  });
+
+  const groupNames = () => within(screen.getByRole('list')).getAllByRole('link').map(link => link.querySelector('.home__group-name')?.textContent);
+
+  it('shows a drag handle per group only when there is more than one', async () => {
+    renderPage();
+    expect(await screen.findByRole('button', { name: 'Mover Piso' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mover Solo yo' })).toBeInTheDocument();
+  });
+
+  it('hides the drag handle with a single group', async () => {
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () => ({ data: url.endsWith('/groups') ? [groups[0]] : [] })
+    }));
+    renderPage();
+    await screen.findByRole('link', { name: /Piso/ });
+    expect(screen.queryByRole('button', { name: /^Mover/ })).not.toBeInTheDocument();
+  });
+
+  it('reorders the list and saves the new order', async () => {
+    renderPage();
+    await screen.findByRole('link', { name: /Solo yo/ });
+
+    act(() => triggerDragEnd?.({ active: { id: 'g2' }, over: { id: 'g1' } }));
+
+    expect(groupNames()).toEqual(['Solo yo', 'Piso']);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/user-preferences/group-order'),
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ groupOrder: ['g2', 'g1'] }) })
+    ));
+  });
+
+  it('restores the previous order when saving fails', async () => {
+    const baseFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/group-order')) return { ok: false, json: async () => ({}) };
+      return baseFetch(url, init);
+    });
+    renderPage();
+    await screen.findByRole('link', { name: /Solo yo/ });
+
+    act(() => triggerDragEnd?.({ active: { id: 'g2' }, over: { id: 'g1' } }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo guardar el nuevo orden');
+    expect(groupNames()).toEqual(['Piso', 'Solo yo']);
+  });
+
+  it('does nothing when the group is dropped in place', async () => {
+    renderPage();
+    await screen.findByRole('link', { name: /Piso/ });
+
+    act(() => triggerDragEnd?.({ active: { id: 'g1' }, over: { id: 'g1' } }));
+
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/group-order'), expect.anything());
   });
 });
