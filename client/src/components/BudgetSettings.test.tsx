@@ -34,20 +34,22 @@ describe('BudgetSettings', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('saves payday, savings and the other-groups option (off by default)', async () => {
+  it('saves payday, savings, the other-groups option (off by default) and the alerts (on by default)', async () => {
     const onSave = vi.fn().mockResolvedValue(true);
     const initial = { diaInicioCiclo: 1, ahorroObjetivo: 0, incluirOtrosGrupos: false };
     const { rerender } = render(<BudgetSettings tipo="personal" presupuesto={initial} memberCount={1} isOwner onSave={onSave} />);
     const save = screen.getByRole('button', { name: 'Guardar' });
     expect(save).toBeDisabled();
-    expect(screen.getByRole('checkbox')).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Contar mi parte/ })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Avisarme/ })).toBeChecked();
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Día de cobro' }), { target: { value: '28' } });
     fireEvent.change(screen.getByRole('textbox', { name: 'Ahorro por ciclo' }), { target: { value: '150,5' } });
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Contar mi parte/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Avisarme/ }));
     fireEvent.click(save);
 
-    const saved = { diaInicioCiclo: 28, ahorroObjetivo: 150.5, incluirOtrosGrupos: true };
+    const saved = { diaInicioCiclo: 28, ahorroObjetivo: 150.5, incluirOtrosGrupos: true, avisos: false };
     expect(onSave).toHaveBeenCalledWith({ presupuesto: saved });
     // La página recarga el grupo y pasa la configuración guardada
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));

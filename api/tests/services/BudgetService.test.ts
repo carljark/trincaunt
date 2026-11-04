@@ -118,7 +118,7 @@ describe('BudgetService', () => {
       (Group.findById as vi.Mock).mockResolvedValue({ ...personalGroup(), presupuesto: undefined });
       const summary = await service.getSummary(groupId, userId);
 
-      expect(summary.configuracion).toEqual({ diaInicioCiclo: 1, ahorroObjetivo: 0, incluirOtrosGrupos: false, limitesCategoria: [] });
+      expect(summary.configuracion).toEqual({ diaInicioCiclo: 1, ahorroObjetivo: 0, incluirOtrosGrupos: false, limitesCategoria: [], avisos: true });
       expect(summary.ciclo).toMatchObject({ inicio: '2026-11-01', fin: '2026-12-01' });
     });
 

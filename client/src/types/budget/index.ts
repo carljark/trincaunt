@@ -11,6 +11,7 @@ export interface IBudgetConfig {
   ahorroObjetivo: number;
   incluirOtrosGrupos: boolean;
   limitesCategoria?: ILimiteCategoria[];
+  avisos?: boolean; // push al 80 % y al 100 %; sin valor, activados
 }
 
 export interface ICategoryLimitStatus extends ILimiteCategoria {

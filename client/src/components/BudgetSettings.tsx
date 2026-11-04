@@ -17,7 +17,7 @@ interface BudgetSettingsProps {
   categories?: string[];
 }
 
-const DEFAULTS: IBudgetConfig = { diaInicioCiclo: 1, ahorroObjetivo: 0, incluirOtrosGrupos: false };
+const DEFAULTS: IBudgetConfig = { diaInicioCiclo: 1, ahorroObjetivo: 0, incluirOtrosGrupos: false, avisos: true };
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 // Tarjeta de la pestaña Grupo: activar el modo presupuesto personal y configurarlo
@@ -26,6 +26,7 @@ const BudgetSettings: React.FC<BudgetSettingsProps> = ({ tipo, presupuesto, memb
   const [dia, setDia] = useState(config.diaInicioCiclo);
   const [ahorro, setAhorro] = useState(String(config.ahorroObjetivo));
   const [incluir, setIncluir] = useState(config.incluirOtrosGrupos);
+  const [avisos, setAvisos] = useState(config.avisos !== false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -35,7 +36,8 @@ const BudgetSettings: React.FC<BudgetSettingsProps> = ({ tipo, presupuesto, memb
     setDia(config.diaInicioCiclo);
     setAhorro(String(config.ahorroObjetivo));
     setIncluir(config.incluirOtrosGrupos);
-  }, [config.diaInicioCiclo, config.ahorroObjetivo, config.incluirOtrosGrupos]);
+    setAvisos(config.avisos !== false);
+  }, [config.diaInicioCiclo, config.ahorroObjetivo, config.incluirOtrosGrupos, config.avisos]);
 
   const save = async (change: BudgetSettingsChange) => {
     setBusy(true);
@@ -73,7 +75,8 @@ const BudgetSettings: React.FC<BudgetSettingsProps> = ({ tipo, presupuesto, memb
   }
 
   const ahorroNumber = Number(ahorro.replace(',', '.'));
-  const dirty = dia !== config.diaInicioCiclo || ahorroNumber !== config.ahorroObjetivo || incluir !== config.incluirOtrosGrupos;
+  const dirty = dia !== config.diaInicioCiclo || ahorroNumber !== config.ahorroObjetivo || incluir !== config.incluirOtrosGrupos
+    || avisos !== (config.avisos !== false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +84,7 @@ const BudgetSettings: React.FC<BudgetSettingsProps> = ({ tipo, presupuesto, memb
       setError('El ahorro no puede ser negativo.');
       return;
     }
-    void save({ presupuesto: { diaInicioCiclo: dia, ahorroObjetivo: Math.round(ahorroNumber * 100) / 100, incluirOtrosGrupos: incluir } });
+    void save({ presupuesto: { diaInicioCiclo: dia, ahorroObjetivo: Math.round(ahorroNumber * 100) / 100, incluirOtrosGrupos: incluir, avisos } });
   };
 
   return (
@@ -135,6 +138,23 @@ const BudgetSettings: React.FC<BudgetSettingsProps> = ({ tipo, presupuesto, memb
               <span className="budget-settings__hint">
                 Resta del presupuesto lo que te toca de los gastos de tus otros grupos. No apuntes esos gastos también aquí
                 o contarán dos veces.
+              </span>
+            </span>
+          </label>
+
+          <label className="budget-settings__check">
+            <input
+              className="budget-settings__checkbox"
+              type="checkbox"
+              checked={avisos}
+              onChange={e => { setAvisos(e.target.checked); setSaved(false); }}
+              disabled={!isOwner}
+            />
+            <span className="budget-settings__check-text">
+              Avisarme al llegar al 80 % y al 100 %
+              <span className="budget-settings__hint">
+                Del presupuesto del ciclo y de cada límite por categoría, una vez por ciclo. Llegan a los dispositivos
+                con las notificaciones activadas en Preferencias.
               </span>
             </span>
           </label>

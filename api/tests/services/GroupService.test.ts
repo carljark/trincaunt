@@ -5,6 +5,7 @@ import Expense from '../../src/models/Expense';
 import UserPreferences from '../../src/models/UserPreferences';
 import RecurringItem from '../../src/models/RecurringItem';
 import Income from '../../src/models/Income';
+import BudgetAlert from '../../src/models/BudgetAlert';
 import { AppError } from '../../src/utils/AppError';
 import mongoose from 'mongoose';
 
@@ -14,6 +15,7 @@ vi.mock('../../src/models/Expense');
 vi.mock('../../src/models/UserPreferences');
 vi.mock('../../src/models/RecurringItem');
 vi.mock('../../src/models/Income');
+vi.mock('../../src/models/BudgetAlert');
 vi.mock('../../src/models/DebtTransaction');
 
 const GroupMock = Group as vi.Mocked<typeof Group>;
@@ -199,7 +201,7 @@ describe('GroupService', () => {
       await groupService.updateGroup('group-1', { tipo: 'personal', presupuesto: { diaInicioCiclo: 28 } } as any, 'user-123');
 
       expect(group.tipo).toBe('personal');
-      expect((group as any).presupuesto).toEqual({ diaInicioCiclo: 28, ahorroObjetivo: 0, incluirOtrosGrupos: false, limitesCategoria: [] });
+      expect((group as any).presupuesto).toEqual({ diaInicioCiclo: 28, ahorroObjetivo: 0, incluirOtrosGrupos: false, limitesCategoria: [], avisos: true });
       expect(group.save).toHaveBeenCalled();
     });
 
@@ -223,13 +225,14 @@ describe('GroupService', () => {
 
       expect(RecurringItem.deleteMany).toHaveBeenCalledWith({ grupo_id: groupId });
       expect(Income.deleteMany).toHaveBeenCalledWith({ grupo_id: groupId });
+      expect(BudgetAlert.deleteMany).toHaveBeenCalledWith({ grupo_id: groupId });
     });
   });
 
   describe('validatePresupuesto', () => {
     it('merges partial changes into the current config', () => {
       expect(validatePresupuesto({ ahorroObjetivo: 150.555 }, { diaInicioCiclo: 25, ahorroObjetivo: 0, incluirOtrosGrupos: true } as any))
-        .toEqual({ diaInicioCiclo: 25, ahorroObjetivo: 150.56, incluirOtrosGrupos: true, limitesCategoria: [] });
+        .toEqual({ diaInicioCiclo: 25, ahorroObjetivo: 150.56, incluirOtrosGrupos: true, limitesCategoria: [], avisos: true });
     });
 
     it('cleans the category limits and keeps them when not sent', () => {
