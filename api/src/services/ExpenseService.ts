@@ -65,7 +65,8 @@ export class ExpenseService {
   }
 
   async getGlobalExpenses(userId: string, categories?: string[]): Promise<any[]> {
-    const userGroups = await Group.find({ miembros: userId });
+    // Solo grupos compartidos: los personales son un presupuesto aparte y no cuentan en "tu parte"
+    const userGroups = await Group.find({ miembros: userId, tipo: { $ne: 'personal' } });
     const groupIds = userGroups.map(g => g._id);
 
     let query: any = { 
