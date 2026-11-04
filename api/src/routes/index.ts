@@ -64,6 +64,7 @@ router.delete('/debt-transactions/:transactionId', protect, DebtTransactionContr
 // User Preferences Routes (Protected)
 router.get('/user-preferences', protect, UserPreferencesController.getPreferences);
 router.post('/user-preferences', protect, UserPreferencesController.savePreferences);
+router.put('/user-preferences/group-order', protect, UserPreferencesController.saveGroupOrder);
 
 // Note Routes (Protected)
 router.post('/groups/:groupId/notes', protect, NoteController.createNote);

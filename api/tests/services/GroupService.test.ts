@@ -1,13 +1,15 @@
-import { GroupService } from '../../src/services/GroupService';
+import { GroupService, sortByUserOrder } from '../../src/services/GroupService';
 import Group from '../../src/models/Group';
 import User from '../../src/models/User';
 import Expense from '../../src/models/Expense';
+import UserPreferences from '../../src/models/UserPreferences';
 import { AppError } from '../../src/utils/AppError';
 import mongoose from 'mongoose';
 
 vi.mock('../../src/models/Group');
 vi.mock('../../src/models/User');
 vi.mock('../../src/models/Expense');
+vi.mock('../../src/models/UserPreferences');
 
 const GroupMock = Group as vi.Mocked<typeof Group>;
 const UserMock = User as vi.Mocked<typeof User>;
@@ -44,6 +46,7 @@ describe('GroupService', () => {
     } as any);
     UserMock.findOne.mockResolvedValue({ _id: 'user-456', id: 'user-456' } as any);
     ExpenseMock.find.mockResolvedValue([]);
+    (UserPreferences.findOne as vi.Mock).mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
   });
 
   describe('createGroup', () => {
@@ -136,6 +139,41 @@ describe('GroupService', () => {
       expect(Expense.find).toHaveBeenCalledWith({ grupo_id: 'group-1' });
       expect(result[0].totalExpenses).toBe(100);
       expect(result[0].userShare).toBe(100);
+    });
+
+    it('should return groups in the order saved by the user', async () => {
+      const userId = 'user-123';
+      const groups = ['g1', 'g2', 'g3'].map(id => ({ _id: id, nombre: id, miembros: [userId] }));
+      (Group.find as vi.Mock).mockReturnValue({
+        populate: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(groups) }),
+      });
+      (UserPreferences.findOne as vi.Mock).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ groupOrder: ['g3', 'g1'] }),
+      });
+
+      const result = await groupService.getGroupsForUser(userId);
+
+      expect(UserPreferences.findOne).toHaveBeenCalledWith({ userId });
+      expect(result.map(g => g._id)).toEqual(['g3', 'g1', 'g2']);
+    });
+  });
+
+  describe('sortByUserOrder', () => {
+    const groups = ['a', 'b', 'c', 'd'].map(_id => ({ _id }));
+
+    it('keeps the original order without a saved order', () => {
+      expect(sortByUserOrder(groups, []).map(g => g._id)).toEqual(['a', 'b', 'c', 'd']);
+    });
+
+    it('puts unknown groups at the end and ignores ids that no longer exist', () => {
+      expect(sortByUserOrder(groups, ['c', 'gone', 'a']).map(g => g._id)).toEqual(['c', 'a', 'b', 'd']);
+    });
+
+    it('compares ObjectIds by their string value', () => {
+      const id = new mongoose.Types.ObjectId();
+      const other = new mongoose.Types.ObjectId();
+      const result = sortByUserOrder([{ _id: other }, { _id: id }], [id.toString()]);
+      expect(result[0]._id).toBe(id);
     });
   });
 });
