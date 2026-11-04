@@ -10,6 +10,7 @@ export interface IExpense extends Document {
   asume_gasto: boolean;
   categoria: string[];
   localization?: string;
+  recurrente_id?: mongoose.Types.ObjectId; // Factura recurrente que este gasto paga
 }
 
 const ExpenseSchema: Schema = new Schema({
@@ -21,7 +22,10 @@ const ExpenseSchema: Schema = new Schema({
   fecha: { type: Date, default: Date.now },
   asume_gasto: { type: Boolean, default: false },
   categoria: { type: [String], required: false },
-  localization: { type: String, required: false }
+  localization: { type: String, required: false },
+  recurrente_id: { type: Schema.Types.ObjectId, ref: 'RecurringItem', required: false }
 });
+
+ExpenseSchema.index({ grupo_id: 1, fecha: 1 });
 
 export default mongoose.model<IExpense>('Expense', ExpenseSchema);

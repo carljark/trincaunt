@@ -8,6 +8,7 @@ import * as UserPreferencesController from '../controllers/UserPreferencesContro
 import * as NoteController from '../controllers/NoteController'; // Import NoteController
 import * as DbController from '../controllers/DbController';
 import * as PushController from '../controllers/PushController';
+import * as BudgetController from '../controllers/BudgetController';
 import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -71,6 +72,18 @@ router.post('/groups/:groupId/notes', protect, NoteController.createNote);
 router.get('/groups/:groupId/notes', protect, NoteController.getGroupNotes);
 router.put('/notes/:noteId', protect, NoteController.updateNote);
 router.delete('/notes/:noteId', protect, NoteController.deleteNote);
+
+// Budget Routes (Protected, solo grupos personales)
+router.get('/groups/:groupId/budget', protect, BudgetController.getBudget);
+router.get('/groups/:groupId/recurring-items', protect, BudgetController.listRecurringItems);
+router.post('/groups/:groupId/recurring-items', protect, BudgetController.createRecurringItem);
+router.put('/recurring-items/:itemId', protect, BudgetController.updateRecurringItem);
+router.delete('/recurring-items/:itemId', protect, BudgetController.deleteRecurringItem);
+router.post('/recurring-items/:itemId/confirm', protect, BudgetController.confirmRecurringItem);
+router.get('/groups/:groupId/incomes', protect, BudgetController.listIncomes);
+router.post('/groups/:groupId/incomes', protect, BudgetController.createIncome);
+router.put('/incomes/:incomeId', protect, BudgetController.updateIncome);
+router.delete('/incomes/:incomeId', protect, BudgetController.deleteIncome);
 
 // Push Notification Routes
 router.get('/push/public-key', PushController.getPublicKey);

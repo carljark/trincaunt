@@ -1,4 +1,6 @@
-import Group, { IGroup } from '../models/Group';
+import Group, { IGroup, IGroupPresupuesto, PRESUPUESTO_POR_DEFECTO } from '../models/Group';
+import RecurringItem from '../models/RecurringItem';
+import Income from '../models/Income';
 import User from '../models/User';
 import Expense from '../models/Expense'; // Import Expense model
 import DebtTransaction from '../models/DebtTransaction'; // Import DebtTransaction model
@@ -20,6 +22,28 @@ export const sortByUserOrder = <T extends { _id: unknown }>(groups: T[], order: 
     .map(({ group }) => group);
 };
 
+/** Mezcla los cambios con la configuración actual (o la de por defecto) y los valida. */
+export const validatePresupuesto = (input: unknown, current?: IGroupPresupuesto | null): IGroupPresupuesto => {
+  if (typeof input !== 'object' || input === null) throw new AppError('Configuración de presupuesto no válida', 400);
+  const base = current ? JSON.parse(JSON.stringify(current)) : {};
+  const merged = { ...PRESUPUESTO_POR_DEFECTO, ...base, ...(input as object) } as IGroupPresupuesto;
+
+  if (!Number.isInteger(merged.diaInicioCiclo) || merged.diaInicioCiclo < 1 || merged.diaInicioCiclo > 31) {
+    throw new AppError('El día de inicio del ciclo debe estar entre 1 y 31', 400);
+  }
+  if (typeof merged.ahorroObjetivo !== 'number' || !(merged.ahorroObjetivo >= 0)) {
+    throw new AppError('El ahorro objetivo no puede ser negativo', 400);
+  }
+  if (typeof merged.incluirOtrosGrupos !== 'boolean') {
+    throw new AppError('incluirOtrosGrupos debe ser verdadero o falso', 400);
+  }
+  return {
+    diaInicioCiclo: merged.diaInicioCiclo,
+    ahorroObjetivo: Math.round(merged.ahorroObjetivo * 100) / 100,
+    incluirOtrosGrupos: merged.incluirOtrosGrupos
+  };
+};
+
 export class GroupService {
   async createGroup(data: Partial<IGroup>, userId: string): Promise<IGroup> {
     const group = await Group.create({
@@ -33,6 +57,9 @@ export class GroupService {
   async addMember(groupId: string, email: string): Promise<IGroup> {
     const group = await Group.findById(groupId);
     if (!group) throw new AppError('Grupo no encontrado', 404);
+    if (group.tipo === 'personal') {
+      throw new AppError('Un grupo personal no admite más miembros. Cámbialo a compartido primero.', 400);
+    }
 
     const userToAdd = await User.findOne({ email });
     if (!userToAdd) throw new AppError('Usuario no encontrado', 404);
@@ -97,6 +124,10 @@ export class GroupService {
     // Delete all debt transactions related to this group
     await DebtTransaction.deleteMany({ group: new mongoose.Types.ObjectId(groupId) } as any);
 
+    // Delete the budget data of personal groups
+    await RecurringItem.deleteMany({ grupo_id: groupId });
+    await Income.deleteMany({ grupo_id: groupId });
+
     // Finally, delete the group itself
     await Group.deleteOne({ _id: groupId });
   }
@@ -145,7 +176,20 @@ export class GroupService {
     if (data.nombre) {
       group.nombre = data.nombre;
     }
-    // Add other updatable fields here as needed in the future
+
+    if (data.tipo !== undefined) {
+      if (!['compartido', 'personal'].includes(data.tipo)) {
+        throw new AppError('El tipo debe ser compartido o personal', 400);
+      }
+      if (data.tipo === 'personal' && group.miembros.length !== 1) {
+        throw new AppError('Solo un grupo con un único miembro puede ser personal', 400);
+      }
+      group.tipo = data.tipo;
+    }
+
+    if (data.presupuesto !== undefined) {
+      group.presupuesto = validatePresupuesto(data.presupuesto, group.presupuesto);
+    }
 
     await group.save();
     return group;

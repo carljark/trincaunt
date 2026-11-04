@@ -6,6 +6,8 @@ import DebtTransaction from '../models/DebtTransaction';
 import CategoryAlias from '../models/CategoryAlias';
 import UserPreferences from '../models/UserPreferences';
 import Note from '../models/Note';
+import RecurringItem from '../models/RecurringItem';
+import Income from '../models/Income';
 import { AppError } from '../utils/AppError';
 
 const isAdmin = (email?: string) => email === 'elcal.lico@gmail.com';
@@ -24,7 +26,9 @@ export const exportDB = async (req: Request, res: Response) => {
       debtTransactions: await DebtTransaction.find({}),
       categoryAliases: await CategoryAlias.find({}),
       userPreferences: await UserPreferences.find({}),
-      notes: await Note.find({})
+      notes: await Note.find({}),
+      recurringItems: await RecurringItem.find({}),
+      incomes: await Income.find({})
     };
 
     res.status(200).json(data);
@@ -51,6 +55,8 @@ export const importDB = async (req: Request, res: Response) => {
     await CategoryAlias.deleteMany({});
     await UserPreferences.deleteMany({});
     await Note.deleteMany({});
+    await RecurringItem.deleteMany({});
+    await Income.deleteMany({});
 
     // Restaurar
     if (data.users && data.users.length) await User.insertMany(data.users);
@@ -60,6 +66,8 @@ export const importDB = async (req: Request, res: Response) => {
     if (data.categoryAliases && data.categoryAliases.length) await CategoryAlias.insertMany(data.categoryAliases);
     if (data.userPreferences && data.userPreferences.length) await UserPreferences.insertMany(data.userPreferences);
     if (data.notes && data.notes.length) await Note.insertMany(data.notes);
+    if (data.recurringItems && data.recurringItems.length) await RecurringItem.insertMany(data.recurringItems);
+    if (data.incomes && data.incomes.length) await Income.insertMany(data.incomes);
 
     res.status(200).json({ status: 'success', message: 'DDBB restaurada con éxito' });
   } catch (error) {
