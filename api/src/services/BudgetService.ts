@@ -74,6 +74,27 @@ export interface BudgetSummary {
   limitesCategoria: CategoryLimitStatus[];
 }
 
+export interface CycleHistoryEntry {
+  inicio: string;
+  fin: string; // excluido
+  offset: number;
+  enCurso: boolean;
+  ingresos: number;        // cobrados
+  facturas: number;        // pagadas (tu parte)
+  gastosVariables: number;
+  otrosGrupos: number;     // 0 si no se cuentan
+  gastado: number;         // facturas + variables + otros grupos
+  sobrante: number;        // ingresos - gastado (negativo: te pasaste)
+}
+
+export interface BudgetHistory {
+  ahorroObjetivo: number;
+  ciclos: CycleHistoryEntry[];      // del más antiguo al actual
+  mediaSobrante: number | null;     // de los ciclos terminados
+}
+
+export const MAX_CICLOS_HISTORICO = 12;
+
 const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 
 const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo'] as const;
@@ -200,6 +221,65 @@ export class BudgetService {
       porSemana,
       ritmo: isCurrent ? { gastoIdeal, desviacion: round2(gastado - gastoIdeal) } : null,
       limitesCategoria
+    };
+  }
+
+  /**
+   * Los últimos `ciclos` ciclos (el actual incluido) con lo que pasó de verdad: lo cobrado,
+   * las facturas pagadas y lo gastado. Lo previsto sin confirmar no cuenta. Se quitan los
+   * ciclos iniciales sin ningún movimiento (antes de empezar a usar el presupuesto).
+   */
+  async getHistory(groupId: string, userId: string, ciclos = 6): Promise<BudgetHistory> {
+    if (!Number.isInteger(ciclos) || ciclos < 1 || ciclos > MAX_CICLOS_HISTORICO) {
+      throw new AppError(`El histórico admite de 1 a ${MAX_CICLOS_HISTORICO} ciclos`, 400);
+    }
+    const group = await this.getBudgetGroup(groupId, userId);
+    const config: IGroupPresupuesto = { ...PRESUPUESTO_POR_DEFECTO, ...(group.presupuesto ? JSON.parse(JSON.stringify(group.presupuesto)) : {}) };
+
+    const today = todayIn('Europe/Madrid', this.now());
+    const cycles = Array.from({ length: ciclos }, (_, i) => cycleContaining(today, config.diaInicioCiclo, i - ciclos + 1));
+    const range = { $gte: cycles[0].inicio, $lt: cycles[cycles.length - 1].fin };
+
+    const otherGroups = config.incluirOtrosGrupos
+      ? await Group.find({ miembros: userId, _id: { $ne: groupId }, tipo: { $ne: 'personal' } })
+      : [];
+    const [expenses, incomes, otherExpenses] = await Promise.all([
+      Expense.find({ grupo_id: groupId, fecha: range }),
+      Income.find({ grupo_id: groupId, fecha: range }),
+      otherGroups.length ? Expense.find({ grupo_id: { $in: otherGroups.map(g => g._id) }, fecha: range }) : Promise.resolve([] as IExpense[])
+    ]);
+
+    const entries = cycles.map((cycle, i): CycleHistoryEntry & { vacio: boolean } => {
+      const mine = expenses.filter(e => inCycle(e.fecha, cycle));
+      const others = otherExpenses.filter(e => inCycle(e.fecha, cycle));
+      const cobrado = incomes.filter(e => inCycle(e.fecha, cycle));
+      const facturas = sum(mine.filter(e => e.recurrente_id).map(e => userShareOf(e, userId)));
+      const gastosVariables = sum(mine.filter(e => !e.recurrente_id).map(e => userShareOf(e, userId)));
+      const otrosGrupos = sum(others.map(e => userShareOf(e, userId)));
+      const ingresos = sum(cobrado.map(e => e.monto));
+      const gastado = round2(facturas + gastosVariables + otrosGrupos);
+      return {
+        inicio: ymd(cycle.inicio),
+        fin: ymd(cycle.fin),
+        offset: i - ciclos + 1,
+        enCurso: inCycle(today, cycle),
+        ingresos,
+        facturas,
+        gastosVariables,
+        otrosGrupos,
+        gastado,
+        sobrante: round2(ingresos - gastado),
+        vacio: mine.length === 0 && cobrado.length === 0 && others.length === 0
+      };
+    });
+
+    const first = entries.findIndex(e => !e.vacio || e.enCurso);
+    const visible = entries.slice(first).map(({ vacio, ...entry }) => entry);
+    const terminados = visible.filter(e => !e.enCurso);
+    return {
+      ahorroObjetivo: config.ahorroObjetivo,
+      ciclos: visible,
+      mediaSobrante: terminados.length ? round2(sum(terminados.map(e => e.sobrante)) / terminados.length) : null
     };
   }
 

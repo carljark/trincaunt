@@ -6,6 +6,9 @@ import BudgetTab from './BudgetTab';
 import { budgetApi } from '../utils/budgetApi';
 import { IBudgetSummary, IRecurringItem } from '../types/budget';
 
+// El histórico tiene sus propios tests
+vi.mock('./BudgetHistory', () => ({ default: () => null }));
+
 vi.mock('../utils/budgetApi', () => ({
   budgetApi: {
     getSummary: vi.fn(),

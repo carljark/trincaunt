@@ -232,6 +232,60 @@ describe('BudgetService', () => {
     });
   });
 
+  describe('getHistory', () => {
+    const past = [
+      { _id: oid(), grupo_id: groupId, descripcion: 'Alquiler', monto: 700, fecha: d('2026-10-01'), pagado_por: me, participantes: me, asume_gasto: false, recurrente_id: alquilerId },
+      { _id: oid(), grupo_id: groupId, descripcion: 'Súper', monto: 900, fecha: d('2026-10-15'), pagado_por: me, participantes: me, asume_gasto: false },
+      { _id: oid(), grupo_id: groupId, descripcion: 'Cena', monto: 80, fecha: d('2026-09-30'), pagado_por: me, participantes: [...me, oid()], asume_gasto: false }
+    ];
+    const pastIncomes = [
+      { _id: oid(), grupo_id: groupId, descripcion: 'Nómina', monto: 2000, fecha: d('2026-09-28'), recurrente_id: nominaId },
+      // Ingreso con hora: sigue contando en su ciclo
+      { _id: oid(), grupo_id: groupId, descripcion: 'Bizum', monto: 50, fecha: new Date('2026-10-27T18:00:00Z') }
+    ];
+
+    beforeEach(() => {
+      (Expense.find as vi.Mock).mockResolvedValue([...past, ...personalExpenses]);
+      (Income.find as vi.Mock).mockResolvedValue([...pastIncomes, ...incomes]);
+    });
+
+    it('sums what really happened in each cycle and drops the empty ones before', async () => {
+      const history = await service.getHistory(groupId, userId, 4);
+
+      expect(Expense.find).toHaveBeenCalledWith({ grupo_id: groupId, fecha: { $gte: d('2026-07-28'), $lt: d('2026-11-28') } });
+      // Julio-agosto y agosto-septiembre no tienen nada: se quitan
+      expect(history.ciclos.map(c => [c.inicio, c.fin, c.offset, c.enCurso])).toEqual([
+        ['2026-09-28', '2026-10-28', -1, false],
+        ['2026-10-28', '2026-11-28', 0, true]
+      ]);
+      expect(history.ciclos[0]).toMatchObject({ ingresos: 2050, facturas: 700, gastosVariables: 940, otrosGrupos: 0, gastado: 1640, sobrante: 410 });
+      // En curso: solo lo confirmado (la luz pendiente no cuenta)
+      expect(history.ciclos[1]).toMatchObject({ ingresos: 2050, facturas: 700, gastosVariables: 150, gastado: 850, sobrante: 1200 });
+      expect(history.mediaSobrante).toBe(410);
+      expect(history.ahorroObjetivo).toBe(200);
+    });
+
+    it('counts your share in other groups when enabled', async () => {
+      (Group.findById as vi.Mock).mockResolvedValue(personalGroup({ diaInicioCiclo: 28, ahorroObjetivo: 0, incluirOtrosGrupos: true }));
+      const sharedId = oid();
+      (Group.find as vi.Mock).mockResolvedValue([{ _id: sharedId, nombre: 'Piso', tipo: 'compartido' }]);
+      const shared = [{ _id: oid(), grupo_id: sharedId, descripcion: 'Compra', monto: 90, fecha: d('2026-10-10'), pagado_por: me, participantes: [...me, oid(), oid()], asume_gasto: false }];
+      (Expense.find as vi.Mock).mockImplementation(async (q: any) => (q.grupo_id.$in ? shared : past));
+      (Income.find as vi.Mock).mockResolvedValue([]);
+
+      const history = await service.getHistory(groupId, userId, 2);
+
+      expect(history.ciclos[0]).toMatchObject({ otrosGrupos: 30, gastado: 1670, sobrante: -1670 });
+      expect(history.ciclos[1]).toMatchObject({ gastado: 0, sobrante: 0, enCurso: true });
+    });
+
+    it('rejects a bad number of cycles', async () => {
+      await expect(service.getHistory(groupId, userId, 0)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(service.getHistory(groupId, userId, 13)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(service.getHistory(groupId, userId, 2.5)).rejects.toMatchObject({ statusCode: 400 });
+    });
+  });
+
   describe('confirmRecurringItem', () => {
     const save = vi.fn();
     beforeEach(() => {
