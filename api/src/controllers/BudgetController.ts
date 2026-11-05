@@ -19,6 +19,14 @@ export const getBudget = async (req: Request, res: Response, next: NextFunction)
   } catch (error) { next(error); }
 };
 
+export const getBudgetHistory = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const ciclos = req.query.ciclos !== undefined ? Number(req.query.ciclos) : 6;
+    const history = await budgetService.getHistory(req.params.groupId, userIdOf(req), ciclos);
+    res.status(200).json({ status: 'success', data: history });
+  } catch (error) { next(error); }
+};
+
 export const listRecurringItems = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const items = await budgetService.listRecurringItems(req.params.groupId, userIdOf(req));

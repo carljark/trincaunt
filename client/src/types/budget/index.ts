@@ -75,6 +75,25 @@ export interface IBudgetSummary {
   limitesCategoria?: ICategoryLimitStatus[];
 }
 
+export interface ICycleHistoryEntry {
+  inicio: string;
+  fin: string; // excluido
+  offset: number;
+  enCurso: boolean;
+  ingresos: number;
+  facturas: number;
+  gastosVariables: number;
+  otrosGrupos: number;
+  gastado: number;
+  sobrante: number;
+}
+
+export interface IBudgetHistory {
+  ahorroObjetivo: number;
+  ciclos: ICycleHistoryEntry[]; // del más antiguo al actual
+  mediaSobrante: number | null;
+}
+
 export const FRECUENCIA_LABELS: Record<Frecuencia, string> = {
   mensual: 'Cada mes',
   bimestral: 'Cada 2 meses',

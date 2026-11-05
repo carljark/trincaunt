@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from './icons';
+import BudgetHistory from './BudgetHistory';
 import BudgetMovementDialog, { BudgetMovementValues } from './BudgetMovementDialog';
 import RecurringItemDialog from './RecurringItemDialog';
 import ConfirmationModal from './ConfirmationModal';
@@ -366,6 +367,8 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
           )}
         </section>
       )}
+
+      <BudgetHistory groupId={groupId} token={token} refreshKey={refreshKey} />
 
       <section className="budget__card">
         <div className="budget__header">

@@ -90,6 +90,7 @@ router.delete('/notes/:noteId', protect, NoteController.deleteNote);
 
 // Budget Routes (Protected, solo grupos personales)
 router.get('/groups/:groupId/budget', protect, BudgetController.getBudget);
+router.get('/groups/:groupId/budget/history', protect, BudgetController.getBudgetHistory);
 router.get('/groups/:groupId/recurring-items', protect, BudgetController.listRecurringItems);
 router.post('/groups/:groupId/recurring-items', protect, BudgetController.createRecurringItem);
 router.put('/recurring-items/:itemId', protect, BudgetController.updateRecurringItem);
