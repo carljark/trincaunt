@@ -10,7 +10,8 @@ export default defineConfig({
     // icons-src/maskable.svg (sin esquinas, con margen de zona segura), p. ej.:
     //   rsvg-convert -w 512 -h 512 icons-src/maskable.svg -o public/icons/maskable-512x512.png
     VitePWA({
-      registerType: 'autoUpdate',
+      // La versión nueva espera a que se acepte el aviso (components/UpdatePrompt)
+      registerType: 'prompt',
       includeAssets: ['logo.svg', 'icons/apple-touch-icon-180x180.png'],
       manifest: {
         name: 'Trincaunt',

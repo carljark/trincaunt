@@ -64,6 +64,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { SocketProvider } from './contexts/SocketContext';
 import NotificationBell from './components/NotificationBell';
 import InstallPrompt from './components/InstallPrompt';
+import UpdatePrompt from './components/UpdatePrompt';
 
 const App: React.FC = () => {
   return (
@@ -74,6 +75,7 @@ const App: React.FC = () => {
           <NotificationBell />
           <AppContent />
           <InstallPrompt />
+          <UpdatePrompt />
         </Router>
                 </SocketProvider>
         </NotificationProvider>
