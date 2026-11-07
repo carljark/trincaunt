@@ -118,6 +118,25 @@ describe('groupAccess', () => {
     });
   });
 
+  describe('requireGroupMember with allowAdmin', () => {
+    const mw = requireGroupMember('params', 'groupId', { allowAdmin: true });
+    const admin = { id: me, role: 'admin' } as any;
+
+    it('lets an administrator into groups they are not in', async () => {
+      const { error, res } = await run(mw, { params: { groupId: otherGroup } as any, user: admin });
+      expect(error).toBeUndefined();
+      expect(res.locals.group).toBe(groups[otherGroup]);
+      // Con un token de API, solo si el token tiene permiso de administración
+      expect((await run(mw, { params: { groupId: otherGroup } as any, user: admin, apiTokenId: 't1', apiTokenAdmin: true })).error).toBeUndefined();
+      expect((await run(mw, { params: { groupId: otherGroup } as any, user: admin, apiTokenId: 't1' })).error.statusCode).toBe(403);
+    });
+
+    it('still refuses other users and non-admin routes', async () => {
+      expect((await run(mw, { params: { groupId: otherGroup } as any })).error.statusCode).toBe(403);
+      expect((await run(requireGroupMember('params', 'groupId'), { params: { groupId: otherGroup } as any, user: admin })).error.statusCode).toBe(403);
+    });
+  });
+
   describe('requireAliasAccess', () => {
     it('lets members create aliases for their group only', async () => {
       expect((await run(requireAliasAccess('create'), { body: { grupo_id: myGroup } })).error).toBeUndefined();

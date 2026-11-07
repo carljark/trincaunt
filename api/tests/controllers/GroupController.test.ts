@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { createGroup, addMember, getMyGroups, deleteGroup } from '../../src/controllers/GroupController';
+import { createGroup, addMember, getMyGroups, deleteGroup, removeMember } from '../../src/controllers/GroupController';
 import { GroupService } from '../../src/services/GroupService';
 import { AppError } from '../../src/utils/AppError';
 
@@ -104,6 +104,40 @@ describe('GroupController', () => {
       await deleteGroup(req, res, next);
       expect(GroupService.prototype.deleteGroup).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403 }));
+    });
+  });
+
+  describe('removeMember', () => {
+    const withGroup = (creator: string) => {
+      const r = mockResponse();
+      (r as any).send = vi.fn();
+      (r as any).locals = { group: { creado_por: { toString: () => creator } } };
+      return r;
+    };
+    const remove = async (user: any, memberId: string) => {
+      req = { params: { groupId: 'group-1', memberId }, body: {}, headers: {}, user } as unknown as Request;
+      res = withGroup('creator');
+      await removeMember(req, res, next);
+    };
+
+    it('lets you leave, the creator remove others and an administrator remove anyone', async () => {
+      await remove({ id: 'member', role: 'user' }, 'member');
+      await remove({ id: 'creator', role: 'user' }, 'member');
+      await remove({ id: 'boss', role: 'admin' }, 'creator');
+      expect(GroupService.prototype.removeMember).toHaveBeenCalledTimes(3);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('refuses other members and administrators using a token without that permission', async () => {
+      await remove({ id: 'member', role: 'user' }, 'other');
+      await remove({ id: 'boss', role: 'admin' }, 'other');
+      expect(GroupService.prototype.removeMember).toHaveBeenCalledTimes(1);
+      (GroupService.prototype.removeMember as vi.Mock).mockClear();
+      req = { params: { groupId: 'group-1', memberId: 'other' }, user: { id: 'boss', role: 'admin' }, apiTokenId: 't1' } as unknown as Request;
+      res = withGroup('creator');
+      await removeMember(req, res, next);
+      expect(GroupService.prototype.removeMember).not.toHaveBeenCalled();
+      expect(next).toHaveBeenLastCalledWith(expect.objectContaining({ statusCode: 403 }));
     });
   });
 });

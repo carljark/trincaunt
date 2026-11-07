@@ -1,0 +1,155 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// TOKENS DE API (BEM: .api-tokens), sección de Preferencias
+// ============================================
+
+.api-tokens {
+  @include section-card;
+
+  &__hint {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    line-height: $line-height-base;
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  // El token recién creado, que solo se ve una vez
+  &__created {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 3);
+    background: rgba($color-primary, 0.06);
+    border: 1px solid rgba($color-primary, 0.3);
+    border-radius: $border-radius;
+  }
+
+  &__created-title {
+    font-size: map.get($font-sizes, sm);
+    color: $color-gray-900;
+  }
+
+  &__secret {
+    padding: map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, sm);
+    word-break: break-all;
+    color: $color-gray-900;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+    user-select: all;
+  }
+
+  &__created-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__admin-option {
+    display: flex;
+    flex-basis: 100%;
+    align-items: flex-start;
+    gap: map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, sm);
+    line-height: $line-height-base;
+    color: $color-gray-800;
+    cursor: pointer;
+  }
+
+  &__checkbox {
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 2px 0 0;
+    accent-color: $color-primary;
+  }
+
+  &__input {
+    @include text-input;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__button {
+    @include action-button;
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-gray-800;
+      background: $color-gray-100;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    @include list-row;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__name {
+    @include truncate;
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-800;
+  }
+
+  &__badge {
+    margin-left: map.get($spacing-scale, 2);
+    padding: 1px map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, xs);
+    font-weight: map.get($font-weights, medium);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  &__meta {
+    font-size: map.get($font-sizes, xs);
+    color: $color-text-muted;
+  }
+
+  &__icon-button {
+    @include icon-button;
+    flex-shrink: 0;
+    color: $color-gray-600;
+    background: transparent;
+  }
+}

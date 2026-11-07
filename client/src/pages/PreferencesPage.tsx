@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import UserMenu from '../components/UserMenu';
 import PushToggle from '../components/PushToggle';
+import ApiTokens from '../components/ApiTokens';
+import ChangePassword from '../components/ChangePassword';
 import { ChevronLeftIcon, PencilIcon, TrashIcon } from '../components/icons';
 
 import './PreferencesPage.scss';
@@ -22,7 +24,7 @@ interface IGroupedAliases {
 }
 
 const PreferencesPage: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [groups, setGroups] = useState<{ _id: string; nombre: string }[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [aliases, setAliases] = useState<ICategoryAlias[]>([]);
@@ -476,6 +478,20 @@ const PreferencesPage: React.FC = () => {
           </>
         )}
       </section>
+
+      {token && (
+        <section className="preferences__section">
+          <h2 className="preferences__section-title">Acceso para asistentes (MCP)</h2>
+          <ApiTokens token={token} isAdmin={user?.role === 'admin'} />
+        </section>
+      )}
+
+      {token && (
+        <section className="preferences__section">
+          <h2 className="preferences__section-title">Contraseña</h2>
+          <ChangePassword token={token} />
+        </section>
+      )}
     </div>
   );
 };

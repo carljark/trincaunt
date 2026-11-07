@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { GroupService } from '../services/GroupService';
 import { AppError } from '../utils/AppError';
+import { hasAdminAccess } from '../middlewares/authMiddleware';
 
 const groupService = new GroupService();
 
@@ -66,9 +67,11 @@ export const deleteGroup = async (req: Request, res: Response, next: NextFunctio
 export const removeMember = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { groupId, memberId } = req.params;
-    const requestingUserId = (req as any).user.id;
-    if (requestingUserId !== memberId) {
-        throw new AppError('No tienes permiso para eliminar a este miembro del grupo.', 403);
+    const requestingUserId = String((req as any).user.id);
+    // Uno mismo se sale; a otros los quita el creador del grupo o un administrador
+    const creatorId = res.locals.group?.creado_por?.toString();
+    if (requestingUserId !== memberId && requestingUserId !== creatorId && !hasAdminAccess(req)) {
+      throw new AppError('Solo el creador del grupo o un administrador pueden quitar a otros miembros.', 403);
     }
 
     await groupService.removeMember(groupId, memberId);

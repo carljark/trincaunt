@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserService } from '../services/UserService';
-import User from '../models/User';
-import { AppError } from '../utils/AppError';
 
 const userService = new UserService();
 
@@ -33,31 +31,26 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     next(error);
   }
 };
-export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const user = (req as any).user;
-    if (user.role !== 'admin') throw new AppError('Acceso denegado', 403);
-    
-    // Devolvemos la info necesaria
-    const users = await User.find({}).select('-password');
-    res.status(200).json({ status: 'success', data: users });
-  } catch (error) {
-    next(error);
-  }
+// Quién eres (útil con un token de API, que no trae los datos del usuario)
+export const getMe = (req: Request, res: Response) => {
+  const user = (req as any).user;
+  res.status(200).json({
+    status: 'success',
+    data: {
+      _id: String(user._id),
+      nombre: user.nombre,
+      email: user.email,
+      role: user.role,
+      // Solo con un token de API: si se creó con permiso de administración
+      ...(req.apiTokenId ? { tokenAdmin: req.apiTokenAdmin === true } : {})
+    }
+  });
 };
 
-export const toggleUserAI = async (req: Request, res: Response, next: NextFunction) => {
+export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = (req as any).user;
-    if (user.role !== 'admin') throw new AppError('Acceso denegado', 403);
-    
-    const { id } = req.params;
-    const { aiEnabled } = req.body;
-    
-    const updatedUser = await User.findByIdAndUpdate(id, { aiEnabled }, { new: true }).select('-password');
-    if (!updatedUser) throw new AppError('Usuario no encontrado', 404);
-    
-    res.status(200).json({ status: 'success', data: updatedUser });
+    await userService.changePassword(String((req as any).user.id), req.body?.actual, req.body?.nueva);
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
