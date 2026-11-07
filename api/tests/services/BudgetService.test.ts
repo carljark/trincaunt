@@ -286,6 +286,45 @@ describe('BudgetService', () => {
     });
   });
 
+  describe('getForecast', () => {
+    const ivaId = oid();
+    const iva = { _id: ivaId, tipo: 'factura', nombre: 'Aplazamiento IVA', importe: 86, frecuencia: 'mensual', fechaInicio: d('2026-12-20'), fechaFin: d('2027-01-31'), activo: true };
+    const inRange = <T extends { fecha: Date }>(list: T[]) => async (q: any) =>
+      list.filter(e => e.fecha >= q.fecha.$gte && e.fecha < q.fecha.$lt);
+
+    beforeEach(() => {
+      (RecurringItem.find as vi.Mock).mockImplementation(async (q: any) => (q.fechaFin ? [iva] : [...items, iva]));
+      (Expense.find as vi.Mock).mockImplementation(inRange(personalExpenses));
+      (Income.find as vi.Mock).mockImplementation(inRange(incomes));
+    });
+
+    it('projects what is left in the current and next cycles', async () => {
+      const forecast = await service.getForecast(groupId, userId, 4);
+
+      expect(forecast.ahorroObjetivo).toBe(200);
+      expect(forecast.ciclos.map(c => [c.inicio, c.offset, c.enCurso])).toEqual([
+        ['2026-10-28', 0, true],
+        ['2026-11-28', 1, false],
+        ['2026-12-28', 2, false],
+        ['2027-01-28', 3, false]
+      ]);
+      // En curso: lo real (nómina 2050, gastado 150) y la luz pendiente
+      expect(forecast.ciclos[0]).toMatchObject({ ingresos: 2050, facturas: 760, presupuestoGastable: 1090, gastado: 150, disponible: 940, temporales: [] });
+      // Siguiente: nómina prevista 2000 - alquiler 700 - luz 60 - IVA 86 - ahorro 200
+      expect(forecast.ciclos[1]).toMatchObject({ ingresos: 2000, facturas: 846, presupuestoGastable: 954, gastado: 0, disponible: 954 });
+      expect(forecast.ciclos[1].temporales).toEqual([
+        { recurrente_id: ivaId.toString(), nombre: 'Aplazamiento IVA', fecha: '2026-12-20', importe: 86, estado: 'pendiente', ultima: false }
+      ]);
+      expect(forecast.ciclos[2].temporales).toMatchObject([{ fecha: '2027-01-20', ultima: true }]);
+      expect(forecast.ciclos[3]).toMatchObject({ facturas: 760, temporales: [] });
+    });
+
+    it('rejects a bad number of cycles', async () => {
+      await expect(service.getForecast(groupId, userId, 0)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(service.getForecast(groupId, userId, 13)).rejects.toMatchObject({ statusCode: 400 });
+    });
+  });
+
   describe('confirmRecurringItem', () => {
     const save = vi.fn();
     beforeEach(() => {

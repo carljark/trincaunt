@@ -95,6 +95,35 @@ export interface BudgetHistory {
 
 export const MAX_CICLOS_HISTORICO = 12;
 
+export interface ForecastBill {
+  recurrente_id: string;
+  nombre: string;
+  fecha: string;
+  importe: number;
+  estado: BillEstado;
+  ultima: boolean; // no vuelve a tocar después de este ciclo
+}
+
+export interface CycleForecastEntry {
+  inicio: string;
+  fin: string; // excluido
+  offset: number;
+  enCurso: boolean;
+  ingresos: number;            // cobrados + previstos
+  facturas: number;            // pagadas + pendientes
+  presupuestoGastable: number; // ingresos - facturas - ahorro
+  gastado: number;             // lo que ya llevas (casi siempre 0 en ciclos futuros)
+  disponible: number;          // presupuestoGastable - gastado
+  temporales: ForecastBill[];  // facturas con fecha de fin (préstamos, aplazamientos...)
+}
+
+export interface BudgetForecast {
+  ahorroObjetivo: number;
+  ciclos: CycleForecastEntry[]; // del actual en adelante
+}
+
+export const MAX_CICLOS_PREVISION = 12;
+
 const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 
 const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo'] as const;
@@ -280,6 +309,48 @@ export class BudgetService {
       ahorroObjetivo: config.ahorroObjetivo,
       ciclos: visible,
       mediaSobrante: terminados.length ? round2(sum(terminados.map(e => e.sobrante)) / terminados.length) : null
+    };
+  }
+
+  /**
+   * El ciclo actual y los `ciclos - 1` siguientes con lo que toca según las partidas fijas:
+   * cuánto te quedará para gastar en cada uno. Es el mismo cálculo que el resumen de cada
+   * ciclo. Las facturas con fecha de fin se listan aparte para ver cuándo se acaban.
+   */
+  async getForecast(groupId: string, userId: string, ciclos = 6): Promise<BudgetForecast> {
+    if (!Number.isInteger(ciclos) || ciclos < 1 || ciclos > MAX_CICLOS_PREVISION) {
+      throw new AppError(`La previsión admite de 1 a ${MAX_CICLOS_PREVISION} ciclos`, 400);
+    }
+    await this.getBudgetGroup(groupId, userId);
+    const [items, summaries] = await Promise.all([
+      RecurringItem.find({ grupo_id: groupId, tipo: 'factura', fechaFin: { $ne: null } }),
+      Promise.all(Array.from({ length: ciclos }, (_, offset) => this.getSummary(groupId, userId, offset)))
+    ]);
+    const temporales = new Map(items.filter(i => i.fechaFin).map(i => [idOf(i._id), i]));
+
+    return {
+      ahorroObjetivo: summaries[0].ahorroObjetivo,
+      ciclos: summaries.map(s => {
+        const cycleEnd = toCalendarDate(s.ciclo.fin);
+        return {
+          inicio: s.ciclo.inicio,
+          fin: s.ciclo.fin,
+          offset: s.ciclo.offset,
+          enCurso: s.ciclo.offset === 0,
+          ingresos: s.ingresos.total,
+          facturas: s.facturas.total,
+          presupuestoGastable: s.presupuestoGastable,
+          gastado: s.gastado,
+          disponible: s.disponible,
+          temporales: s.facturas.lineas.flatMap(l => {
+            const item = l.recurrente_id ? temporales.get(l.recurrente_id) : undefined;
+            if (!item) return [];
+            const afterEnd = new Date(toCalendarDate(item.fechaFin!).getTime() + 24 * 60 * 60 * 1000);
+            const ultima = afterEnd <= cycleEnd || occurrencesInRange(item, { inicio: cycleEnd, fin: afterEnd }).length === 0;
+            return [{ recurrente_id: idOf(item._id), nombre: l.nombre, fecha: l.fecha, importe: l.importe, estado: l.estado, ultima }];
+          })
+        };
+      })
     };
   }
 

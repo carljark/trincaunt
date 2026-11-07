@@ -326,6 +326,17 @@ export const tools: ToolDef[] = [
   }),
 
   tool({
+    name: 'get_budget_forecast',
+    title: 'Previsión del presupuesto',
+    description:
+      'El ciclo actual y los siguientes según las partidas fijas: ingresos, facturas y lo que quedará para gastar en ' +
+      'cada uno, con las facturas que tienen fecha de fin (préstamos, aplazamientos) y si es su última cuota.',
+    input: { groupId: id, ciclos: z.number().int().min(1).max(12).default(6) },
+    kind: 'read',
+    run: (api, { groupId, ciclos }) => api.get(`/groups/${groupId}/budget/forecast?ciclos=${ciclos}`)
+  }),
+
+  tool({
     name: 'update_budget_settings',
     title: 'Configurar presupuesto',
     description:
