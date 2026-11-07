@@ -74,4 +74,27 @@ describe('UserService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('changePassword', () => {
+    const withUser = (user: any) => (UserMock.findById as vi.Mock).mockReturnValue({ select: vi.fn().mockResolvedValue(user) });
+
+    it('checks the current password and stores the new one hashed', async () => {
+      const user = { password: 'old-hash', save: vi.fn() };
+      withUser(user);
+      (bcryptMock.compare as vi.Mock).mockResolvedValue(true);
+      (bcryptMock.hash as vi.Mock).mockResolvedValue('new-hash');
+      await userService.changePassword('u1', 'vieja', 'nueva-segura');
+      expect(bcryptMock.compare).toHaveBeenCalledWith('vieja', 'old-hash');
+      expect(user.password).toBe('new-hash');
+      expect(user.save).toHaveBeenCalled();
+    });
+
+    it('refuses a wrong current password or a short new one', async () => {
+      withUser({ password: 'old-hash', save: vi.fn() });
+      (bcryptMock.compare as vi.Mock).mockResolvedValue(false);
+      await expect(userService.changePassword('u1', 'mal', 'nueva-segura')).rejects.toMatchObject({ statusCode: 400 });
+      await expect(userService.changePassword('u1', 'vieja', 'corta')).rejects.toMatchObject({ statusCode: 400 });
+      await expect(userService.changePassword('u1', '', 'nueva-segura')).rejects.toMatchObject({ statusCode: 400 });
+    });
+  });
 });

@@ -3,6 +3,8 @@ import { AppError } from '../utils/AppError';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
+export const MIN_PASSWORD = 8;
+
 export class UserService {
   async register(data: Partial<IUser>): Promise<IUser> {
     const existingUser = await User.findOne({ email: data.email });
@@ -38,6 +40,19 @@ export class UserService {
     
     user.password = undefined as any;
     return { token, user };
+  }
+
+  /** Cambia la contraseña comprobando la actual. */
+  async changePassword(userId: string, actual: unknown, nueva: unknown): Promise<void> {
+    if (typeof actual !== 'string' || !actual) throw new AppError('Escribe tu contraseña actual', 400);
+    if (typeof nueva !== 'string' || nueva.length < MIN_PASSWORD) {
+      throw new AppError(`La contraseña nueva debe tener al menos ${MIN_PASSWORD} caracteres`, 400);
+    }
+    const user = await User.findById(userId).select('+password');
+    if (!user || !user.password) throw new AppError('Usuario no encontrado', 404);
+    if (!(await bcrypt.compare(actual, user.password))) throw new AppError('La contraseña actual no es correcta', 400);
+    user.password = await bcrypt.hash(nueva, 10);
+    await user.save();
   }
 
   async findByEmail(email: string): Promise<IUser | null> {

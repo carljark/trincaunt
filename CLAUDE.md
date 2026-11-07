@@ -6,6 +6,7 @@ AGENTS.md has a file index of `api/` and `client/`, but it is stale in places: t
 
 ## Layout
 - npm everywhere; root, `api/` and `client/` each have their own `package-lock.json` and `node_modules` (no workspaces). Root also holds Cypress E2E (`cypress/e2e`).
+- `mcp/` is a separate npm package (ESM, own lockfile): a stdio MCP server that calls the production API with a personal API token (`trc_…`, created in Preferencias, model `ApiToken`, only the sha256 is stored). Tokens can carry an `admin` flag (only admins can create them); admin routes use `requireAdmin` (role admin and, with a token, that flag) and `hasAdminAccess(req)`. It is not part of the Docker image. When adding or changing API routes the MCP uses, update `mcp/src/tools.ts`. `npx vitest run` + `npm run build` there; CI runs it too.
 - Stray ad-hoc scripts exist at the root and in `api/`. Put any new temporary scripts or patches in `/temp/` (gitignored).
 
 ## Commands

@@ -9,7 +9,9 @@ import * as NoteController from '../controllers/NoteController'; // Import NoteC
 import * as DbController from '../controllers/DbController';
 import * as PushController from '../controllers/PushController';
 import * as BudgetController from '../controllers/BudgetController';
-import { protect } from '../middlewares/authMiddleware';
+import * as ApiTokenController from '../controllers/ApiTokenController';
+import * as AdminController from '../controllers/AdminController';
+import { protect, sessionOnly, requireAdmin } from '../middlewares/authMiddleware';
 import {
   requireGroupMember,
   requireMemberOfDoc,
@@ -21,19 +23,33 @@ import DebtTransaction from '../models/DebtTransaction';
 
 // Miembro del grupo de la URL (/groups/:groupId/...)
 const groupMember = requireGroupMember('params', 'groupId');
+// Igual, pero un administrador también puede aunque no sea miembro
+const groupMemberOrAdmin = requireGroupMember('params', 'groupId', { allowAdmin: true });
 
 const router = Router();
 
 // DB Routes
-router.get('/db/export', protect, DbController.exportDB);
-router.post('/db/import', protect, DbController.importDB);
+router.get('/db/export', protect, sessionOnly, DbController.exportDB);
+router.post('/db/import', protect, sessionOnly, DbController.importDB);
 
 
 // User Routes
 router.post('/users/register', UserController.register);
 router.post('/users/login', UserController.login);
-router.get('/users/admin/all', protect, UserController.getAllUsers);
-router.patch('/users/admin/:id/ai', protect, UserController.toggleUserAI);
+router.get('/users/me', protect, UserController.getMe);
+router.put('/users/me/password', protect, sessionOnly, UserController.changePassword);
+
+// Admin Routes: rol de administrador y, con un token de API, que se creara con permiso de administración
+router.get('/users/admin/all', protect, requireAdmin, AdminController.listUsers);
+router.post('/users/admin', protect, requireAdmin, AdminController.createUser);
+router.patch('/users/admin/:id/role', protect, requireAdmin, AdminController.setUserRole);
+router.patch('/users/admin/:id/ai', protect, requireAdmin, AdminController.setUserAI);
+router.get('/admin/groups', protect, requireAdmin, AdminController.listGroups);
+
+// API Token Routes: solo con la sesión de la app
+router.get('/api-tokens', protect, sessionOnly, ApiTokenController.listTokens);
+router.post('/api-tokens', protect, sessionOnly, ApiTokenController.createToken);
+router.delete('/api-tokens/:tokenId', protect, sessionOnly, ApiTokenController.revokeToken);
 
 // Category Alias Routes (Protected)
 router.get('/category-aliases', protect, requireGroupMember('query', 'groupId', { optional: true }), CategoryAliasController.getAllAliases);
@@ -44,11 +60,11 @@ router.delete('/category-aliases/:aliasId', protect, requireAliasAccess('change'
 // Group Routes (Protected)
 router.post('/groups', protect, GroupController.createGroup);
 router.get('/groups', protect, GroupController.getMyGroups);
-router.get('/groups/:groupId', protect, groupMember, GroupController.getGroupById);
+router.get('/groups/:groupId', protect, groupMemberOrAdmin, GroupController.getGroupById);
 router.put('/groups/:groupId', protect, groupMember, GroupController.updateGroup); // Solo el creador (lo comprueba el servicio)
-router.post('/groups/:groupId/members', protect, groupMember, GroupController.addMember);
+router.post('/groups/:groupId/members', protect, groupMemberOrAdmin, GroupController.addMember);
 router.delete('/groups/:groupId', protect, groupMember, GroupController.deleteGroup); // Solo el creador
-router.delete('/groups/:groupId/members/:memberId', protect, groupMember, GroupController.removeMember); // Solo uno mismo
+router.delete('/groups/:groupId/members/:memberId', protect, groupMemberOrAdmin, GroupController.removeMember); // Uno mismo, el creador o un admin
 
 import multer from 'multer';
 

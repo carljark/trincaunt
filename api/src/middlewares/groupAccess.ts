@@ -4,6 +4,7 @@ import Group, { IGroup } from '../models/Group';
 import Expense from '../models/Expense';
 import CategoryAlias from '../models/CategoryAlias';
 import { AppError } from '../utils/AppError';
+import { hasAdminAccess } from './authMiddleware';
 
 // Control de acceso por grupo: cualquier dato de un grupo (gastos, saldos, pagos,
 // notas, alias...) solo lo pueden ver o tocar sus miembros. Estos middlewares van
@@ -11,15 +12,13 @@ import { AppError } from '../utils/AppError';
 
 export const userIdOf = (req: Request) => String((req as any).user?.id ?? (req as any).user?._id);
 
-const isAdmin = (req: Request) => (req as any).user?.role === 'admin';
-
-/** Devuelve el grupo si `userId` es miembro; si no, 400/404/403. */
-export const assertGroupMember = async (groupId: unknown, userId: string): Promise<IGroup> => {
+/** Devuelve el grupo si `userId` es miembro (o si `allowAnyone`, p. ej. un administrador); si no, 400/404/403. */
+export const assertGroupMember = async (groupId: unknown, userId: string, allowAnyone = false): Promise<IGroup> => {
   const id = groupId instanceof mongoose.Types.ObjectId ? groupId.toString() : groupId;
   if (typeof id !== 'string' || !mongoose.isValidObjectId(id)) throw new AppError('Grupo no válido', 400);
   const group = await Group.findById(id);
   if (!group) throw new AppError('Grupo no encontrado', 404);
-  if (!group.miembros.some(m => m.toString() === userId)) {
+  if (!allowAnyone && !group.miembros.some(m => m.toString() === userId)) {
     throw new AppError('No perteneces a este grupo', 403);
   }
   return group;
@@ -28,15 +27,22 @@ export const assertGroupMember = async (groupId: unknown, userId: string): Promi
 const handler = (fn: (req: Request, res: Response) => Promise<void>): RequestHandler =>
   (req, res, next) => { fn(req, res).then(() => next(), next); };
 
-/** Exige ser miembro del grupo indicado en req.params / req.body / req.query. */
-export const requireGroupMember = (source: 'params' | 'body' | 'query', key: string, { optional = false } = {}) =>
+/**
+ * Exige ser miembro del grupo indicado en req.params / req.body / req.query.
+ * Con `allowAdmin`, un administrador también puede aunque no sea miembro.
+ */
+export const requireGroupMember = (
+  source: 'params' | 'body' | 'query',
+  key: string,
+  { optional = false, allowAdmin = false } = {}
+) =>
   handler(async (req, res) => {
     const value = (req as any)[source]?.[key];
     if (value === undefined || value === '') {
       if (optional) return;
       throw new AppError(`Falta el campo ${key}`, 400);
     }
-    res.locals.group = await assertGroupMember(value, userIdOf(req));
+    res.locals.group = await assertGroupMember(value, userIdOf(req), allowAdmin && hasAdminAccess(req));
   });
 
 /** Carga el documento de :param y exige ser miembro de su grupo (campo `groupField`). */
@@ -82,7 +88,7 @@ export const requireAliasAccess = (mode: 'create' | 'change') =>
     }
 
     if (groupId === undefined || groupId === null || groupId === '') {
-      if (!isAdmin(req)) throw new AppError('Solo un administrador puede cambiar los alias globales', 403);
+      if (!hasAdminAccess(req)) throw new AppError('Solo un administrador puede cambiar los alias globales', 403);
     } else {
       res.locals.group = await assertGroupMember(groupId, userId);
     }

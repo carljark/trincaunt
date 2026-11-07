@@ -9,11 +9,13 @@
 /node_modules
 /api/node_modules
 /client/node_modules
+/mcp/node_modules
 
 # Build artifacts
 /dist
 /api/dist
 /client/dist
+/mcp/dist
 /build
 /out
 
