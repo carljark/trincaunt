@@ -165,3 +165,25 @@ describe('AiService - fecha actual en el prompt', () => {
     expect(prompt).toContain('Hoy es sábado, 31 de octubre de 2026 (2026-10-31)');
   });
 });
+
+describe('AiService - mensajes de texto y miembros', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('debería mandar el texto a Gemini y la lista de miembros en el prompt', async () => {
+    const { GoogleGenAI } = await import('@google/genai');
+    const aiInstance = new GoogleGenAI({});
+    const generateContent = vi.fn().mockResolvedValue({ text: JSON.stringify([{ descripcion: 'Cena', monto: 40, pagado_por: 'u2' }]) });
+    aiInstance.models.generateContent = generateContent;
+    vi.spyOn(AiService as any, 'ai', 'get').mockReturnValue(aiInstance);
+
+    const result = await AiService.parseExpenseFromText('Ana pagó la cena, 40 €', [{ id: 'u1', nombre: 'Carlos' }, { id: 'u2', nombre: 'Ana' }]);
+
+    const [prompt, content] = generateContent.mock.calls[0][0].contents;
+    expect(prompt).toContain('mensaje escrito');
+    expect(prompt).toContain('"nombre":"Ana"');
+    expect(content).toBe('Mensaje: Ana pagó la cena, 40 €');
+    expect(result[0]).toMatchObject({ descripcion: 'Cena', monto: 40, pagado_por: 'u2' });
+  });
+});

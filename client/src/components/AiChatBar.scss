@@ -1,0 +1,257 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// BARRA DE CHAT DE LA IA (BEM: .ai-chat-bar)
+// Fija abajo como la de un chat; la conversación (mensaje + propuesta) se abre encima.
+// ============================================
+
+.ai-chat-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: $z-index-fixed;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none; // Solo la barra y la conversación reciben toques
+
+  @include respond-above(md) {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  &__conversation {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 2);
+    max-height: 60vh;
+    max-height: 60dvh;
+    margin: 0 map.get($spacing-scale, 2) map.get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 7) map.get($spacing-scale, 3) map.get($spacing-scale, 3);
+    overflow-y: auto;
+    background: $color-gray-200;
+    border-radius: $border-radius-lg;
+    box-shadow: $box-shadow-lg;
+    pointer-events: auto;
+    animation: ai-chat-bar-slide-up 0.2s ease-out;
+  }
+
+  &__close {
+    @include icon-button;
+    position: absolute;
+    top: map.get($spacing-scale, 1);
+    right: map.get($spacing-scale, 1);
+    color: $color-gray-700;
+    background: transparent;
+  }
+
+  &__bubble {
+    max-width: 90%;
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, base);
+    line-height: $line-height-base;
+    border-radius: $border-radius-lg;
+    overflow-wrap: anywhere;
+
+    &--sent {
+      align-self: flex-end;
+      color: white;
+      background: $color-primary;
+      border-bottom-right-radius: $border-radius-sm;
+      white-space: pre-wrap;
+    }
+
+    &--reply {
+      align-self: flex-start;
+      display: flex;
+      flex-direction: column;
+      gap: map.get($spacing-scale, 2);
+      width: 90%;
+      color: $color-text;
+      background: $color-surface;
+      border-bottom-left-radius: $border-radius-sm;
+    }
+  }
+
+  &__status {
+    margin: 0;
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+  }
+
+  &__drafts {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__draft {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+    padding: map.get($spacing-scale, 2) 0;
+
+    & + & {
+      border-top: 1px solid $color-border;
+    }
+  }
+
+  &__draft-summary {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 3);
+  }
+
+  &__draft-description {
+    font-weight: map.get($font-weights, medium);
+  }
+
+  &__draft-amount {
+    @include money;
+  }
+
+  &__draft-meta {
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__draft-fields {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__field {
+    @include text-input;
+
+    &--amount {
+      flex: 0 0 6rem;
+      text-align: right;
+    }
+  }
+
+  &__remove {
+    @include icon-button;
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+
+    &:hover {
+      background: rgba($color-negative, 0.15);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__action {
+    @include action-button;
+    color: $color-primary;
+    background: transparent;
+    border-color: $color-gray-300;
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+      border-color: $color-primary;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  &__hidden-input {
+    display: none;
+  }
+
+  &__bar {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+    min-height: $ai-chat-bar-height;
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 2) calc(#{map.get($spacing-scale, 2)} + env(safe-area-inset-bottom, 0px));
+    background: $color-surface;
+    border-top: 1px solid $color-border;
+    pointer-events: auto;
+  }
+
+  &__icon {
+    @include icon-button;
+    color: $color-gray-700;
+    background: transparent;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+  }
+
+  &__input {
+    @include text-input;
+    flex: 1;
+    border-radius: $border-radius-pill;
+    background: $color-gray-100;
+  }
+
+  &__send {
+    @include icon-button;
+    color: white;
+    background: $color-primary;
+    border-radius: 50%;
+
+    &:hover {
+      background: $color-primary-dark;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  &__recording {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+    padding: 0 map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, base);
+    font-variant-numeric: tabular-nums;
+    color: $color-gray-700;
+  }
+
+  &__recording-dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    background: $color-negative;
+    border-radius: 50%;
+    animation: ai-chat-bar-pulse 1.2s infinite;
+  }
+}
+
+@keyframes ai-chat-bar-slide-up {
+  from { opacity: 0; transform: translateY(1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ai-chat-bar-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

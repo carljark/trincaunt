@@ -176,62 +176,113 @@ export const getChartExpenses = async (req: Request, res: Response, next: NextFu
   }
 };
 
-import AiService from '../services/AiService';
+import AiService, { GroupMemberRef, ParsedExpense } from '../services/AiService';
 import { AppError } from '../utils/AppError';
+import User from '../models/User';
 
-export const parseExpenseWithAI = async (req: Request, res: Response, next: NextFunction) => {
+const MAX_AI_TEXT_LENGTH = 2000;
+const MAX_BATCH_EXPENSES = 50;
+
+// Fecha de hoy en España (AAAA-MM-DD)
+const todayInSpain = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+
+const isIsoDay = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) && !Number.isNaN(new Date(value.slice(0, 10)).getTime());
+
+/**
+ * Lee un mensaje, una foto o un audio con la IA y devuelve los gastos que detecta, SIN guardarlos:
+ * el usuario los revisa y los confirma con POST /expenses/batch.
+ */
+export const draftExpensesWithAI = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = (req as any).user;
     if (user.role !== 'admin' && !user.aiEnabled) {
       throw new AppError('Acceso denegado a las funciones de IA. Contacta con el administrador.', 403);
     }
 
-    if (!req.file) {
-      throw new AppError('No se proporcionó ningún archivo de audio o imagen', 400);
+    const texto = typeof req.body?.texto === 'string' ? req.body.texto.trim() : '';
+    if (!req.file && !texto) {
+      throw new AppError('Escribe un mensaje o adjunta una foto o un audio', 400);
     }
-    
-    // El frontend debe mandar grupo_id, participantes y opcionalmente localization en el body
-    const { grupo_id, participantes, localization } = req.body;
-    if (!grupo_id || !participantes) {
-      throw new AppError('Faltan datos requeridos (grupo_id o participantes) para asociar el gasto', 400);
+    if (texto.length > MAX_AI_TEXT_LENGTH) {
+      throw new AppError(`El mensaje no puede pasar de ${MAX_AI_TEXT_LENGTH} caracteres`, 400);
     }
-    
-    const parsedExpenses = await AiService.parseExpenseFromMedia(req.file.buffer, req.file.mimetype, []);
-    const userId = (req as any).user.id;
-    
-    const createdExpenses: Awaited<ReturnType<typeof expenseService.createExpense>>[] = [];
-    
-    // Insertamos cada gasto detectado
-    for (const exp of parsedExpenses) {
-      const expenseData = {
-        grupo_id,
-        descripcion: exp.descripcion,
-        monto: exp.monto,
-        pagado_por: [userId],
-        participantes: Array.isArray(participantes) ? participantes : JSON.parse(participantes),
-        fecha: exp.fecha ? new Date(exp.fecha) : new Date(),
-        asume_gasto: false,
-        categoria: exp.categoria || ['IA'],
-        localization: exp.localization || localization || ''
-      };
-      
-      const savedExpense = await expenseService.createExpense(expenseData, userId);
-      createdExpenses.push(savedExpense);
-    }
-    
-    getIO().to(`group_${grupo_id}`).emit('expenses_updated', { message: 'Nuevos gastos desde IA' });
-    if (createdExpenses.length > 0) {
-      const total = createdExpenses.reduce((sum, e) => sum + Number(e.monto), 0);
-      void PushService.notifyGroupMembers(grupo_id, userId, (groupName) => ({
-        title: `Nuevos gastos en ${groupName}`,
-        body: createdExpenses.length === 1
-          ? `${(req as any).user.nombre} añadió «${createdExpenses[0].descripcion}»: ${formatAmount(total)}`
-          : `${(req as any).user.nombre} añadió ${createdExpenses.length} gastos (${formatAmount(total)})`,
-        url: `/group/${grupo_id}`
+
+    const group = res.locals.group;
+    const memberIds: string[] = group.miembros.map((m: unknown) => String(m));
+    const memberDocs = await User.find({ _id: { $in: memberIds } }).select('nombre').lean();
+    const members: GroupMemberRef[] = memberDocs.map(m => ({ id: String(m._id), nombre: m.nombre }));
+
+    const parsed: ParsedExpense[] = req.file
+      ? await AiService.parseExpenseFromMedia(req.file.buffer, req.file.mimetype, members)
+      : await AiService.parseExpenseFromText(texto, members);
+
+    const userId = String(user.id);
+    const fallbackLocation = typeof req.body?.localization === 'string' ? req.body.localization : '';
+    const drafts = parsed
+      .filter(exp => exp.monto > 0 && exp.descripcion.trim() !== '')
+      .map(exp => ({
+        descripcion: exp.descripcion.trim(),
+        monto: Math.round(exp.monto * 100) / 100,
+        fecha: isIsoDay(exp.fecha) ? exp.fecha.slice(0, 10) : todayInSpain(),
+        categoria: Array.isArray(exp.categoria) && exp.categoria.length > 0 ? exp.categoria.map(String) : ['IA'],
+        localization: exp.localization || fallbackLocation,
+        pagado_por: exp.pagado_por && memberIds.includes(String(exp.pagado_por)) ? String(exp.pagado_por) : userId,
       }));
-      void BudgetAlertService.checkAfterExpenseChange([grupo_id]);
+
+    res.status(200).json({ status: 'success', data: drafts });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Guarda varios gastos de una vez (los borradores confirmados de la IA) con un solo aviso push. */
+export const createExpensesBatch = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { grupo_id, gastos } = req.body ?? {};
+    if (!Array.isArray(gastos) || gastos.length === 0) {
+      throw new AppError('No hay gastos que guardar', 400);
     }
-    res.status(200).json({ status: 'success', data: createdExpenses });
+    if (gastos.length > MAX_BATCH_EXPENSES) {
+      throw new AppError(`No se pueden guardar más de ${MAX_BATCH_EXPENSES} gastos a la vez`, 400);
+    }
+
+    const userId = String((req as any).user.id);
+    const expensesData = gastos.map((g: any) => {
+      const descripcion = typeof g?.descripcion === 'string' ? g.descripcion.trim() : '';
+      const monto = Number(g?.monto);
+      if (!descripcion || !Number.isFinite(monto) || monto <= 0) {
+        throw new AppError('Cada gasto necesita una descripción y un importe mayor que 0', 400);
+      }
+      return {
+        grupo_id,
+        descripcion,
+        monto,
+        pagado_por: [typeof g.pagado_por === 'string' && g.pagado_por ? g.pagado_por : userId],
+        fecha: isIsoDay(g.fecha) ? new Date(g.fecha.slice(0, 10)) : new Date(),
+        asume_gasto: false,
+        categoria: Array.isArray(g.categoria) ? g.categoria.filter((c: unknown) => typeof c === 'string' && c) : [],
+        localization: typeof g.localization === 'string' ? g.localization : '',
+      };
+    });
+
+    const createdExpenses: Awaited<ReturnType<typeof expenseService.createExpense>>[] = [];
+    for (const expenseData of expensesData) {
+      createdExpenses.push(await expenseService.createExpense(expenseData, userId));
+    }
+
+    getIO().to(`group_${grupo_id}`).emit('expenses_updated', { message: 'Nuevos gastos' });
+    const total = createdExpenses.reduce((sum, e) => sum + Number(e.monto), 0);
+    void PushService.notifyGroupMembers(grupo_id, userId, (groupName) => ({
+      title: `Nuevos gastos en ${groupName}`,
+      body: createdExpenses.length === 1
+        ? `${(req as any).user.nombre} añadió «${createdExpenses[0].descripcion}»: ${formatAmount(total)}`
+        : `${(req as any).user.nombre} añadió ${createdExpenses.length} gastos (${formatAmount(total)})`,
+      url: `/group/${grupo_id}`
+    }));
+    void BudgetAlertService.checkAfterExpenseChange([grupo_id]);
+
+    res.status(201).json({ status: 'success', data: createdExpenses });
   } catch (error) {
     next(error);
   }

@@ -69,10 +69,12 @@ router.delete('/groups/:groupId/members/:memberId', protect, groupMemberOrAdmin,
 import multer from 'multer';
 
 // Expense Routes (Protected)
-const uploadMemory = multer({ storage: multer.memoryStorage() });
 const expenseMember = requireMemberOfDoc(Expense, 'expenseId', 'grupo_id', 'Gasto');
 // multer va antes: el grupo llega en el cuerpo multipart
-router.post('/expenses/ai-parse', protect, uploadMemory.single('media'), requireGroupMember('body', 'grupo_id'), ExpenseController.parseExpenseWithAI);
+// Audio o foto de hasta 15 MB; el texto llega como campo `texto`
+const uploadMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+router.post('/expenses/ai-draft', protect, uploadMedia.single('media'), requireGroupMember('body', 'grupo_id'), ExpenseController.draftExpensesWithAI);
+router.post('/expenses/batch', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpensesBatch);
 router.post('/expenses', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpense);
 router.patch('/expenses/bulk-update', protect, requireMemberOfExpenses, ExpenseController.bulkUpdate);
 router.put('/expenses/:expenseId', protect, expenseMember, ExpenseController.updateExpense);

@@ -34,6 +34,9 @@ $transition-base: all 0.2s ease-in-out;
 $transition-fade: opacity 0.15s linear;
 $transition-collapse: height 0.35s ease;
 
+// Barra de chat de la IA (fija abajo): 44px de controles + 2 x 8px de padding, sin el safe-area
+$ai-chat-bar-height: 3.75rem;
+
 // Z-index
 $z-index-dropdown: 1000;
 $z-index-sticky: 1020;
