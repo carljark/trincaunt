@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { AppError } from '../utils/AppError';
 
-// Respaldo de Gemini (fotos y audios) cuando éste falla
+// Respaldo de Gemini cuando éste falla
 const OPENROUTER_MODEL = 'qwen/qwen3.8-omni-flash';
 
 // OpenRouter pide el formato del audio por nombre, no por mimetype
@@ -18,7 +18,19 @@ export interface ParsedExpense {
   categoria?: string[];
   localization?: string;
   fecha?: string;
+  /** Id del miembro que pagó, si se dice explícitamente */
+  pagado_por?: string;
 }
+
+export interface GroupMemberRef {
+  id: string;
+  nombre: string;
+}
+
+/** Lo que manda el usuario: un archivo (foto de ticket o nota de voz) o un mensaje escrito */
+export type ExpenseInput =
+  | { kind: 'media'; buffer: Buffer; mimeType: string }
+  | { kind: 'text'; text: string };
 
 class AiService {
   private get ai(): GoogleGenAI {
@@ -27,12 +39,47 @@ class AiService {
 
   constructor() {}
 
-  public async parseExpenseFromMedia(buffer: Buffer, mimeType: string, existingCategories: string[] = []): Promise<ParsedExpense[]> {
-    if (mimeType.startsWith('video/')) {
+  public async parseExpenseFromMedia(buffer: Buffer, mimeType: string, members: GroupMemberRef[] = []): Promise<ParsedExpense[]> {
+    return this.parseExpenses({ kind: 'media', buffer, mimeType }, members);
+  }
+
+  public async parseExpenseFromText(text: string, members: GroupMemberRef[] = []): Promise<ParsedExpense[]> {
+    return this.parseExpenses({ kind: 'text', text }, members);
+  }
+
+  private async parseExpenses(input: ExpenseInput, members: GroupMemberRef[]): Promise<ParsedExpense[]> {
+    if (input.kind === 'media' && input.mimeType.startsWith('video/')) {
       throw new AppError('Gemini no soporta vídeos. Por favor graba solo nota de voz o sube una foto.', 400);
     }
-    const prompt = `Eres un asistente financiero ultra-preciso. 
-Te voy a pasar un archivo (puede ser una imagen de un ticket/factura, o una grabación de voz mía diciéndote gastos).
+    const prompt = this.buildPrompt(input.kind, members);
+    try {
+      return this.parseResponse(await this.askGemini(prompt, input));
+    } catch (geminiError) {
+      console.error('Error procesando con Gemini:', geminiError);
+      if (!process.env.OPENROUTER_API_KEY) {
+        throw this.toAppError(geminiError);
+      }
+      try {
+        return this.parseResponse(await this.askOpenRouter(prompt, input));
+      } catch (fallbackError) {
+        console.error('Error procesando con OpenRouter:', fallbackError);
+        throw this.toAppError(fallbackError);
+      }
+    }
+  }
+
+  private buildPrompt(kind: ExpenseInput['kind'], members: GroupMemberRef[]): string {
+    const source = kind === 'text'
+      ? 'Te voy a pasar un mensaje escrito por mí en el que te cuento uno o varios gastos.'
+      : 'Te voy a pasar un archivo (puede ser una imagen de un ticket/factura, o una grabación de voz mía diciéndote gastos).';
+    const payer = members.length > 0
+      ? `
+Estos son los miembros del grupo (id y nombre): ${JSON.stringify(members)}.
+Si se dice explícitamente quién pagó un gasto y coincide con uno de estos miembros, añade "pagado_por" con su id. Si no se dice o no coincide con ninguno, no incluyas "pagado_por".`
+      : '';
+
+    return `Eres un asistente financiero ultra-preciso.
+${source}
 Hoy es ${this.today()}. Usa esta fecha para resolver fechas relativas como "ayer", "anteayer" o "el lunes", y para completar el año si el ticket no lo indica.
 Tu única tarea es extraer la información de los gastos y devolverla ESTRICTAMENTE en formato JSON, sin texto adicional, sin markdown, solo el objeto JSON crudo.
 
@@ -46,28 +93,12 @@ El JSON debe ser un ARRAY de objetos con exactamente esta estructura:
     "fecha": "Fecha en formato ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) si aparece o se menciona. Si no hay hora, asume 12:00:00Z"
   }
 ]
-
+${payer}
 Deduce la categoría del gasto y añádela como un array de strings en el campo "categoria".
-Queremos que seas muy preciso con la categoría (por ejemplo, si es Cerveza, usa ["Alcohol"] o ["Bebidas"] en lugar del genérico ["Ocio"]; si es un billete de tren, usa ["Tren"] en lugar de ["Transporte"]). 
+Queremos que seas muy preciso con la categoría (por ejemplo, si es Cerveza, usa ["Alcohol"] o ["Bebidas"] en lugar del genérico ["Ocio"]; si es un billete de tren, usa ["Tren"] en lugar de ["Transporte"]).
 No te ciñas a categorías genéricas preexistentes, sé lo más descriptivo y exacto posible.
 
-Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es lógico o devuélvelos como elementos separados en el array, según lo que parezca más un 'gasto individual'. Si el archivo no contiene información sobre un gasto, devuelve un array vacío [].`;
-
-    const data = buffer.toString('base64');
-    try {
-      return this.parseResponse(await this.askGemini(prompt, data, mimeType));
-    } catch (geminiError) {
-      console.error('Error procesando archivo con Gemini:', geminiError);
-      if (!process.env.OPENROUTER_API_KEY) {
-        throw this.toAppError(geminiError);
-      }
-      try {
-        return this.parseResponse(await this.askOpenRouter(prompt, data, mimeType));
-      } catch (fallbackError) {
-        console.error('Error procesando archivo con OpenRouter:', fallbackError);
-        throw this.toAppError(fallbackError);
-      }
-    }
+Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es lógico o devuélvelos como elementos separados en el array, según lo que parezca más un 'gasto individual'. Si no hay información sobre ningún gasto, devuelve un array vacío [].`;
   }
 
   // Fecha de hoy en España (el servidor corre en UTC), p. ej. "viernes, 30 de octubre de 2026 (2026-10-30)"
@@ -79,10 +110,13 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
     return `${long} (${iso})`;
   }
 
-  private async askGemini(prompt: string, data: string, mimeType: string): Promise<string> {
+  private async askGemini(prompt: string, input: ExpenseInput): Promise<string> {
+    const content = input.kind === 'text'
+      ? `Mensaje: ${input.text}`
+      : { inlineData: { data: input.buffer.toString('base64'), mimeType: input.mimeType } };
     const response = await this.ai.models.generateContent({
       model: 'gemini-3.6-flash',
-      contents: [prompt, { inlineData: { data, mimeType } }],
+      contents: [prompt, content],
       config: {
         responseMimeType: 'application/json',
       }
@@ -90,7 +124,10 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
     return response.text || '';
   }
 
-  private async askOpenRouter(prompt: string, data: string, mimeType: string): Promise<string> {
+  private async askOpenRouter(prompt: string, input: ExpenseInput): Promise<string> {
+    const content = input.kind === 'text'
+      ? { type: 'text', text: `Mensaje: ${input.text}` }
+      : this.toOpenRouterMedia(input.buffer.toString('base64'), input.mimeType);
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -101,10 +138,7 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
         model: OPENROUTER_MODEL,
         messages: [{
           role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            this.toOpenRouterMedia(data, mimeType),
-          ],
+          content: [{ type: 'text', text: prompt }, content],
         }],
       }),
     });

@@ -8,7 +8,8 @@ import BudgetAlertService from '../../src/services/BudgetAlertService';
 vi.mock('../../src/services/AiService', () => {
   return {
     default: {
-      parseExpenseFromMedia: vi.fn()
+      parseExpenseFromMedia: vi.fn(),
+      parseExpenseFromText: vi.fn()
     }
   };
 });
@@ -50,55 +51,133 @@ describe('ExpenseController (TDD)', () => {
 
   const mockNext = () => vi.fn() as NextFunction;
 
-  describe('parseExpenseWithAI', () => {
-    it('debería fallar si no se proporciona ningún archivo', async () => {
-      const req = mockRequest(); // Sin archivo
+  describe('draftExpensesWithAI', () => {
+    const group = { _id: 'group123', miembros: ['user123', 'user456'] };
+    const mockDraftResponse = () => {
       const res = mockResponse();
+      (res as any).locals = { group };
+      return res;
+    };
+
+    beforeEach(async () => {
+      const User = (await import('../../src/models/User')).default;
+      vi.spyOn(User, 'find').mockReturnValue({
+        select: () => ({ lean: () => Promise.resolve([{ _id: 'user123', nombre: 'Carlos' }, { _id: 'user456', nombre: 'Ana' }]) })
+      } as any);
+    });
+
+    it('debería fallar si no llega ni archivo ni texto', async () => {
+      const req = mockRequest();
+      req.body = { grupo_id: 'group123' };
       const next = mockNext();
 
-      await ExpenseController.parseExpenseWithAI(req, res, next);
-      
-      expect(next).toHaveBeenCalled();
+      await ExpenseController.draftExpensesWithAI(req, mockDraftResponse(), next);
+
       const errorArg = vi.mocked(next).mock.calls[0][0];
-      expect(errorArg.message).toBe('No se proporcionó ningún archivo de audio o imagen');
+      expect(errorArg.message).toBe('Escribe un mensaje o adjunta una foto o un audio');
       expect(errorArg.statusCode).toBe(400);
     });
 
-    it('debería procesar el archivo, devolver un array e insertarlos en la base de datos', async () => {
-      const fakeFile = {
-        buffer: Buffer.from('fake data'),
-        mimetype: 'image/jpeg'
-      };
-      
+    it('debería rechazar a quien no tiene la IA activada', async () => {
+      const req = mockRequest();
+      (req as any).user = { id: 'user123', role: 'user', aiEnabled: false };
+      req.body = { grupo_id: 'group123', texto: 'Cena 20 €' };
+      const next = mockNext();
+
+      await ExpenseController.draftExpensesWithAI(req, mockDraftResponse(), next);
+
+      expect(vi.mocked(next).mock.calls[0][0].statusCode).toBe(403);
+    });
+
+    it('debería devolver borradores de un archivo sin guardar nada', async () => {
+      const fakeFile = { buffer: Buffer.from('fake data'), mimetype: 'image/jpeg' };
       const req = mockRequest(fakeFile);
+      req.body = { grupo_id: 'group123', localization: 'Calle Mayor, Madrid' };
+      const res = mockDraftResponse();
+      const next = mockNext();
+
+      vi.mocked(AiService.parseExpenseFromMedia).mockResolvedValue([
+        { descripcion: 'Pizza', monto: 12.5, fecha: '2026-11-06T12:00:00Z', categoria: ['Pizza'] },
+        { descripcion: 'Bebida', monto: 3.456 }
+      ]);
+      const { ExpenseService } = await import('../../src/services/ExpenseService');
+      const createSpy = vi.spyOn(ExpenseService.prototype, 'createExpense');
+
+      await ExpenseController.draftExpensesWithAI(req, res, next);
+
+      expect(next).not.toHaveBeenCalled();
+      expect(AiService.parseExpenseFromMedia).toHaveBeenCalledWith(fakeFile.buffer, fakeFile.mimetype, [
+        { id: 'user123', nombre: 'Carlos' },
+        { id: 'user456', nombre: 'Ana' }
+      ]);
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(PushService.notifyGroupMembers).not.toHaveBeenCalled();
+      const drafts = vi.mocked(res.json).mock.calls[0][0].data;
+      expect(drafts[0]).toMatchObject({ descripcion: 'Pizza', monto: 12.5, fecha: '2026-11-06', categoria: ['Pizza'], pagado_por: 'user123', localization: 'Calle Mayor, Madrid' });
+      expect(drafts[1]).toMatchObject({ descripcion: 'Bebida', monto: 3.46, categoria: ['IA'] });
+    });
+
+    it('debería leer un mensaje de texto y respetar quién pagó si es del grupo', async () => {
+      const req = mockRequest();
+      req.body = { grupo_id: 'group123', texto: '  Ana pagó la cena, 40 €  ' };
+      const res = mockDraftResponse();
+
+      vi.mocked(AiService.parseExpenseFromText).mockResolvedValue([
+        { descripcion: 'Cena', monto: 40, pagado_por: 'user456' },
+        { descripcion: 'Taxi', monto: 10, pagado_por: 'intruso' }
+      ]);
+
+      await ExpenseController.draftExpensesWithAI(req, res, mockNext());
+
+      expect(AiService.parseExpenseFromText).toHaveBeenCalledWith('Ana pagó la cena, 40 €', expect.any(Array));
+      const drafts = vi.mocked(res.json).mock.calls[0][0].data;
+      expect(drafts[0].pagado_por).toBe('user456');
+      // Un id que no es del grupo se cambia por quien lo envía
+      expect(drafts[1].pagado_por).toBe('user123');
+    });
+  });
+
+  describe('createExpensesBatch', () => {
+    it('debería guardar todos los gastos con un único aviso push', async () => {
+      const req = mockRequest();
+      (req as any).user.nombre = 'Carlos';
       req.body = {
         grupo_id: 'group123',
-        participantes: ['user123', 'user456']
+        gastos: [
+          { descripcion: 'Pizza', monto: 12.5, fecha: '2026-11-06', categoria: ['Pizza'], pagado_por: 'user456' },
+          { descripcion: 'Bebida', monto: 3.5 }
+        ]
       };
-      
       const res = mockResponse();
       const next = mockNext();
 
-      const fakeParsedExpenses = [
-        { descripcion: 'Pizza', monto: 12.5 },
-        { descripcion: 'Bebida', monto: 3.5 }
-      ];
-      vi.mocked(AiService.parseExpenseFromMedia).mockResolvedValue(fakeParsedExpenses);
-      
       const { ExpenseService } = await import('../../src/services/ExpenseService');
-      const createSpy = vi.spyOn(ExpenseService.prototype, 'createExpense').mockResolvedValue({} as any);
+      const createSpy = vi.spyOn(ExpenseService.prototype, 'createExpense').mockResolvedValue({ monto: 1 } as any);
 
-      await ExpenseController.parseExpenseWithAI(req, res, next);
+      await ExpenseController.createExpensesBatch(req, res, next);
 
-      expect(AiService.parseExpenseFromMedia).toHaveBeenCalledWith(fakeFile.buffer, fakeFile.mimetype, []);
+      expect(next).not.toHaveBeenCalled();
       expect(createSpy).toHaveBeenCalledTimes(2);
-      // Un único aviso push para todo el lote, excluyendo a quien lo sube
+      expect(createSpy.mock.calls[0][0]).toMatchObject({ descripcion: 'Pizza', pagado_por: ['user456'], grupo_id: 'group123' });
+      expect(createSpy.mock.calls[1][0]).toMatchObject({ descripcion: 'Bebida', pagado_por: ['user123'] });
       expect(PushService.notifyGroupMembers).toHaveBeenCalledTimes(1);
       expect(PushService.notifyGroupMembers).toHaveBeenCalledWith('group123', 'user123', expect.any(Function));
-      // Y una comprobación de los avisos de presupuesto
       expect(BudgetAlertService.checkAfterExpenseChange).toHaveBeenCalledWith(['group123']);
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ status: 'success' }));
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    it('debería rechazar el lote entero si un gasto no es válido', async () => {
+      const req = mockRequest();
+      req.body = { grupo_id: 'group123', gastos: [{ descripcion: 'Pizza', monto: 12 }, { descripcion: '', monto: 0 }] };
+      const next = mockNext();
+      const { ExpenseService } = await import('../../src/services/ExpenseService');
+      const createSpy = vi.spyOn(ExpenseService.prototype, 'createExpense').mockResolvedValue({} as any);
+      createSpy.mockClear();
+
+      await ExpenseController.createExpensesBatch(req, mockResponse(), next);
+
+      expect(vi.mocked(next).mock.calls[0][0].statusCode).toBe(400);
+      expect(createSpy).not.toHaveBeenCalled();
     });
   });
 });

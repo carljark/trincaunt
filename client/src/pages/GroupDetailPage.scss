@@ -16,6 +16,11 @@
     margin: 0 auto;
   }
 
+  // Hueco para que la barra de chat de la IA (fija abajo) no tape el final de la lista
+  &--with-chat-bar {
+    padding-bottom: calc(#{$ai-chat-bar-height} + #{map.get($spacing-scale, 4)} + env(safe-area-inset-bottom, 0px));
+  }
+
   // Hueco a la derecha para la campana y el menú de usuario
   &__header {
     display: flex;

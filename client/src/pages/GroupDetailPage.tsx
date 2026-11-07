@@ -13,6 +13,7 @@ import GroupNotes from '../components/GroupNotes'; // Import the new GroupNotes 
 import UserMenu from '../components/UserMenu';
 import { ChevronLeftIcon } from '../components/icons';
 import QuickExpenseFAB from '../components/QuickExpenseFAB';
+import AiChatBar from '../components/AiChatBar';
 import GroupSettingsTab from '../components/GroupSettingsTab';
 import BalancesTab from '../components/BalancesTab';
 import BudgetTab from '../components/BudgetTab';
@@ -625,6 +626,8 @@ const GroupDetailPage: React.FC = () => {
   };
 
   const isPersonal = group?.tipo === 'personal';
+  const showQuickAdd = !isGlobal && (activeTab === 'expenses' || activeTab === 'edit' || activeTab === 'budget');
+  const showAiChatBar = showQuickAdd && (user?.role === 'admin' || !!user?.aiEnabled);
 
   // Un grupo personal se abre en Presupuesto. Si deja de serlo, esa pestaña desaparece
   // (y si pasa a serlo, la de Saldos).
@@ -785,7 +788,7 @@ const GroupDetailPage: React.FC = () => {
   const memberCount = group?.miembros.length ?? 0;
 
   return (
-    <div className="group-detail">
+    <div className={`group-detail ${showAiChatBar ? 'group-detail--with-chat-bar' : ''}`}>
       <UserMenu onExportXLSX={handleExportXLSX} />
       <header className="group-detail__header">
         <Link to="/" className="group-detail__back" aria-label="Volver al inicio" title="Volver al inicio">
@@ -911,17 +914,25 @@ const GroupDetailPage: React.FC = () => {
         />
       )}
 
-      {!isGlobal && (activeTab === 'expenses' || activeTab === 'edit' || activeTab === 'budget') && (
-        <>
-          <QuickExpenseFAB 
-            groupId={groupId!} 
-            token={token!} 
-            userId={user?._id || ''}
-            members={group?.miembros || []} 
-            onExpenseAdded={fetchGroupData}
-            onOpenManual={handleOpenAddExpenseModal}
-          />
-        </>
+      {showQuickAdd && (
+        <QuickExpenseFAB
+          groupId={groupId!}
+          token={token!}
+          userId={user?._id || ''}
+          members={group?.miembros || []}
+          onExpenseAdded={fetchGroupData}
+          onOpenManual={handleOpenAddExpenseModal}
+          aboveChatBar={showAiChatBar}
+        />
+      )}
+
+      {showAiChatBar && (
+        <AiChatBar
+          groupId={groupId!}
+          token={token!}
+          members={group?.miembros || []}
+          onExpensesAdded={fetchGroupData}
+        />
       )}
 
       {!isGlobal && showRecordPaymentModal && (

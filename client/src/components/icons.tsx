@@ -111,3 +111,29 @@ export const CloseIcon: React.FC<IconProps> = (props) => (
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 );
+
+export const PaperclipIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" />
+  </svg>
+);
+
+export const CameraIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z" />
+    <circle cx="12" cy="13" r="3" />
+  </svg>
+);
+
+export const MicIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <rect x="9" y="2" width="6" height="12" rx="3" />
+    <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4" />
+  </svg>
+);
+
+export const SendIcon: React.FC<IconProps> = (props) => (
+  <svg {...baseProps} {...props}>
+    <path d="M22 2 11 13M22 2l-7 20-4-9-9-4Z" />
+  </svg>
+);
