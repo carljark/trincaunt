@@ -221,9 +221,19 @@
   background: $color-surface;
   border: 1.5px solid $color-gray-300;
   border-radius: $border-radius;
+  // Safari en iOS da a los campos de fecha un ancho propio que ignora width: sin esto,
+  // dos fechas lado a lado se montan y la segunda se sale del formulario
+  -webkit-appearance: none;
+  appearance: none;
 
   &::placeholder {
     color: $color-gray-500;
+  }
+
+  // Fecha alineada a la izquierda como el resto de campos (iOS la centra) y con alto aunque esté vacía
+  &::-webkit-date-and-time-value {
+    min-height: 1.5em;
+    text-align: left;
   }
 
   &:focus {
