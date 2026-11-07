@@ -21,8 +21,14 @@ export const initSocket = (server: HttpServer) => {
       return next(new Error('Autenticación denegada: No hay token'));
     }
 
+    // Sin valor por defecto: con una clave conocida cualquiera podría firmar tokens válidos
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      return next(new Error('Autenticación denegada: JWT_SECRET no está configurado en el servidor'));
+    }
+
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'trincaunt_secret');
+      const decoded = jwt.verify(token, JWT_SECRET);
       (socket as any).user = decoded;
       next();
     } catch (err) {
