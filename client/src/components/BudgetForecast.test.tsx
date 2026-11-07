@@ -12,7 +12,7 @@ const getForecast = budgetApi.getForecast as Mock;
 const normalize = (text: string | null | undefined) => text?.replace(/\s/g, ' ');
 
 const cycle = (inicio: string, fin: string, values: Partial<ICycleForecastEntry>): ICycleForecastEntry => ({
-  inicio, fin, offset: 0, enCurso: false, ingresos: 2000, facturas: 0, presupuestoGastable: 0, gastado: 0, disponible: 0, temporales: [], ...values
+  inicio, fin, offset: 0, enCurso: false, ingresos: 2000, facturas: 0, reservas: 0, presupuestoGastable: 0, gastado: 0, disponible: 0, temporales: [], ...values
 });
 
 const iva = { recurrente_id: 'iva', nombre: 'Aplazamiento IVA', importe: 86, estado: 'pendiente' as const };

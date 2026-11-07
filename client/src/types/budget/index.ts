@@ -31,6 +31,8 @@ export interface IRecurringItem {
   fechaFin?: string;
   categoria: string[];
   activo: boolean;
+  prorratear?: boolean;    // factura no mensual que se aparta cada ciclo en una hucha
+  prorrateoDesde?: string; // la pone el servidor al activar el prorrateo
 }
 
 export interface IIncome {
@@ -49,6 +51,15 @@ export interface IBudgetLine<E extends string> {
   importe: number;
   estado: E;
   movimiento_id?: string;
+  deHucha?: number; // parte que se paga con lo apartado
+}
+
+export interface IReserveLine {
+  recurrente_id: string;
+  nombre: string;
+  cuota: number; // lo que se aparta en este ciclo
+  saldo: number; // en la hucha al acabar el ciclo
+  proximoPago: { fecha: string; importe: number; cubierto: number } | null;
 }
 
 export interface IBudgetSummary {
@@ -62,7 +73,9 @@ export interface IBudgetSummary {
   };
   configuracion: IBudgetConfig;
   ingresos: { recibidos: number; previstos: number; total: number; lineas: IBudgetLine<'recibido' | 'previsto'>[] };
-  facturas: { pagadas: number; pendientes: number; total: number; lineas: IBudgetLine<'pagada' | 'pendiente'>[] };
+  // Importes netos: sin lo que se paga con las huchas
+  facturas: { pagadas: number; pendientes: number; total: number; deHucha: number; lineas: IBudgetLine<'pagada' | 'pendiente'>[] };
+  reservas: { total: number; lineas: IReserveLine[] };
   ahorroObjetivo: number;
   gastosVariables: number;
   otrosGrupos: { total: number; grupos: { _id: string; nombre: string; total: number }[] } | null;
@@ -110,6 +123,7 @@ export interface ICycleForecastEntry {
   enCurso: boolean;
   ingresos: number;
   facturas: number;
+  reservas: number;
   presupuestoGastable: number;
   gastado: number;
   disponible: number;

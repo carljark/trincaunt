@@ -325,6 +325,116 @@ describe('BudgetService', () => {
     });
   });
 
+  describe('sinking funds (prorated bills)', () => {
+    // IVA trimestral de 600 € (20 de ene, abr, jul, oct) prorrateado desde hoy, 4-nov (ciclo 28-oct)
+    const ivaId = oid();
+    const iva = {
+      _id: ivaId, tipo: 'factura', nombre: 'IVA', importe: 600, frecuencia: 'trimestral', fechaInicio: d('2026-10-20'),
+      activo: true, prorratear: true, prorrateoDesde: d('2026-11-04')
+    };
+    const payIva = (monto: number, fecha: string) => ({
+      _id: oid(), grupo_id: groupId, descripcion: 'IVA', monto, fecha: d(fecha), pagado_por: me, participantes: me, asume_gasto: false, recurrente_id: ivaId
+    });
+    let all: any[];
+
+    beforeEach(() => {
+      all = [...personalExpenses];
+      (RecurringItem.find as vi.Mock).mockResolvedValue([...items, iva]);
+      (Expense.find as vi.Mock).mockImplementation(async (q: any) => all.filter(e =>
+        (q.recurrente_id ? q.recurrente_id.$in.some((id: unknown) => String(id) === String(e.recurrente_id)) : true) &&
+        e.fecha >= q.fecha.$gte && e.fecha < q.fecha.$lt));
+      (Income.find as vi.Mock).mockResolvedValue([]);
+    });
+
+    it('sets aside a share every cycle until the bill is due', async () => {
+      const now = await service.getSummary(groupId, userId);
+      expect(now.reservas).toEqual({
+        total: 200,
+        lineas: [{ recurrente_id: ivaId.toString(), nombre: 'IVA', cuota: 200, saldo: 200, proximoPago: { fecha: '2027-01-20', importe: 600, cubierto: 200 } }]
+      });
+      // 2000 de nómina prevista - 760 de facturas - 200 de reserva - 200 de ahorro
+      expect(now.presupuestoGastable).toBe(840);
+
+      const next = await service.getSummary(groupId, userId, 1);
+      expect(next.reservas.lineas[0]).toMatchObject({ cuota: 200, saldo: 400 });
+    });
+
+    it('pays the bill from the fund in the cycle it is due', async () => {
+      const due = await service.getSummary(groupId, userId, 2); // 28-dic a 28-ene
+      expect(due.facturas.lineas.find(l => l.nombre === 'IVA')).toMatchObject({ fecha: '2027-01-20', importe: 600, deHucha: 600, estado: 'pendiente' });
+      expect(due.facturas).toMatchObject({ total: 760, deHucha: 600, pendientes: 760 });
+      // Aún sin pagar: es el próximo pago y la hucha ya lo cubre entero
+      expect(due.reservas.lineas[0]).toMatchObject({ cuota: 200, saldo: 0, proximoPago: { fecha: '2027-01-20', importe: 600, cubierto: 600 } });
+
+      const after = await service.getSummary(groupId, userId, 3);
+      expect(after.reservas.lineas[0]).toMatchObject({ cuota: 200, saldo: 200 });
+    });
+
+    it('charges the cycle only with what the fund does not cover, and carries what is left', async () => {
+      all.push(payIva(650, '2027-01-20'));
+      const due = await service.getSummary(groupId, userId, 2);
+      expect(due.facturas.lineas.find(l => l.nombre === 'IVA')).toMatchObject({ importe: 650, deHucha: 600, estado: 'pagada' });
+      expect(due.facturas.total).toBe(810); // 760 + 50 que no cubre la hucha
+      expect(due.reservas.lineas[0].proximoPago).toEqual({ fecha: '2027-04-20', importe: 600, cubierto: 0 });
+
+      all[all.length - 1] = payIva(540, '2027-01-20');
+      const cheaper = await service.getSummary(groupId, userId, 3);
+      expect(cheaper.reservas.lineas[0]).toMatchObject({ cuota: 180, saldo: 240 }); // (600 - 60) / 3
+    });
+
+    it('catches up when the fund starts close to the due date', async () => {
+      (RecurringItem.find as vi.Mock).mockResolvedValue([...items, { ...iva, prorrateoDesde: d('2026-12-01') }]); // ciclo 28-nov
+      expect((await service.getSummary(groupId, userId)).reservas.lineas).toEqual([]);
+      const late = await service.getSummary(groupId, userId, 1);
+      expect(late.reservas.lineas[0]).toMatchObject({ cuota: 300, saldo: 300 });
+    });
+
+    it('feeds the forecast', async () => {
+      const forecast = await service.getForecast(groupId, userId, 3);
+      expect(forecast.ciclos.map(c => [c.facturas, c.reservas, c.disponible])).toEqual([
+        [760, 200, 840 - 150],
+        [760, 200, 840],
+        [760, 200, 840]
+      ]);
+    });
+
+    describe('settings', () => {
+      const fakeDoc = (data: object) => {
+        const doc: any = { ...data, save: vi.fn() };
+        doc.set = (key: any, value?: unknown) => (typeof key === 'string' ? (doc[key] = value) : Object.assign(doc, key));
+        return doc;
+      };
+
+      it('starts the fund today when prorating is turned on and forgets it when turned off', async () => {
+        const doc = fakeDoc({ ...iva, prorratear: false, prorrateoDesde: undefined, grupo_id: groupId });
+        (RecurringItem.findById as vi.Mock).mockResolvedValue(doc);
+
+        await service.updateRecurringItem(ivaId.toString(), userId, { prorratear: true });
+        expect(doc.prorrateoDesde).toEqual(d('2026-11-04'));
+        await service.updateRecurringItem(ivaId.toString(), userId, { importe: 700 });
+        expect(doc.prorrateoDesde).toEqual(d('2026-11-04'));
+        await service.updateRecurringItem(ivaId.toString(), userId, { prorratear: false });
+        expect(doc.prorrateoDesde).toBeUndefined();
+      });
+
+      it('only prorates bills that are not monthly', async () => {
+        (RecurringItem.create as vi.Mock).mockImplementation(async (data: any) => data);
+        await expect(service.createRecurringItem(groupId, userId, {
+          tipo: 'factura', nombre: 'Luz', importe: 60, frecuencia: 'mensual', fechaInicio: '2026-11-05', prorratear: true
+        })).rejects.toMatchObject({ statusCode: 400 });
+
+        const created = await service.createRecurringItem(groupId, userId, {
+          tipo: 'factura', nombre: 'Seguro', importe: 300, frecuencia: 'anual', fechaInicio: '2027-03-15', prorratear: true
+        });
+        expect(created).toMatchObject({ prorratear: true, prorrateoDesde: d('2026-11-04') });
+
+        const doc = fakeDoc({ ...iva, grupo_id: groupId });
+        (RecurringItem.findById as vi.Mock).mockResolvedValue(doc);
+        await expect(service.updateRecurringItem(ivaId.toString(), userId, { frecuencia: 'mensual' })).rejects.toMatchObject({ statusCode: 400 });
+      });
+    });
+  });
+
   describe('confirmRecurringItem', () => {
     const save = vi.fn();
     beforeEach(() => {

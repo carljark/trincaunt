@@ -307,7 +307,8 @@ export const tools: ToolDef[] = [
     title: 'Ver presupuesto',
     description:
       'Resumen del presupuesto de un grupo personal para un ciclo (de cobro a cobro): ingresos, facturas, ahorro, lo ' +
-      'gastado, lo disponible, cuánto puedes gastar al día y a la semana, el ritmo y los límites por categoría.',
+      'gastado, lo disponible, cuánto puedes gastar al día y a la semana, el ritmo, los límites por categoría y las huchas ' +
+      '(reservas de facturas prorrateadas; deHucha en una factura es la parte que se paga con lo apartado).',
     input: {
       groupId: id,
       offset: z.number().int().min(-120).max(120).default(0).describe('0 = ciclo actual, -1 = el anterior, 1 = el siguiente')
@@ -381,7 +382,8 @@ export const tools: ToolDef[] = [
       frecuencia: z.enum(['mensual', 'bimestral', 'trimestral', 'semestral', 'anual']).default('mensual'),
       fechaInicio: ymd.describe('Primera fecha en que toca (el día del mes se repite)'),
       fechaFin: ymd.optional(),
-      categoria: categories.optional()
+      categoria: categories.optional(),
+      prorratear: z.boolean().optional().describe('Factura no mensual: apartar cada ciclo una parte en una hucha y pagarla de ahí')
     },
     kind: 'write',
     run: (api, { groupId, ...data }) => api.post(`/groups/${groupId}/recurring-items`, defined(data))
@@ -399,7 +401,8 @@ export const tools: ToolDef[] = [
       fechaInicio: ymd.optional(),
       fechaFin: ymd.nullable().optional(),
       categoria: categories.optional(),
-      activo: z.boolean().optional().describe('false la desactiva sin borrarla')
+      activo: z.boolean().optional().describe('false la desactiva sin borrarla'),
+      prorratear: z.boolean().optional().describe('Factura no mensual: apartar cada ciclo una parte en una hucha y pagarla de ahí')
     },
     kind: 'write',
     run: (api, { itemId, ...data }) => api.put(`/recurring-items/${itemId}`, defined(data))

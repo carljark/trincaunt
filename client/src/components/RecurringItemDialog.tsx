@@ -28,6 +28,7 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
   const [fechaFin, setFechaFin] = useState(item?.fechaFin?.slice(0, 10) ?? '');
   const [categoria, setCategoria] = useState(item?.categoria.join(', ') ?? '');
   const [activo, setActivo] = useState(item?.activo ?? true);
+  const [prorratear, setProrratear] = useState(item?.prorratear ?? false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -42,6 +43,9 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
       setBusy(false);
     }
   };
+
+  // Una factura mensual ya cae entera en cada ciclo: no hay nada que repartir
+  const canProrate = tipo === 'factura' && frecuencia !== 'mensual';
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +62,8 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
       fechaInicio,
       fechaFin: fechaFin || (item?.fechaFin ? null : undefined),
       categoria: categoria.split(',').map(c => c.trim()).filter(Boolean),
-      activo
+      activo,
+      prorratear: canProrate && prorratear
     }));
   };
 
@@ -172,6 +177,18 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
             <span className="recurring-item__label">Categorías (separadas por comas)</span>
             <input className="recurring-item__input" type="text" value={categoria} onChange={e => setCategoria(e.target.value)} placeholder="Ej.: Hogar" />
           </label>
+        )}
+
+        {canProrate && (
+          <>
+            <label className="recurring-item__check">
+              <input className="recurring-item__checkbox" type="checkbox" checked={prorratear} onChange={e => setProrratear(e.target.checked)} />
+              <span>Apartar una parte cada ciclo (hucha)</span>
+            </label>
+            <p className="recurring-item__hint">
+              Cada ciclo se reserva lo que falta hasta el próximo pago, y ese pago sale de la hucha en vez de tu presupuesto del mes.
+            </p>
+          </>
         )}
 
         {item && (
