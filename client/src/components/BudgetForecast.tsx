@@ -84,8 +84,8 @@ const BudgetForecast: React.FC<BudgetForecastProps> = ({ groupId, token, refresh
       <table className="budget-forecast__table">
         <caption className="budget-forecast__caption">
           Con tus partidas fijas activas
-          {forecast.ahorroObjetivo > 0 && ` y apartando ${formatEuros(forecast.ahorroObjetivo)} de ahorro`}. En el
-          ciclo en curso, lo que te queda.
+          {forecast.ahorroObjetivo > 0 && ` y apartando ${formatEuros(forecast.ahorroObjetivo)} de ahorro`}. Las
+          facturas incluyen lo que va a las huchas, no los pagos que salen de ellas. En el ciclo en curso, lo que te queda.
         </caption>
         <thead>
           <tr>
@@ -103,7 +103,7 @@ const BudgetForecast: React.FC<BudgetForecastProps> = ({ groupId, token, refresh
                 {c.enCurso && <span className="budget-forecast__current">en curso</span>}
               </th>
               <td className="budget-forecast__td">{formatEuros(c.ingresos)}</td>
-              <td className="budget-forecast__td">{formatEuros(c.facturas)}</td>
+              <td className="budget-forecast__td">{formatEuros(c.facturas + c.reservas)}</td>
               <td className={`budget-forecast__td budget-forecast__td--${c.disponible < 0 ? 'negative' : 'positive'}`}>
                 {signed(c.disponible)}
               </td>

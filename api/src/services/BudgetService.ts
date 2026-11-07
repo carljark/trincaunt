@@ -8,7 +8,9 @@ import { AppError } from '../utils/AppError';
 import {
   Cycle,
   FRECUENCIAS,
+  cycleAt,
   cycleContaining,
+  cycleIndex,
   daysBetween,
   occurrencesInRange,
   toCalendarDate,
@@ -40,6 +42,17 @@ export interface BudgetLine<E> {
   importe: number;
   estado: E;
   movimiento_id?: string; // Gasto o ingreso real, si existe
+  deHucha?: number;       // Parte de la factura que se paga con lo apartado (factura prorrateada)
+}
+
+/** Hucha de una factura prorrateada en un ciclo. */
+export interface ReserveLine {
+  recurrente_id: string;
+  nombre: string;
+  cuota: number;  // lo que se aparta en este ciclo
+  saldo: number;  // lo que hay en la hucha al acabar el ciclo, ya descontados sus pagos
+  // Siguiente pago aún sin hacer (puede ser de este ciclo) y cuánto de él cubre ya la hucha
+  proximoPago: { fecha: string; importe: number; cubierto: number } | null;
 }
 
 export interface CategoryLimitStatus {
@@ -61,11 +74,13 @@ export interface BudgetSummary {
   };
   configuracion: IGroupPresupuesto;
   ingresos: { recibidos: number; previstos: number; total: number; lineas: BudgetLine<IncomeEstado>[] };
-  facturas: { pagadas: number; pendientes: number; total: number; lineas: BudgetLine<BillEstado>[] };
+  // Importes netos: sin la parte que se paga con las huchas (deHucha)
+  facturas: { pagadas: number; pendientes: number; total: number; deHucha: number; lineas: BudgetLine<BillEstado>[] };
+  reservas: { total: number; lineas: ReserveLine[] };
   ahorroObjetivo: number;
   gastosVariables: number;
   otrosGrupos: { total: number; grupos: { _id: string; nombre: string; total: number }[] } | null;
-  presupuestoGastable: number; // ingresos - facturas - ahorro
+  presupuestoGastable: number; // ingresos - facturas - reservas - ahorro
   gastado: number;             // gastos variables + otros grupos
   disponible: number;          // presupuestoGastable - gastado
   porDia: number | null;
@@ -110,8 +125,9 @@ export interface CycleForecastEntry {
   offset: number;
   enCurso: boolean;
   ingresos: number;            // cobrados + previstos
-  facturas: number;            // pagadas + pendientes
-  presupuestoGastable: number; // ingresos - facturas - ahorro
+  facturas: number;            // pagadas + pendientes, sin lo que sale de las huchas
+  reservas: number;            // lo que se aparta en las huchas
+  presupuestoGastable: number; // ingresos - facturas - reservas - ahorro
   gastado: number;             // lo que ya llevas (casi siempre 0 en ciclos futuros)
   disponible: number;          // presupuestoGastable - gastado
   temporales: ForecastBill[];  // facturas con fecha de fin (préstamos, aplazamientos...)
@@ -126,10 +142,25 @@ export const MAX_CICLOS_PREVISION = 12;
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 
-const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo'] as const;
+const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo', 'prorratear'] as const;
 const INCOME_FIELDS = ['descripcion', 'monto', 'fecha'] as const;
 
 const ymd = (date: Date) => date.toISOString().slice(0, 10);
+
+/** Lo que pesa una factura en el ciclo: su importe menos lo que sale de la hucha. */
+const netOf = (line: BudgetLine<BillEstado>) => round2(line.importe - (line.deHucha ?? 0));
+
+/** Una factura se prorratea si lo pide, está activa y no es mensual (una mensual ya cae cada ciclo). */
+export const isProrated = (item: Pick<IRecurringItem, 'tipo' | 'frecuencia' | 'activo' | 'prorratear' | 'prorrateoDesde'>) =>
+  item.tipo === 'factura' && item.activo && !!item.prorratear && !!item.prorrateoDesde && item.frecuencia !== 'mensual';
+
+type Movement = { _id: string; recurrente_id?: string; nombre: string; fecha: Date; importe: number };
+
+/** Gastos que pagan una factura fija, con tu parte como importe. */
+const billMovements = (expenses: IExpense[], userId: string): Movement[] =>
+  expenses.filter(e => e.recurrente_id).map(e => ({
+    _id: idOf(e._id), recurrente_id: idOf(e.recurrente_id), nombre: e.descripcion, fecha: e.fecha, importe: userShareOf(e, userId)
+  }));
 const inCycle = (date: Date, cycle: Cycle) => date >= cycle.inicio && date < cycle.fin;
 
 export class BudgetService {
@@ -184,15 +215,8 @@ export class BudgetService {
       Income.find({ grupo_id: groupId, fecha: fechaEnCiclo })
     ]);
 
-    const facturas = this.buildLines(
-      items.filter(i => i.tipo === 'factura'),
-      expenses.filter(e => e.recurrente_id).map(e => ({
-        _id: idOf(e._id), recurrente_id: idOf(e.recurrente_id), nombre: e.descripcion, fecha: e.fecha, importe: userShareOf(e, userId)
-      })),
-      cycle,
-      'pagada',
-      'pendiente'
-    );
+    const facturas = this.buildLines(items.filter(i => i.tipo === 'factura'), billMovements(expenses, userId), cycle, 'pagada', 'pendiente');
+    const reservas = await this.applySinkingFunds(items, facturas, userId, config.diaInicioCiclo, cycle);
 
     const ingresos = this.buildLines(
       items.filter(i => i.tipo === 'ingreso'),
@@ -211,8 +235,9 @@ export class BudgetService {
     const limitesCategoria = await this.categoryLimits(config.limitesCategoria, [...variables, ...(otros?.expenses ?? [])], userId);
 
     const ingresosTotal = sum(ingresos.map(l => l.importe));
-    const facturasTotal = sum(facturas.map(l => l.importe));
-    const presupuestoGastable = round2(ingresosTotal - facturasTotal - config.ahorroObjetivo);
+    const facturasTotal = sum(facturas.map(netOf));
+    const reservasTotal = sum(reservas.map(r => r.cuota));
+    const presupuestoGastable = round2(ingresosTotal - facturasTotal - reservasTotal - config.ahorroObjetivo);
     const gastado = round2(gastosVariables + (otrosGrupos?.total ?? 0));
     const disponible = round2(presupuestoGastable - gastado);
 
@@ -235,11 +260,13 @@ export class BudgetService {
         lineas: ingresos
       },
       facturas: {
-        pagadas: sum(facturas.filter(l => l.estado === 'pagada').map(l => l.importe)),
-        pendientes: sum(facturas.filter(l => l.estado === 'pendiente').map(l => l.importe)),
+        pagadas: sum(facturas.filter(l => l.estado === 'pagada').map(netOf)),
+        pendientes: sum(facturas.filter(l => l.estado === 'pendiente').map(netOf)),
         total: facturasTotal,
+        deHucha: sum(facturas.map(l => l.deHucha ?? 0)),
         lineas: facturas
       },
+      reservas: { total: reservasTotal, lineas: reservas },
       ahorroObjetivo: config.ahorroObjetivo,
       gastosVariables,
       otrosGrupos,
@@ -339,6 +366,7 @@ export class BudgetService {
           enCurso: s.ciclo.offset === 0,
           ingresos: s.ingresos.total,
           facturas: s.facturas.total,
+          reservas: s.reservas.total,
           presupuestoGastable: s.presupuestoGastable,
           gastado: s.gastado,
           disponible: s.disponible,
@@ -387,6 +415,81 @@ export class BudgetService {
   }
 
   /**
+   * Huchas de las facturas prorrateadas en `cycle`: marca en cada línea de factura cuánto se
+   * paga con lo apartado (deHucha) y devuelve lo que se aparta este ciclo en cada hucha.
+   */
+  private async applySinkingFunds(
+    items: IRecurringItem[],
+    facturas: BudgetLine<BillEstado>[],
+    userId: string,
+    diaInicio: number,
+    cycle: Cycle
+  ): Promise<ReserveLine[]> {
+    const prorated = items.filter(isProrated);
+    if (!prorated.length) return [];
+
+    const desde = new Date(Math.min(...prorated.map(i => cycleContaining(i.prorrateoDesde!, diaInicio).inicio.getTime())));
+    if (desde >= cycle.fin) return [];
+    const expenses = await Expense.find({
+      recurrente_id: { $in: prorated.map(i => i._id) },
+      fecha: { $gte: desde, $lt: cycle.fin }
+    });
+    const movements = billMovements(expenses, userId);
+
+    return prorated.flatMap(item => {
+      const fund = this.sinkingFund(item, movements, diaInicio, cycle);
+      if (!fund) return [];
+      facturas
+        .filter(l => l.recurrente_id === idOf(item._id))
+        .forEach((line, i) => { if (fund.cubiertos[i]) line.deHucha = fund.cubiertos[i]; });
+      return [{ recurrente_id: idOf(item._id), nombre: item.nombre, cuota: fund.cuota, saldo: fund.saldo, proximoPago: fund.proximoPago }];
+    });
+  }
+
+  /**
+   * Recorre la hucha de una factura desde el ciclo en que se activó el prorrateo hasta
+   * `target`. En cada ciclo aparta lo que falta para el próximo pago (importe estimado
+   * menos lo que ya hay) repartido entre los ciclos que quedan hasta él, incluido el del
+   * pago; así, si se activa tarde, se pone al día, y si un pago real sale más barato, lo
+   * que sobra rebaja las cuotas siguientes. Los pagos (reales o, si no, el estimado) salen
+   * de la hucha hasta donde llegue; el resto pesa en su ciclo como una factura normal.
+   */
+  private sinkingFund(item: IRecurringItem, movements: Movement[], diaInicio: number, target: Cycle) {
+    const first = cycleIndex(item.prorrateoDesde!, diaInicio);
+    const last = cycleIndex(target.inicio, diaInicio);
+    if (last < first) return null;
+
+    const own = movements.filter(m => m.recurrente_id === idOf(item._id));
+    // Hasta un año después del objetivo: el paso más largo es anual
+    const dates = occurrencesInRange(item, { inicio: cycleAt(first, diaInicio).inicio, fin: cycleAt(last + 13, diaInicio).inicio });
+    const dateCycles = dates.map(d => cycleIndex(d, diaInicio));
+
+    let saldo = 0;
+    let cuota = 0;
+    let lines: BudgetLine<BillEstado>[] = [];
+    let cubiertos: number[] = [];
+    for (let k = first; k <= last; k++) {
+      const cycle = cycleAt(k, diaInicio);
+      const next = dateCycles.findIndex(c => c >= k);
+      cuota = next === -1 ? 0 : Math.max(0, round2((item.importe - saldo) / (dateCycles[next] - k + 1)));
+      saldo = round2(saldo + cuota);
+      lines = this.buildLines([item], own.filter(m => inCycle(m.fecha, cycle)), cycle, 'pagada', 'pendiente');
+      cubiertos = lines.map(line => {
+        const covered = round2(Math.min(saldo, line.importe));
+        saldo = round2(saldo - covered);
+        return covered;
+      });
+    }
+
+    const pending = lines.findIndex(l => l.estado === 'pendiente');
+    const after = dates.find((_, i) => dateCycles[i] > last);
+    const proximoPago = pending !== -1
+      ? { fecha: lines[pending].fecha, importe: lines[pending].importe, cubierto: cubiertos[pending] }
+      : after ? { fecha: ymd(after), importe: round2(item.importe), cubierto: Math.min(saldo, round2(item.importe)) } : null;
+    return { cuota, saldo, cubiertos, proximoPago };
+  }
+
+  /**
    * Mezcla lo que toca en el ciclo según las partidas activas con los movimientos
    * reales enlazados. Cada movimiento real "cubre" una fecha prevista de su partida;
    * las fechas que quedan sin cubrir salen como pendientes con el importe estimado.
@@ -394,7 +497,7 @@ export class BudgetService {
    */
   private buildLines<E extends string>(
     items: IRecurringItem[],
-    movements: { _id: string; recurrente_id?: string; nombre: string; fecha: Date; importe: number }[],
+    movements: Movement[],
     cycle: Cycle,
     doneState: E,
     pendingState: E
@@ -466,7 +569,20 @@ export class BudgetService {
     }
     if (clean.importe !== undefined) clean.importe = round2(Number(clean.importe));
     if (clean.categoria !== undefined && !Array.isArray(clean.categoria)) clean.categoria = [clean.categoria];
+    if (clean.prorratear !== undefined) clean.prorratear = clean.prorratear === true || clean.prorratear === 'true';
     return clean;
+  }
+
+  /**
+   * Prorratear solo vale para facturas no mensuales. Al activarlo, la hucha empieza en el
+   * ciclo de hoy; al quitarlo (o cambiar a mensual o a ingreso) se olvida.
+   */
+  private syncProrrateo(item: IRecurringItem, wasProrated: boolean) {
+    if (item.prorratear && (item.tipo !== 'factura' || item.frecuencia === 'mensual')) {
+      throw new AppError('Solo se pueden prorratear facturas que no sean mensuales', 400);
+    }
+    if (!item.prorratear) item.set('prorrateoDesde', undefined);
+    else if (!wasProrated || !item.prorrateoDesde) item.set('prorrateoDesde', todayIn('Europe/Madrid', this.now()));
   }
 
   async listRecurringItems(groupId: string, userId: string) {
@@ -476,7 +592,14 @@ export class BudgetService {
 
   async createRecurringItem(groupId: string, userId: string, data: Record<string, unknown>) {
     await this.getBudgetGroup(groupId, userId);
-    return RecurringItem.create({ ...this.validateRecurring(data, false), grupo_id: groupId });
+    const clean = this.validateRecurring(data, false);
+    if (clean.prorratear) {
+      if (clean.tipo !== 'factura' || (clean.frecuencia ?? 'mensual') === 'mensual') {
+        throw new AppError('Solo se pueden prorratear facturas que no sean mensuales', 400);
+      }
+      clean.prorrateoDesde = todayIn('Europe/Madrid', this.now());
+    }
+    return RecurringItem.create({ ...clean, grupo_id: groupId });
   }
 
   async updateRecurringItem(itemId: string, userId: string, data: Record<string, unknown>) {
@@ -486,7 +609,9 @@ export class BudgetService {
       item.set('fechaFin', undefined);
       delete clean.fechaFin;
     }
+    const wasProrated = !!item.prorratear;
     item.set(clean);
+    this.syncProrrateo(item, wasProrated);
     await item.save();
     return item;
   }

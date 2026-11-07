@@ -61,6 +61,21 @@ export const cycleContaining = (date: Date, diaInicio: number, offset = 0): Cycl
   return { inicio: dateOn(y, startMonth, diaInicio), fin: dateOn(y, startMonth + 1, diaInicio) };
 };
 
+// Los ciclos se numeran por el mes en que empiezan, contando desde enero de 2000
+const BASE_YEAR = 2000;
+
+/** Número del ciclo que contiene `date` (consecutivo: el siguiente es +1). */
+export const cycleIndex = (date: Date, diaInicio: number): number => {
+  const { inicio } = cycleContaining(date, diaInicio);
+  return (inicio.getUTCFullYear() - BASE_YEAR) * 12 + inicio.getUTCMonth();
+};
+
+/** Ciclo número `index` (ver cycleIndex). */
+export const cycleAt = (index: number, diaInicio: number): Cycle => ({
+  inicio: dateOn(BASE_YEAR, index, diaInicio),
+  fin: dateOn(BASE_YEAR, index + 1, diaInicio)
+});
+
 /** Fechas en que toca una partida recurrente dentro de [inicio, fin). */
 export const occurrencesInRange = (
   item: { fechaInicio: Date; frecuencia: Frecuencia; fechaFin?: Date | null },

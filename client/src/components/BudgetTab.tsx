@@ -134,6 +134,7 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
           <span className="budget__line-name">{line.nombre}</span>
           <span className={`budget__line-meta ${overdue ? 'budget__line-meta--overdue' : ''}`}>
             {formatShortDate(line.fecha)} · {done ? (tipo === 'factura' ? 'Pagada' : 'Cobrado') : overdue ? 'Sin confirmar' : (tipo === 'factura' ? 'Pendiente' : 'Previsto')}
+            {line.deHucha ? ` · ${formatEuros(line.deHucha)} de la hucha` : ''}
           </span>
         </span>
         <span className="budget__line-amount">{formatEuros(line.importe)}</span>
@@ -251,9 +252,18 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
             <dd className="budget__breakdown-amount budget__breakdown-amount--positive">+{formatEuros(summary.ingresos.total)}</dd>
           </div>
           <div className="budget__breakdown-row">
-            <dt>Facturas{summary.facturas.pendientes > 0 ? ' (con pendientes)' : ''}</dt>
+            <dt>
+              Facturas{summary.facturas.pendientes > 0 ? ' (con pendientes)' : ''}
+              {summary.facturas.deHucha > 0 ? ', sin lo que paga la hucha' : ''}
+            </dt>
             <dd className="budget__breakdown-amount">−{formatEuros(summary.facturas.total)}</dd>
           </div>
+          {summary.reservas.total > 0 && (
+            <div className="budget__breakdown-row">
+              <dt>Apartado en huchas</dt>
+              <dd className="budget__breakdown-amount">−{formatEuros(summary.reservas.total)}</dd>
+            </div>
+          )}
           {summary.ahorroObjetivo > 0 && (
             <div className="budget__breakdown-row">
               <dt>Ahorro</dt>
@@ -328,6 +338,45 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
           <p className="budget__text">No hay facturas en este ciclo.</p>
         )}
       </section>
+
+      {summary.reservas.lineas.length > 0 && (
+        <section className="budget__card">
+          <h3 className="budget__title">Huchas</h3>
+          <ul className="budget__limits">
+            {summary.reservas.lineas.map(r => {
+              const pago = r.proximoPago;
+              const porcentaje = pago ? Math.round(pago.cubierto / pago.importe * 100) : 100;
+              return (
+                <li key={r.recurrente_id} className="budget__limit">
+                  <div className="budget__limit-header">
+                    <span className="budget__limit-name">{r.nombre}</span>
+                    <span className="budget__limit-left budget__limit-left--ok">
+                      {r.cuota > 0 ? `Apartas ${formatEuros(r.cuota)}` : 'Nada que apartar'}
+                    </span>
+                  </div>
+                  {pago && (
+                    <div
+                      className="budget__limit-track"
+                      role="progressbar"
+                      aria-label={`Apartado para ${r.nombre}`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={porcentaje}
+                    >
+                      <span className="budget__limit-bar budget__limit-bar--ok" style={{ width: `${porcentaje}%` }} />
+                    </div>
+                  )}
+                  <span className="budget__limit-detail">
+                    {pago
+                      ? `${formatEuros(pago.cubierto)} de ${formatEuros(pago.importe)} para el ${formatShortDate(pago.fecha)}`
+                      : `Sin más pagos · quedan ${formatEuros(r.saldo)} en la hucha`}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <section className="budget__card">
         <div className="budget__header">
@@ -407,6 +456,7 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
                           <span className="budget__line-name">{item.nombre}</span>
                           <span className="budget__line-meta">
                             {FRECUENCIA_LABELS[item.frecuencia]} · día {Number(item.fechaInicio.slice(8, 10))}
+                            {item.prorratear && item.frecuencia !== 'mensual' ? ' · con hucha' : ''}
                             {item.activo ? '' : ' · desactivada'}
                           </span>
                         </span>

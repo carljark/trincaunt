@@ -20,7 +20,7 @@ const request = async <T>(token: string, path: string, init: RequestInit = {}): 
 
 const json = (method: string, data: unknown): RequestInit => ({ method, body: JSON.stringify(data) });
 
-export type RecurringItemInput = Omit<IRecurringItem, '_id' | 'grupo_id' | 'fechaFin'> & { fechaFin?: string | null };
+export type RecurringItemInput = Omit<IRecurringItem, '_id' | 'grupo_id' | 'fechaFin' | 'prorrateoDesde'> & { fechaFin?: string | null };
 
 export const budgetApi = {
   getSummary: (token: string, groupId: string, offset = 0) =>

@@ -35,12 +35,13 @@ const summary = (overrides: Partial<IBudgetSummary> = {}): IBudgetSummary => ({
     lineas: [{ recurrente_id: 'nomina', nombre: 'Nómina', fecha: '2026-10-28', importe: 2050, estado: 'recibido', movimiento_id: 'inc-1' }]
   },
   facturas: {
-    pagadas: 700, pendientes: 60, total: 760,
+    pagadas: 700, pendientes: 60, total: 760, deHucha: 0,
     lineas: [
       { recurrente_id: 'alquiler', nombre: 'Alquiler', fecha: '2026-11-01', importe: 700, estado: 'pagada', movimiento_id: 'exp-1' },
       { recurrente_id: 'luz', nombre: 'Luz', fecha: '2026-11-05', importe: 60, estado: 'pendiente' }
     ]
   },
+  reservas: { total: 0, lineas: [] },
   ahorroObjetivo: 200,
   gastosVariables: 150,
   otrosGrupos: null,
@@ -179,7 +180,7 @@ describe('BudgetTab', () => {
     api.listRecurringItems.mockResolvedValue([]);
     api.getSummary.mockResolvedValue(summary({
       ingresos: { recibidos: 0, previstos: 0, total: 0, lineas: [] },
-      facturas: { pagadas: 0, pendientes: 0, total: 0, lineas: [] }
+      facturas: { pagadas: 0, pendientes: 0, total: 0, deHucha: 0, lineas: [] }
     }));
     renderTab();
     fireEvent.click(await screen.findByRole('button', { name: 'Añadir nómina' }));
@@ -205,6 +206,47 @@ describe('BudgetTab', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Sí, borrar' }));
 
     await waitFor(() => expect(api.deleteRecurringItem).toHaveBeenCalledWith('tok', 'luz'));
+  });
+
+  it('shows the sinking funds and the part of a bill they pay', async () => {
+    api.getSummary.mockResolvedValue(summary({
+      facturas: {
+        pagadas: 0, pendientes: 0, total: 0, deHucha: 600,
+        lineas: [{ recurrente_id: 'iva', nombre: 'IVA', fecha: '2026-11-20', importe: 600, estado: 'pendiente', deHucha: 600 }]
+      },
+      reservas: {
+        total: 250,
+        lineas: [
+          { recurrente_id: 'iva', nombre: 'IVA', cuota: 200, saldo: 0, proximoPago: { fecha: '2026-11-20', importe: 600, cubierto: 600 } },
+          { recurrente_id: 'seguro', nombre: 'Seguro', cuota: 50, saldo: 150, proximoPago: { fecha: '2027-03-15', importe: 300, cubierto: 150 } }
+        ]
+      }
+    }));
+    renderTab();
+
+    expect(normalize((await screen.findByText(/de la hucha/)).textContent)).toBe('20 nov · Pendiente · 600,00 € de la hucha');
+    expect(screen.getByText('Apartado en huchas').nextElementSibling).toHaveTextContent('−250,00 €');
+    expect(screen.getByText(/, sin lo que paga la hucha/)).toBeInTheDocument();
+
+    const bars = screen.getAllByRole('progressbar', { name: /^Apartado para / });
+    expect(bars.map(b => b.getAttribute('aria-valuenow'))).toEqual(['100', '50']);
+    expect(normalize(screen.getByText(/150,00 € de 300,00 €/).textContent)).toBe('150,00 € de 300,00 € para el 15 mar');
+    expect(normalize(screen.getByText(/Apartas 50/).textContent)).toBe('Apartas 50,00 €');
+  });
+
+  it('offers a sinking fund only for bills that are not monthly', async () => {
+    renderTab();
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar Luz' }));
+    const dialog = screen.getByRole('dialog', { name: 'Editar partida fija' });
+    expect(within(dialog).queryByRole('checkbox', { name: /hucha/ })).not.toBeInTheDocument();
+
+    fireEvent.change(within(dialog).getByRole('combobox'), { target: { value: 'trimestral' } });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /hucha/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(api.updateRecurringItem).toHaveBeenCalledWith('tok', 'luz', expect.objectContaining({
+      frecuencia: 'trimestral', prorratear: true
+    })));
   });
 
   it('shows a bar per category limit, amber from 80 % and red when over', async () => {
