@@ -27,6 +27,14 @@ export const getBudgetHistory = async (req: Request, res: Response, next: NextFu
   } catch (error) { next(error); }
 };
 
+export const getBudgetForecast = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const ciclos = req.query.ciclos !== undefined ? Number(req.query.ciclos) : 6;
+    const forecast = await budgetService.getForecast(req.params.groupId, userIdOf(req), ciclos);
+    res.status(200).json({ status: 'success', data: forecast });
+  } catch (error) { next(error); }
+};
+
 export const listRecurringItems = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const items = await budgetService.listRecurringItems(req.params.groupId, userIdOf(req));

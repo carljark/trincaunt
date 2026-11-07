@@ -94,6 +94,33 @@ export interface IBudgetHistory {
   mediaSobrante: number | null;
 }
 
+export interface IForecastBill {
+  recurrente_id: string;
+  nombre: string;
+  fecha: string;
+  importe: number;
+  estado: 'pagada' | 'pendiente';
+  ultima: boolean; // no vuelve a tocar después de este ciclo
+}
+
+export interface ICycleForecastEntry {
+  inicio: string;
+  fin: string; // excluido
+  offset: number;
+  enCurso: boolean;
+  ingresos: number;
+  facturas: number;
+  presupuestoGastable: number;
+  gastado: number;
+  disponible: number;
+  temporales: IForecastBill[]; // facturas con fecha de fin
+}
+
+export interface IBudgetForecast {
+  ahorroObjetivo: number;
+  ciclos: ICycleForecastEntry[]; // del actual en adelante
+}
+
 export const FRECUENCIA_LABELS: Record<Frecuencia, string> = {
   mensual: 'Cada mes',
   bimestral: 'Cada 2 meses',

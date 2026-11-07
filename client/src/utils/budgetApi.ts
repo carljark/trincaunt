@@ -1,4 +1,4 @@
-import { IBudgetConfig, IBudgetHistory, IBudgetSummary, IIncome, IRecurringItem } from '../types/budget';
+import { IBudgetConfig, IBudgetForecast, IBudgetHistory, IBudgetSummary, IIncome, IRecurringItem } from '../types/budget';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -27,6 +27,8 @@ export const budgetApi = {
     request<IBudgetSummary>(token, `/groups/${groupId}/budget?offset=${offset}`),
   getHistory: (token: string, groupId: string, ciclos = 6) =>
     request<IBudgetHistory>(token, `/groups/${groupId}/budget/history?ciclos=${ciclos}`),
+  getForecast: (token: string, groupId: string, ciclos = 6) =>
+    request<IBudgetForecast>(token, `/groups/${groupId}/budget/forecast?ciclos=${ciclos}`),
 
   listRecurringItems: (token: string, groupId: string) =>
     request<IRecurringItem[]>(token, `/groups/${groupId}/recurring-items`),
