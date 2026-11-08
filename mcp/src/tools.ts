@@ -383,7 +383,8 @@ export const tools: ToolDef[] = [
       fechaInicio: ymd.describe('Primera fecha en que toca (el día del mes se repite)'),
       fechaFin: ymd.optional(),
       categoria: categories.optional(),
-      prorratear: z.boolean().optional().describe('Factura no mensual, o mensual con fechaFin (cuotas de un aplazamiento): apartar cada ciclo una parte en una hucha y pagarla de ahí')
+      prorratear: z.boolean().optional().describe('Factura no mensual, o mensual con fechaFin (cuotas de un aplazamiento): apartar cada ciclo una parte en una hucha y pagarla de ahí'),
+      prorrateoDesde: ymd.optional().describe('Con prorratear: desde cuándo empieza a apartar (hoy o después; por defecto hoy)')
     },
     kind: 'write',
     run: (api, { groupId, ...data }) => api.post(`/groups/${groupId}/recurring-items`, defined(data))
@@ -402,7 +403,8 @@ export const tools: ToolDef[] = [
       fechaFin: ymd.nullable().optional(),
       categoria: categories.optional(),
       activo: z.boolean().optional().describe('false la desactiva sin borrarla'),
-      prorratear: z.boolean().optional().describe('Factura no mensual, o mensual con fechaFin (cuotas de un aplazamiento): apartar cada ciclo una parte en una hucha y pagarla de ahí')
+      prorratear: z.boolean().optional().describe('Factura no mensual, o mensual con fechaFin (cuotas de un aplazamiento): apartar cada ciclo una parte en una hucha y pagarla de ahí'),
+      prorrateoDesde: ymd.nullable().optional().describe('Con hucha: desde cuándo empieza a apartar (no pasada); null la vuelve a hoy')
     },
     kind: 'write',
     run: (api, { itemId, ...data }) => api.put(`/recurring-items/${itemId}`, defined(data))

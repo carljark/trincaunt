@@ -143,7 +143,7 @@ export const MAX_CICLOS_PREVISION = 13;
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 
-const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo', 'prorratear'] as const;
+const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo', 'prorratear', 'prorrateoDesde'] as const;
 const INCOME_FIELDS = ['descripcion', 'monto', 'fecha'] as const;
 
 const ymd = (date: Date) => date.toISOString().slice(0, 10);
@@ -583,8 +583,8 @@ export class BudgetService {
     if (clean.frecuencia !== undefined && !FRECUENCIAS.includes(clean.frecuencia as any)) {
       throw new AppError(`La frecuencia debe ser una de: ${FRECUENCIAS.join(', ')}`, 400);
     }
-    for (const key of ['fechaInicio', 'fechaFin'] as const) {
-      if (clean[key] === null && key === 'fechaFin') continue; // null borra la fecha de fin
+    for (const key of ['fechaInicio', 'fechaFin', 'prorrateoDesde'] as const) {
+      if (clean[key] === null && key !== 'fechaInicio') continue; // null borra la fecha de fin, o la de la hucha (empieza hoy)
       if (clean[key] !== undefined) {
         if (Number.isNaN(new Date(clean[key] as string).getTime())) throw new AppError(`Fecha no válida en ${key}`, 400);
         clean[key] = toCalendarDate(clean[key] as string);
@@ -598,12 +598,24 @@ export class BudgetService {
 
   /**
    * Prorratear solo vale para facturas no mensuales o mensuales con fecha de fin (ver
-   * canProrate). Al activarlo, la hucha empieza en el ciclo de hoy; al quitarlo se olvida.
+   * canProrate). Al activarlo, la hucha empieza en el ciclo de hoy o en la fecha que se
+   * pida (prorrateoDesde), que no puede ser pasada: no se puede haber apartado antes de
+   * hoy. Sin cambios, se queda la fecha que tenía; al quitarlo se olvida.
    */
-  private syncProrrateo(item: IRecurringItem, wasProrated: boolean) {
+  private prorrateoStart(
+    item: { tipo?: unknown; frecuencia?: unknown; fechaFin?: unknown; prorratear?: unknown; prorrateoDesde?: Date },
+    wasProrated: boolean,
+    requested?: Date | null
+  ): Date | undefined {
     if (item.prorratear && !canProrate(item)) throw new AppError(PRORRATEO_ERROR, 400);
-    if (!item.prorratear) item.set('prorrateoDesde', undefined);
-    else if (!wasProrated || !item.prorrateoDesde) item.set('prorrateoDesde', todayIn('Europe/Madrid', this.now()));
+    if (!item.prorratear) return undefined;
+    const today = todayIn('Europe/Madrid', this.now());
+    const current = wasProrated ? item.prorrateoDesde : undefined;
+    if (requested && requested.getTime() !== current?.getTime()) {
+      if (requested < today) throw new AppError('La hucha no puede empezar antes de hoy', 400);
+      return requested;
+    }
+    return requested === null || !current ? today : current;
   }
 
   async listRecurringItems(groupId: string, userId: string) {
@@ -613,12 +625,9 @@ export class BudgetService {
 
   async createRecurringItem(groupId: string, userId: string, data: Record<string, unknown>) {
     await this.getBudgetGroup(groupId, userId);
-    const clean = this.validateRecurring(data, false);
-    if (clean.prorratear) {
-      if (!canProrate(clean)) throw new AppError(PRORRATEO_ERROR, 400);
-      clean.prorrateoDesde = todayIn('Europe/Madrid', this.now());
-    }
-    return RecurringItem.create({ ...clean, grupo_id: groupId });
+    const { prorrateoDesde, ...clean } = this.validateRecurring(data, false);
+    const desde = this.prorrateoStart(clean, false, prorrateoDesde as Date | null | undefined);
+    return RecurringItem.create({ ...clean, ...(desde && { prorrateoDesde: desde }), grupo_id: groupId });
   }
 
   async updateRecurringItem(itemId: string, userId: string, data: Record<string, unknown>) {
@@ -629,8 +638,9 @@ export class BudgetService {
       delete clean.fechaFin;
     }
     const wasProrated = !!item.prorratear;
-    item.set(clean);
-    this.syncProrrateo(item, wasProrated);
+    const { prorrateoDesde, ...rest } = clean;
+    item.set(rest);
+    item.set('prorrateoDesde', this.prorrateoStart(item, wasProrated, prorrateoDesde as Date | null | undefined));
     await item.save();
     return item;
   }

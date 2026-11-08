@@ -451,6 +451,35 @@ describe('BudgetService', () => {
         expect(doc.prorrateoDesde).toBeUndefined();
       });
 
+      it('starts the fund on a future date when asked, never on a past one', async () => {
+        (RecurringItem.create as vi.Mock).mockImplementation(async (data: any) => data);
+        const seguro = { tipo: 'factura', nombre: 'Seguro', importe: 300, frecuencia: 'anual', fechaInicio: '2027-03-15', prorratear: true };
+        expect(await service.createRecurringItem(groupId, userId, { ...seguro, prorrateoDesde: '2027-02-01' }))
+          .toMatchObject({ prorrateoDesde: d('2027-02-01') });
+        await expect(service.createRecurringItem(groupId, userId, { ...seguro, prorrateoDesde: '2026-11-01' }))
+          .rejects.toMatchObject({ statusCode: 400 });
+        expect(await service.createRecurringItem(groupId, userId, { ...seguro, prorratear: false, prorrateoDesde: '2027-02-01' }))
+          .not.toHaveProperty('prorrateoDesde');
+
+        // Una fecha ya pasada que no cambia (el formulario la reenvía) se respeta; null vuelve a hoy
+        const doc = fakeDoc({ ...iva, prorrateoDesde: d('2026-10-30'), grupo_id: groupId });
+        (RecurringItem.findById as vi.Mock).mockResolvedValue(doc);
+        await service.updateRecurringItem(ivaId.toString(), userId, { importe: 650, prorrateoDesde: '2026-10-30' });
+        expect(doc.prorrateoDesde).toEqual(d('2026-10-30'));
+        await expect(service.updateRecurringItem(ivaId.toString(), userId, { prorrateoDesde: '2026-11-01' }))
+          .rejects.toMatchObject({ statusCode: 400 });
+        await service.updateRecurringItem(ivaId.toString(), userId, { prorrateoDesde: '2027-02-01' });
+        expect(doc.prorrateoDesde).toEqual(d('2027-02-01'));
+        await service.updateRecurringItem(ivaId.toString(), userId, { prorrateoDesde: null });
+        expect(doc.prorrateoDesde).toEqual(d('2026-11-04'));
+      });
+
+      it('sets nothing aside before a future start and catches up from it', async () => {
+        (RecurringItem.find as vi.Mock).mockResolvedValue([...items, { ...iva, prorrateoDesde: d('2026-12-01') }]); // ciclo 28-nov
+        const forecast = await service.getForecast(groupId, userId, 3);
+        expect(forecast.ciclos.map(c => c.reservas)).toEqual([0, 300, 300]);
+      });
+
       it('only prorates bills that are not monthly, or monthly ones with an end date', async () => {
         (RecurringItem.create as vi.Mock).mockImplementation(async (data: any) => data);
         await expect(service.createRecurringItem(groupId, userId, {
