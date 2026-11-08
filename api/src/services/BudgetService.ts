@@ -150,9 +150,19 @@ const ymd = (date: Date) => date.toISOString().slice(0, 10);
 /** Lo que pesa una factura en el ciclo: su importe menos lo que sale de la hucha. */
 const netOf = (line: BudgetLine<BillEstado>) => round2(line.importe - (line.deHucha ?? 0));
 
-/** Una factura se prorratea si lo pide, está activa y no es mensual (una mensual ya cae cada ciclo). */
-export const isProrated = (item: Pick<IRecurringItem, 'tipo' | 'frecuencia' | 'activo' | 'prorratear' | 'prorrateoDesde'>) =>
-  item.tipo === 'factura' && item.activo && !!item.prorratear && !!item.prorrateoDesde && item.frecuencia !== 'mensual';
+/**
+ * Se puede prorratear una factura no mensual (se reparte cada pago entre los ciclos hasta él)
+ * o una mensual con fecha de fin, como un aplazamiento en cuotas (se reparte lo que queda del
+ * plan entre los ciclos hasta la última cuota). Una mensual sin fin ya cae igual cada ciclo.
+ */
+export const canProrate = (item: { tipo?: unknown; frecuencia?: unknown; fechaFin?: unknown }) =>
+  item.tipo === 'factura' && ((item.frecuencia ?? 'mensual') !== 'mensual' || !!item.fechaFin);
+
+const PRORRATEO_ERROR = 'Solo se pueden prorratear facturas que no sean mensuales o mensuales con fecha de fin';
+
+/** Una factura se prorratea si lo pide, está activa y se puede prorratear. */
+export const isProrated = (item: Pick<IRecurringItem, 'tipo' | 'frecuencia' | 'fechaFin' | 'activo' | 'prorratear' | 'prorrateoDesde'>) =>
+  item.activo && !!item.prorratear && !!item.prorrateoDesde && canProrate(item);
 
 type Movement = { _id: string; recurrente_id?: string; nombre: string; fecha: Date; importe: number };
 
@@ -442,6 +452,8 @@ export class BudgetService {
       facturas
         .filter(l => l.recurrente_id === idOf(item._id))
         .forEach((line, i) => { if (fund.cubiertos[i]) line.deHucha = fund.cubiertos[i]; });
+      // Plan terminado y hucha vacía: ya no hay nada que enseñar
+      if (!fund.proximoPago && !fund.cuota && !fund.saldo) return [];
       return [{ recurrente_id: idOf(item._id), nombre: item.nombre, cuota: fund.cuota, saldo: fund.saldo, proximoPago: fund.proximoPago }];
     });
   }
@@ -453,6 +465,10 @@ export class BudgetService {
    * pago; así, si se activa tarde, se pone al día, y si un pago real sale más barato, lo
    * que sobra rebaja las cuotas siguientes. Los pagos (reales o, si no, el estimado) salen
    * de la hucha hasta donde llegue; el resto pesa en su ciclo como una factura normal.
+   *
+   * Una mensual con fecha de fin (cuotas de un aplazamiento) no mira solo el próximo pago:
+   * reparte lo que queda del plan entre los ciclos hasta la última cuota, así que desde que
+   * se activa aparta lo mismo cada ciclo y cada cuota sale entera de la hucha.
    */
   private sinkingFund(item: IRecurringItem, movements: Movement[], diaInicio: number, target: Cycle) {
     const first = cycleIndex(item.prorrateoDesde!, diaInicio);
@@ -460,8 +476,10 @@ export class BudgetService {
     if (last < first) return null;
 
     const own = movements.filter(m => m.recurrente_id === idOf(item._id));
-    // Hasta un año después del objetivo: el paso más largo es anual
-    const dates = occurrencesInRange(item, { inicio: cycleAt(first, diaInicio).inicio, fin: cycleAt(last + 13, diaInicio).inicio });
+    const plan = item.frecuencia === 'mensual';
+    // Hasta un año después del objetivo (el paso más largo es anual) o, en un plan, hasta su fin
+    const horizon = plan && item.fechaFin ? Math.max(last + 13, cycleIndex(item.fechaFin, diaInicio) + 1) : last + 13;
+    const dates = occurrencesInRange(item, { inicio: cycleAt(first, diaInicio).inicio, fin: cycleAt(horizon, diaInicio).inicio });
     const dateCycles = dates.map(d => cycleIndex(d, diaInicio));
 
     let saldo = 0;
@@ -471,7 +489,11 @@ export class BudgetService {
     for (let k = first; k <= last; k++) {
       const cycle = cycleAt(k, diaInicio);
       const next = dateCycles.findIndex(c => c >= k);
-      cuota = next === -1 ? 0 : Math.max(0, round2((item.importe - saldo) / (dateCycles[next] - k + 1)));
+      if (next === -1) cuota = 0;
+      else if (plan) {
+        const pendientes = dateCycles.length - next;
+        cuota = Math.max(0, round2((item.importe * pendientes - saldo) / (dateCycles[dateCycles.length - 1] - k + 1)));
+      } else cuota = Math.max(0, round2((item.importe - saldo) / (dateCycles[next] - k + 1)));
       saldo = round2(saldo + cuota);
       lines = this.buildLines([item], own.filter(m => inCycle(m.fecha, cycle)), cycle, 'pagada', 'pendiente');
       cubiertos = lines.map(line => {
@@ -574,13 +596,11 @@ export class BudgetService {
   }
 
   /**
-   * Prorratear solo vale para facturas no mensuales. Al activarlo, la hucha empieza en el
-   * ciclo de hoy; al quitarlo (o cambiar a mensual o a ingreso) se olvida.
+   * Prorratear solo vale para facturas no mensuales o mensuales con fecha de fin (ver
+   * canProrate). Al activarlo, la hucha empieza en el ciclo de hoy; al quitarlo se olvida.
    */
   private syncProrrateo(item: IRecurringItem, wasProrated: boolean) {
-    if (item.prorratear && (item.tipo !== 'factura' || item.frecuencia === 'mensual')) {
-      throw new AppError('Solo se pueden prorratear facturas que no sean mensuales', 400);
-    }
+    if (item.prorratear && !canProrate(item)) throw new AppError(PRORRATEO_ERROR, 400);
     if (!item.prorratear) item.set('prorrateoDesde', undefined);
     else if (!wasProrated || !item.prorrateoDesde) item.set('prorrateoDesde', todayIn('Europe/Madrid', this.now()));
   }
@@ -594,9 +614,7 @@ export class BudgetService {
     await this.getBudgetGroup(groupId, userId);
     const clean = this.validateRecurring(data, false);
     if (clean.prorratear) {
-      if (clean.tipo !== 'factura' || (clean.frecuencia ?? 'mensual') === 'mensual') {
-        throw new AppError('Solo se pueden prorratear facturas que no sean mensuales', 400);
-      }
+      if (!canProrate(clean)) throw new AppError(PRORRATEO_ERROR, 400);
       clean.prorrateoDesde = todayIn('Europe/Madrid', this.now());
     }
     return RecurringItem.create({ ...clean, grupo_id: groupId });
