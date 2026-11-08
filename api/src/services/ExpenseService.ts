@@ -320,6 +320,9 @@ export class ExpenseService {
     if (data.fecha !== undefined) {
       expense.fecha = data.fecha;
     }
+    if (data.localization !== undefined) {
+      expense.localization = data.localization;
+    }
     if (data.participantes !== undefined) {
       expense.participantes = data.participantes;
     }

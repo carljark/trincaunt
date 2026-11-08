@@ -88,6 +88,31 @@
     color: $color-negative;
   }
 
+  // Respuesta escrita del asistente (puede traer saltos de línea)
+  &__answer {
+    margin: 0;
+    white-space: pre-line;
+  }
+
+  // Resultado de aplicar cuando algo ha fallado
+  &__results {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+    margin: 0;
+    padding: 0;
+    font-size: map.get($font-sizes, sm);
+    list-style: none;
+  }
+
+  &__result {
+    color: $color-positive;
+
+    &--failed {
+      color: $color-negative;
+    }
+  }
+
   &__drafts {
     display: flex;
     flex-direction: column;
@@ -104,6 +129,11 @@
 
     & + & {
       border-top: 1px solid $color-border;
+    }
+
+    // Borra algo: en rojo para que se vea antes de confirmar
+    &--danger {
+      color: $color-negative;
     }
   }
 

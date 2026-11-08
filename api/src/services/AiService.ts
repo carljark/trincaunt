@@ -48,23 +48,48 @@ class AiService {
   }
 
   private async parseExpenses(input: ExpenseInput, members: GroupMemberRef[]): Promise<ParsedExpense[]> {
+    return this.askWithFallback(this.buildPrompt(input.kind, members), input, text => this.parseResponse(text));
+  }
+
+  /**
+   * Manda `prompt` y el mensaje (texto, foto o audio) a la IA, que debe contestar con un JSON,
+   * y lo pasa por `parse`. Si Gemini falla (o su respuesta no se puede leer), lo intenta con
+   * OpenRouter. Lo usa también el asistente de la barra.
+   */
+  public async askWithFallback<T>(prompt: string, input: ExpenseInput, parse: (text: string) => T): Promise<T> {
     if (input.kind === 'media' && input.mimeType.startsWith('video/')) {
       throw new AppError('Gemini no soporta vídeos. Por favor graba solo nota de voz o sube una foto.', 400);
     }
-    const prompt = this.buildPrompt(input.kind, members);
     try {
-      return this.parseResponse(await this.askGemini(prompt, input));
+      return parse(await this.askGemini(prompt, input));
     } catch (geminiError) {
       console.error('Error procesando con Gemini:', geminiError);
       if (!process.env.OPENROUTER_API_KEY) {
         throw this.toAppError(geminiError);
       }
       try {
-        return this.parseResponse(await this.askOpenRouter(prompt, input));
+        return parse(await this.askOpenRouter(prompt, input));
       } catch (fallbackError) {
         console.error('Error procesando con OpenRouter:', fallbackError);
         throw this.toAppError(fallbackError);
       }
+    }
+  }
+
+  /** Quita las vallas de markdown que a veces añade la IA y lee el JSON. */
+  public parseJson(responseText: string): unknown {
+    if (!responseText) throw new Error('Respuesta vacía');
+    let cleanedText = responseText.trim();
+    if (cleanedText.startsWith('```json')) {
+      cleanedText = cleanedText.replace(/^```json\n/, '').replace(/\n```$/, '');
+    } else if (cleanedText.startsWith('```')) {
+      cleanedText = cleanedText.replace(/^```\n/, '').replace(/\n```$/, '');
+    }
+    try {
+      return JSON.parse(cleanedText);
+    } catch (parseError) {
+      console.error('Raw AI Response:', responseText);
+      throw parseError;
     }
   }
 
@@ -158,28 +183,13 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
   }
 
   private parseResponse(responseText: string): ParsedExpense[] {
-    if (!responseText) throw new Error('Respuesta vacía');
-
-    let cleanedText = responseText.trim();
-    if (cleanedText.startsWith('```json')) {
-      cleanedText = cleanedText.replace(/^```json\n/, '').replace(/\n```$/, '');
-    } else if (cleanedText.startsWith('```')) {
-      cleanedText = cleanedText.replace(/^```\n/, '').replace(/\n```$/, '');
-    }
-
-    let parsedData;
-    try {
-      parsedData = JSON.parse(cleanedText);
-    } catch (parseError) {
-      console.error('Raw AI Response:', responseText);
-      throw parseError;
-    }
+    const parsedData = this.parseJson(responseText);
 
     if (!Array.isArray(parsedData)) {
       throw new Error('Formato JSON inválido devuelto por la IA (no es un array)');
     }
 
-    for (const item of parsedData) {
+    for (const item of parsedData as any[]) {
       if (typeof item.descripcion !== 'string' || typeof item.monto !== 'number') {
         throw new Error('Formato JSON inválido devuelto por la IA dentro del array');
       }

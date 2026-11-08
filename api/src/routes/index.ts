@@ -9,6 +9,7 @@ import * as NoteController from '../controllers/NoteController'; // Import NoteC
 import * as DbController from '../controllers/DbController';
 import * as PushController from '../controllers/PushController';
 import * as BudgetController from '../controllers/BudgetController';
+import * as AssistantController from '../controllers/AssistantController';
 import * as ApiTokenController from '../controllers/ApiTokenController';
 import * as AdminController from '../controllers/AdminController';
 import { protect, sessionOnly, requireAdmin } from '../middlewares/authMiddleware';
@@ -74,6 +75,9 @@ const expenseMember = requireMemberOfDoc(Expense, 'expenseId', 'grupo_id', 'Gast
 // Audio o foto de hasta 15 MB; el texto llega como campo `texto`
 const uploadMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 router.post('/expenses/ai-draft', protect, uploadMedia.single('media'), requireGroupMember('body', 'grupo_id'), ExpenseController.draftExpensesWithAI);
+// Asistente de la barra: propone (sin aplicar) y aplica lo confirmado
+router.post('/groups/:groupId/assistant', protect, uploadMedia.single('media'), groupMember, AssistantController.askAssistant);
+router.post('/groups/:groupId/assistant/apply', protect, groupMember, AssistantController.applyAssistantActions);
 router.post('/expenses/batch', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpensesBatch);
 router.post('/expenses', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpense);
 router.patch('/expenses/bulk-update', protect, requireMemberOfExpenses, ExpenseController.bulkUpdate);

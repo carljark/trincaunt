@@ -930,7 +930,6 @@ const GroupDetailPage: React.FC = () => {
         <AiChatBar
           groupId={groupId!}
           token={token!}
-          members={group?.miembros || []}
           onExpensesAdded={fetchGroupData}
         />
       )}
