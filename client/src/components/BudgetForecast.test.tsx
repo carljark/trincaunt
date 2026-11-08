@@ -37,7 +37,7 @@ describe('BudgetForecast', () => {
     render(<BudgetForecast groupId="g1" token="tok" />);
     const summary = await screen.findByText(/El ciclo más justo empieza el 28 nov/);
     expect(normalize(summary.parentElement?.textContent)).toContain('203,07 €');
-    expect(getForecast).toHaveBeenCalledWith('tok', 'g1', 6);
+    expect(getForecast).toHaveBeenCalledWith('tok', 'g1', 13);
 
     const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
     expect(rows.map(r => normalize(r.textContent))).toEqual([
@@ -59,14 +59,15 @@ describe('BudgetForecast', () => {
     expect(normalize(summary.parentElement?.textContent)).toContain('−40,00 €');
   });
 
-  it('switches to 12 cycles and shows errors', async () => {
+  it('switches between a year and 6 months and shows errors', async () => {
     render(<BudgetForecast groupId="g1" token="tok" />);
     await screen.findByRole('table');
-    fireEvent.click(screen.getByRole('button', { name: '12 ciclos' }));
-    await waitFor(() => expect(getForecast).toHaveBeenLastCalledWith('tok', 'g1', 12));
+    expect(screen.getByRole('button', { name: '1 año' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: '6 meses' }));
+    await waitFor(() => expect(getForecast).toHaveBeenLastCalledWith('tok', 'g1', 6));
 
     getForecast.mockRejectedValueOnce(new Error('Sin conexión'));
-    fireEvent.click(screen.getByRole('button', { name: '6 ciclos' }));
+    fireEvent.click(screen.getByRole('button', { name: '1 año' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin conexión');
   });
 });

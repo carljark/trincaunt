@@ -332,7 +332,7 @@ export const tools: ToolDef[] = [
     description:
       'El ciclo actual y los siguientes según las partidas fijas: ingresos, facturas y lo que quedará para gastar en ' +
       'cada uno, con las facturas que tienen fecha de fin (préstamos, aplazamientos) y si es su última cuota.',
-    input: { groupId: id, ciclos: z.number().int().min(1).max(12).default(6) },
+    input: { groupId: id, ciclos: z.number().int().min(1).max(13).default(13) },
     kind: 'read',
     run: (api, { groupId, ciclos }) => api.get(`/groups/${groupId}/budget/forecast?ciclos=${ciclos}`)
   }),

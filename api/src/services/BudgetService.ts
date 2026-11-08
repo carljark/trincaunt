@@ -138,7 +138,8 @@ export interface BudgetForecast {
   ciclos: CycleForecastEntry[]; // del actual en adelante
 }
 
-export const MAX_CICLOS_PREVISION = 12;
+// El actual y los 12 siguientes: un año vista
+export const MAX_CICLOS_PREVISION = 13;
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 

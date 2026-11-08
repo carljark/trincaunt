@@ -204,7 +204,7 @@ export class AssistantService {
         RecurringItem.find({ grupo_id: groupId }),
         Income.find({ grupo_id: groupId }).sort({ fecha: -1 }).limit(RECENT_INCOMES),
         this.budget.getSummary(groupId, user.id).catch(() => null),
-        this.budget.getForecast(groupId, user.id, 6).catch(() => null)
+        this.budget.getForecast(groupId, user.id, 13).catch(() => null)
       ]);
       datos.configuracionPresupuesto = ctx.group.presupuesto;
       datos.partidasFijas = items.map(i => ({
