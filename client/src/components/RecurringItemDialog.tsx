@@ -45,7 +45,8 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
   };
 
   // Una factura mensual ya cae entera en cada ciclo: no hay nada que repartir
-  const canProrate = tipo === 'factura' && frecuencia !== 'mensual';
+  // Una mensual solo si tiene fin (cuotas de un aplazamiento): sin fin ya cae igual cada ciclo
+  const canProrate = tipo === 'factura' && (frecuencia !== 'mensual' || !!fechaFin);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,7 +187,9 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
               <span>Apartar una parte cada ciclo (hucha)</span>
             </label>
             <p className="recurring-item__hint">
-              Cada ciclo se reserva lo que falta hasta el próximo pago, y ese pago sale de la hucha en vez de tu presupuesto del mes.
+              {frecuencia === 'mensual'
+                ? 'Cada ciclo se reserva lo mismo, repartiendo lo que queda hasta la última cuota, y las cuotas salen de la hucha.'
+                : 'Cada ciclo se reserva lo que falta hasta el próximo pago, y ese pago sale de la hucha en vez de tu presupuesto del mes.'}
             </p>
           </>
         )}

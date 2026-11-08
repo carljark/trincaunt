@@ -234,7 +234,7 @@ describe('BudgetTab', () => {
     expect(normalize(screen.getByText(/Apartas 50/).textContent)).toBe('Apartas 50,00 €');
   });
 
-  it('offers a sinking fund only for bills that are not monthly', async () => {
+  it('offers a sinking fund for bills that are not monthly', async () => {
     renderTab();
     fireEvent.click(await screen.findByRole('button', { name: 'Editar Luz' }));
     const dialog = screen.getByRole('dialog', { name: 'Editar partida fija' });
@@ -246,6 +246,21 @@ describe('BudgetTab', () => {
 
     await waitFor(() => expect(api.updateRecurringItem).toHaveBeenCalledWith('tok', 'luz', expect.objectContaining({
       frecuencia: 'trimestral', prorratear: true
+    })));
+  });
+
+  it('offers a sinking fund for a monthly bill once it has an end date', async () => {
+    renderTab();
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar Luz' }));
+    const dialog = screen.getByRole('dialog', { name: 'Editar partida fija' });
+
+    fireEvent.change(within(dialog).getByLabelText('Hasta (opcional)'), { target: { value: '2027-05-20' } });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /hucha/ }));
+    expect(within(dialog).getByText(/hasta la última cuota/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(api.updateRecurringItem).toHaveBeenCalledWith('tok', 'luz', expect.objectContaining({
+      frecuencia: 'mensual', fechaFin: '2027-05-20', prorratear: true
     })));
   });
 

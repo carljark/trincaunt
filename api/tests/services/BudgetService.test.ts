@@ -398,6 +398,40 @@ describe('BudgetService', () => {
       ]);
     });
 
+    describe('monthly instalment plans', () => {
+      // Aplazamiento en 6 cuotas de 85 € (20 de dic a 20 de may), prorrateado desde hoy, 4-nov
+      const planId = oid();
+      const plan = {
+        _id: planId, tipo: 'factura', nombre: 'Aplazamiento IVA', importe: 85, frecuencia: 'mensual',
+        fechaInicio: d('2026-12-20'), fechaFin: d('2027-05-20'), activo: true, prorratear: true, prorrateoDesde: d('2026-11-04')
+      };
+      beforeEach(() => {
+        (RecurringItem.find as vi.Mock).mockResolvedValue([...items, plan]);
+      });
+
+      it('spreads what is left of the plan over the cycles up to the last instalment', async () => {
+        const now = await service.getSummary(groupId, userId);
+        // 510 € entre 7 ciclos (de este al de la última cuota)
+        expect(now.reservas.lineas).toEqual([{
+          recurrente_id: planId.toString(), nombre: 'Aplazamiento IVA', cuota: 72.86, saldo: 72.86,
+          proximoPago: { fecha: '2026-12-20', importe: 85, cubierto: 72.86 }
+        }]);
+
+        const first = await service.getSummary(groupId, userId, 1); // 28-nov a 28-dic
+        expect(first.facturas.lineas.find(l => l.nombre === 'Aplazamiento IVA')).toMatchObject({ importe: 85, deHucha: 85 });
+        expect(first.reservas.lineas[0]).toMatchObject({ cuota: 72.86, saldo: 60.72 }); // 145.72 - 85
+      });
+
+      it('pays every instalment from the fund and disappears when the plan is over', async () => {
+        const last = await service.getSummary(groupId, userId, 6); // 28-abr a 28-may
+        expect(last.facturas.lineas.find(l => l.nombre === 'Aplazamiento IVA')).toMatchObject({ fecha: '2027-05-20', deHucha: 85 });
+        expect(last.reservas.lineas[0].cuota).toBeCloseTo(72.86, 1);
+
+        const after = await service.getSummary(groupId, userId, 7);
+        expect(after.reservas).toEqual({ total: 0, lineas: [] });
+      });
+    });
+
     describe('settings', () => {
       const fakeDoc = (data: object) => {
         const doc: any = { ...data, save: vi.fn() };
@@ -417,7 +451,7 @@ describe('BudgetService', () => {
         expect(doc.prorrateoDesde).toBeUndefined();
       });
 
-      it('only prorates bills that are not monthly', async () => {
+      it('only prorates bills that are not monthly, or monthly ones with an end date', async () => {
         (RecurringItem.create as vi.Mock).mockImplementation(async (data: any) => data);
         await expect(service.createRecurringItem(groupId, userId, {
           tipo: 'factura', nombre: 'Luz', importe: 60, frecuencia: 'mensual', fechaInicio: '2026-11-05', prorratear: true
@@ -431,6 +465,15 @@ describe('BudgetService', () => {
         const doc = fakeDoc({ ...iva, grupo_id: groupId });
         (RecurringItem.findById as vi.Mock).mockResolvedValue(doc);
         await expect(service.updateRecurringItem(ivaId.toString(), userId, { frecuencia: 'mensual' })).rejects.toMatchObject({ statusCode: 400 });
+
+        const plan = await service.createRecurringItem(groupId, userId, {
+          tipo: 'factura', nombre: 'Aplazamiento', importe: 85, frecuencia: 'mensual', fechaInicio: '2026-12-20', fechaFin: '2027-05-20', prorratear: true
+        });
+        expect(plan).toMatchObject({ prorratear: true, prorrateoDesde: d('2026-11-04') });
+
+        const planDoc = fakeDoc({ ...iva, frecuencia: 'mensual', fechaFin: d('2027-05-20'), grupo_id: groupId });
+        (RecurringItem.findById as vi.Mock).mockResolvedValue(planDoc);
+        await expect(service.updateRecurringItem(ivaId.toString(), userId, { fechaFin: null })).rejects.toMatchObject({ statusCode: 400 });
       });
     });
   });
