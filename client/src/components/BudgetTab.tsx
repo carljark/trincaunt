@@ -29,6 +29,10 @@ type DialogState =
   | { kind: 'undo'; line: BillLine | IncomeLine; tipo: RecurringTipo }
   | null;
 
+// Una hucha que aún no ha empezado dice desde cuándo
+const huchaLabel = (desde?: string) =>
+  desde && desde.slice(0, 10) > todayYmd() ? ` · hucha desde el ${formatShortDate(desde)}` : ' · con hucha';
+
 const cycleLabel = (summary: IBudgetSummary) => {
   const { inicio, fin, offset } = summary.ciclo;
   const range = `${formatShortDate(inicio)} – ${formatShortDate(addDays(fin, -1))}`;
@@ -456,7 +460,7 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
                           <span className="budget__line-name">{item.nombre}</span>
                           <span className="budget__line-meta">
                             {FRECUENCIA_LABELS[item.frecuencia]} · día {Number(item.fechaInicio.slice(8, 10))}
-                            {item.prorratear && item.frecuencia !== 'mensual' ? ' · con hucha' : ''}
+                            {item.prorratear ? huchaLabel(item.prorrateoDesde) : ''}
                             {item.activo ? '' : ' · desactivada'}
                           </span>
                         </span>

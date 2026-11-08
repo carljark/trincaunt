@@ -29,6 +29,9 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
   const [categoria, setCategoria] = useState(item?.categoria.join(', ') ?? '');
   const [activo, setActivo] = useState(item?.activo ?? true);
   const [prorratear, setProrratear] = useState(item?.prorratear ?? false);
+  // Vacía: empieza hoy. Una ya pasada solo vale si es la que tenía (la hucha ya está en marcha)
+  const savedDesde = item?.prorratear ? item.prorrateoDesde?.slice(0, 10) ?? '' : '';
+  const [desde, setDesde] = useState(savedDesde);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -54,6 +57,8 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
     if (!nombre.trim()) return setError('Ponle un nombre.');
     if (!(amount > 0)) return setError('El importe debe ser mayor que 0.');
     if (fechaFin && fechaFin < fechaInicio) return setError('La fecha de fin no puede ser anterior a la primera.');
+    const huchaOn = canProrate && prorratear;
+    if (huchaOn && desde && desde !== savedDesde && desde < todayYmd()) return setError('La hucha no puede empezar antes de hoy.');
 
     void run(() => onSave({
       tipo,
@@ -64,7 +69,8 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
       fechaFin: fechaFin || (item?.fechaFin ? null : undefined),
       categoria: categoria.split(',').map(c => c.trim()).filter(Boolean),
       activo,
-      prorratear: canProrate && prorratear
+      prorratear: huchaOn,
+      prorrateoDesde: huchaOn ? desde || (savedDesde ? null : undefined) : undefined
     }));
   };
 
@@ -186,7 +192,20 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
               <input className="recurring-item__checkbox" type="checkbox" checked={prorratear} onChange={e => setProrratear(e.target.checked)} />
               <span>Apartar una parte cada ciclo (hucha)</span>
             </label>
+            {prorratear && (
+              <label className="recurring-item__field">
+                <span className="recurring-item__label">Empezar a apartar desde</span>
+                <input
+                  className="recurring-item__input"
+                  type="date"
+                  value={desde}
+                  min={savedDesde && savedDesde < todayYmd() ? savedDesde : todayYmd()}
+                  onChange={e => setDesde(e.target.value)}
+                />
+              </label>
+            )}
             <p className="recurring-item__hint">
+              {prorratear ? 'Si no pones fecha, empieza hoy. Hasta esa fecha no se aparta nada; desde ella se pone al día. ' : ''}
               {frecuencia === 'mensual'
                 ? 'Cada ciclo se reserva lo mismo, repartiendo lo que queda hasta la última cuota, y las cuotas salen de la hucha.'
                 : 'Cada ciclo se reserva lo que falta hasta el próximo pago, y ese pago sale de la hucha en vez de tu presupuesto del mes.'}

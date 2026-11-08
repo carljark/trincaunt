@@ -249,6 +249,28 @@ describe('BudgetTab', () => {
     })));
   });
 
+  it('lets the sinking fund start on a later date and says so in the list', async () => {
+    const seguro: IRecurringItem = {
+      _id: 'seguro', grupo_id: 'g1', tipo: 'factura', nombre: 'Seguro', importe: 300, frecuencia: 'anual',
+      fechaInicio: '2027-03-15T00:00:00.000Z', categoria: [], activo: true, prorratear: true, prorrateoDesde: '2027-02-01T00:00:00.000Z'
+    };
+    api.listRecurringItems.mockResolvedValue([...items, seguro]);
+    renderTab();
+    expect(normalize((await screen.findByText(/hucha desde/)).textContent)).toBe('Cada año · día 15 · hucha desde el 1 feb');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Luz' }));
+    const dialog = screen.getByRole('dialog', { name: 'Editar partida fija' });
+    fireEvent.change(within(dialog).getByRole('combobox'), { target: { value: 'anual' } });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /hucha/ }));
+    const desde = within(dialog).getByLabelText('Empezar a apartar desde');
+    expect(desde).toHaveAttribute('min', '2026-11-04'); // no deja elegir un día pasado
+    fireEvent.change(desde, { target: { value: '2027-02-01' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(api.updateRecurringItem).toHaveBeenCalledWith('tok', 'luz', expect.objectContaining({
+      prorratear: true, prorrateoDesde: '2027-02-01'
+    })));
+  });
+
   it('offers a sinking fund for a monthly bill once it has an end date', async () => {
     renderTab();
     fireEvent.click(await screen.findByRole('button', { name: 'Editar Luz' }));

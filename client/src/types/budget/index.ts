@@ -32,7 +32,7 @@ export interface IRecurringItem {
   categoria: string[];
   activo: boolean;
   prorratear?: boolean;    // factura no mensual que se aparta cada ciclo en una hucha
-  prorrateoDesde?: string; // la pone el servidor al activar el prorrateo
+  prorrateoDesde?: string; // desde cuándo se aparta: hoy al activarla, o la fecha que se elija (no pasada)
 }
 
 export interface IIncome {
