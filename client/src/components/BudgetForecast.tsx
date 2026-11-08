@@ -11,7 +11,11 @@ interface BudgetForecastProps {
   refreshKey?: number;
 }
 
-const OPTIONS = [6, 12] as const;
+// Un año vista son el ciclo actual y los 12 siguientes
+const OPTIONS = [
+  { ciclos: 6, label: '6 meses' },
+  { ciclos: 13, label: '1 año' }
+] as const;
 
 const signed = (n: number) => (n < 0 ? `−${formatEuros(-n)}` : formatEuros(n));
 
@@ -21,7 +25,7 @@ const tightest = (list: ICycleForecastEntry[]) =>
 
 // Tarjeta del presupuesto: lo que te quedará para gastar en los próximos ciclos
 const BudgetForecast: React.FC<BudgetForecastProps> = ({ groupId, token, refreshKey = 0 }) => {
-  const [ciclos, setCiclos] = useState<number>(6);
+  const [ciclos, setCiclos] = useState<number>(13);
   const [forecast, setForecast] = useState<IBudgetForecast | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,15 +59,15 @@ const BudgetForecast: React.FC<BudgetForecastProps> = ({ groupId, token, refresh
       <div className="budget-forecast__header">
         <h3 className="budget-forecast__title">Lo que viene</h3>
         <div className="budget-forecast__switch" role="group" aria-label="Ciclos a prever">
-          {OPTIONS.map(n => (
+          {OPTIONS.map(option => (
             <button
-              key={n}
+              key={option.ciclos}
               type="button"
-              className={`budget-forecast__switch-button ${ciclos === n ? 'budget-forecast__switch-button--active' : ''}`}
-              aria-pressed={ciclos === n}
-              onClick={() => setCiclos(n)}
+              className={`budget-forecast__switch-button ${ciclos === option.ciclos ? 'budget-forecast__switch-button--active' : ''}`}
+              aria-pressed={ciclos === option.ciclos}
+              onClick={() => setCiclos(option.ciclos)}
             >
-              {n} ciclos
+              {option.label}
             </button>
           ))}
         </div>

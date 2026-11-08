@@ -321,7 +321,7 @@ describe('BudgetService', () => {
 
     it('rejects a bad number of cycles', async () => {
       await expect(service.getForecast(groupId, userId, 0)).rejects.toMatchObject({ statusCode: 400 });
-      await expect(service.getForecast(groupId, userId, 13)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(service.getForecast(groupId, userId, 14)).rejects.toMatchObject({ statusCode: 400 });
     });
   });
 
