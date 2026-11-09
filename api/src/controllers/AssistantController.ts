@@ -17,7 +17,7 @@ const assistantUser = (req: Request) => {
 };
 
 /**
- * Lee un mensaje, una foto o un audio y devuelve la respuesta del asistente y las acciones
+ * Lee un mensaje, una foto o un audio (con un mensaje que lo acompañe, si hay) y devuelve la respuesta del asistente y las acciones
  * que propone, SIN aplicarlas: el usuario las confirma con POST .../assistant/apply.
  */
 export const askAssistant = async (req: Request, res: Response, next: NextFunction) => {
@@ -28,7 +28,7 @@ export const askAssistant = async (req: Request, res: Response, next: NextFuncti
     if (texto.length > MAX_TEXT_LENGTH) throw new AppError(`El mensaje no puede pasar de ${MAX_TEXT_LENGTH} caracteres`, 400);
 
     const input = req.file
-      ? { kind: 'media' as const, buffer: req.file.buffer, mimeType: req.file.mimetype }
+      ? { kind: 'media' as const, buffer: req.file.buffer, mimeType: req.file.mimetype, ...(texto && { text: texto }) }
       : { kind: 'text' as const, text: texto };
     const reply = await assistant.draft(req.params.groupId, user, input, req.body?.historial);
 

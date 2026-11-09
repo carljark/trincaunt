@@ -210,6 +210,54 @@
     display: none;
   }
 
+  // Formulario de abajo: la foto adjunta (si hay) encima de la barra
+  &__composer {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    pointer-events: auto;
+  }
+
+  &__attachment {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    background: $color-surface;
+    border-top: 1px solid $color-border;
+  }
+
+  &__attachment-preview {
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    object-fit: cover;
+    border-radius: $border-radius;
+  }
+
+  &__attachment-icon {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: $color-gray-700;
+  }
+
+  &__attachment-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: map.get($font-sizes, sm);
+    color: $color-gray-700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__attachment-remove {
+    @include icon-button;
+    color: $color-gray-700;
+    background: transparent;
+  }
+
   &__bar {
     display: flex;
     align-items: center;

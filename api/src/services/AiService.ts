@@ -27,9 +27,12 @@ export interface GroupMemberRef {
   nombre: string;
 }
 
-/** Lo que manda el usuario: un archivo (foto de ticket o nota de voz) o un mensaje escrito */
+/**
+ * Lo que manda el usuario: un archivo (foto de ticket o nota de voz), con un mensaje escrito
+ * opcional que lo acompaña ("apunta la mitad"), o solo un mensaje escrito
+ */
 export type ExpenseInput =
-  | { kind: 'media'; buffer: Buffer; mimeType: string }
+  | { kind: 'media'; buffer: Buffer; mimeType: string; text?: string }
   | { kind: 'text'; text: string };
 
 class AiService {
@@ -137,11 +140,14 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
 
   private async askGemini(prompt: string, input: ExpenseInput): Promise<string> {
     const content = input.kind === 'text'
-      ? `Mensaje: ${input.text}`
-      : { inlineData: { data: input.buffer.toString('base64'), mimeType: input.mimeType } };
+      ? [`Mensaje: ${input.text}`]
+      : [
+        { inlineData: { data: input.buffer.toString('base64'), mimeType: input.mimeType } },
+        ...(input.text ? [`Mensaje que acompaña al archivo: ${input.text}`] : [])
+      ];
     const response = await this.ai.models.generateContent({
       model: 'gemini-3.6-flash',
-      contents: [prompt, content],
+      contents: [prompt, ...content],
       config: {
         responseMimeType: 'application/json',
       }
@@ -151,8 +157,11 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
 
   private async askOpenRouter(prompt: string, input: ExpenseInput): Promise<string> {
     const content = input.kind === 'text'
-      ? { type: 'text', text: `Mensaje: ${input.text}` }
-      : this.toOpenRouterMedia(input.buffer.toString('base64'), input.mimeType);
+      ? [{ type: 'text', text: `Mensaje: ${input.text}` }]
+      : [
+        this.toOpenRouterMedia(input.buffer.toString('base64'), input.mimeType),
+        ...(input.text ? [{ type: 'text', text: `Mensaje que acompaña al archivo: ${input.text}` }] : [])
+      ];
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -163,7 +172,7 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
         model: OPENROUTER_MODEL,
         messages: [{
           role: 'user',
-          content: [{ type: 'text', text: prompt }, content],
+          content: [{ type: 'text', text: prompt }, ...content],
         }],
       }),
     });

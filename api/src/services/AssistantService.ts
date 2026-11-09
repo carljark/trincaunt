@@ -130,7 +130,7 @@ export class AssistantService {
 
   async draft(groupId: string, user: AssistantUser, input: ExpenseInput, history: unknown = []): Promise<AssistantReply> {
     const ctx = await this.context(groupId);
-    const prompt = await this.buildPrompt(ctx, user, input.kind, this.cleanHistory(history));
+    const prompt = await this.buildPrompt(ctx, user, input, this.cleanHistory(history));
     const raw = await AiService.askWithFallback(prompt, input, t => {
       const parsed = AiService.parseJson(t);
       if (!isObject(parsed)) throw new Error('Formato JSON inválido devuelto por la IA (no es un objeto)');
@@ -178,7 +178,7 @@ export class AssistantService {
   }
 
   /** Todo lo que la IA necesita saber del grupo para contestar y para elegir ids. */
-  private async buildPrompt(ctx: Context, user: AssistantUser, kind: ExpenseInput['kind'], history: HistoryTurn[]) {
+  private async buildPrompt(ctx: Context, user: AssistantUser, input: ExpenseInput, history: HistoryTurn[]) {
     const groupId = idOf(ctx.group._id);
     const name = (id: unknown) => ctx.members.find(m => m.id === idOf(id))?.nombre ?? '¿?';
     const recent = await Expense.find({ grupo_id: groupId }).sort({ fecha: -1 }).limit(RECENT_EXPENSES);
@@ -233,9 +233,13 @@ export class AssistantService {
       datos.balances = balances.map(b => ({ nombre: b.nombre, balance: b.balance }));
     }
 
-    const source = kind === 'text'
+    const source = input.kind === 'text'
       ? 'El usuario te escribe un mensaje.'
-      : 'El usuario te manda un archivo: una foto (normalmente un ticket o factura) o una nota de voz con lo que quiere.';
+      : input.text
+        ? 'El usuario te manda un archivo (una foto, normalmente un ticket o factura, o una nota de voz) y un mensaje escrito sobre él. '
+          + 'El mensaje manda: sigue sus instrucciones al leer el archivo (p. ej. "apunta la mitad de todo excepto la carne": '
+          + 'suma cada parte del ticket con lo que le toca al usuario y explica en la respuesta cómo has hecho la cuenta).'
+        : 'El usuario te manda un archivo: una foto (normalmente un ticket o factura) o una nota de voz con lo que quiere.';
     const conversation = history.length
       ? `\nConversación reciente (de más antigua a más nueva), por si el mensaje la continúa:\n${history.map(t => `${t.rol === 'usuario' ? 'Usuario' : 'Asistente'}: ${t.texto}`).join('\n')}\n`
       : '';
