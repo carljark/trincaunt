@@ -1,0 +1,79 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// PERMISO DEL CONECTOR OAUTH (BEM: .oauth-consent)
+// ============================================
+
+.oauth-consent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: map.get($spacing-scale, 4) map.get($spacing-scale, 3) calc(#{map.get($spacing-scale, 4)} + env(safe-area-inset-bottom, 0px));
+  background: $color-background;
+
+  &__card {
+    @include section-card;
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 3);
+    width: 100%;
+    max-width: 28rem;
+  }
+
+  &__title {
+    @include section-title;
+    margin: 0;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    line-height: $line-height-base;
+    color: $color-text;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  &__actions {
+    display: flex;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__button {
+    @include action-button;
+    flex: 1;
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-gray-700;
+      background: white;
+      border-color: $color-gray-300;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+}

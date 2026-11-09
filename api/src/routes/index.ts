@@ -10,6 +10,7 @@ import * as DbController from '../controllers/DbController';
 import * as PushController from '../controllers/PushController';
 import * as BudgetController from '../controllers/BudgetController';
 import * as AssistantController from '../controllers/AssistantController';
+import * as OAuthController from '../controllers/OAuthController';
 import * as ApiTokenController from '../controllers/ApiTokenController';
 import * as AdminController from '../controllers/AdminController';
 import { protect, sessionOnly, requireAdmin } from '../middlewares/authMiddleware';
@@ -78,6 +79,10 @@ router.post('/expenses/ai-draft', protect, uploadMedia.single('media'), requireG
 // Asistente de la barra: propone (sin aplicar) y aplica lo confirmado
 router.post('/groups/:groupId/assistant', protect, uploadMedia.single('media'), groupMember, AssistantController.askAssistant);
 router.post('/groups/:groupId/assistant/apply', protect, groupMember, AssistantController.applyAssistantActions);
+
+// Pantalla de permiso del conector (OAuth)
+router.get('/oauth/authorize', protect, sessionOnly, OAuthController.describeAuthorization);
+router.post('/oauth/authorize', protect, sessionOnly, OAuthController.decideAuthorization);
 router.post('/expenses/batch', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpensesBatch);
 router.post('/expenses', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpense);
 router.patch('/expenses/bulk-update', protect, requireMemberOfExpenses, ExpenseController.bulkUpdate);

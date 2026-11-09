@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 import './LoginPage.scss'; // Import the new SCSS file
 
@@ -11,6 +11,8 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+  // Si se llegó aquí desde una página que pedía sesión (p. ej. el permiso de un conector), se vuelve a ella
+  const from = (useLocation().state as { from?: string } | null)?.from;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -30,7 +32,7 @@ const LoginPage: React.FC = () => {
         throw new Error(data.message || 'Error al iniciar sesión');
       }
       login(data.token, data.data.user);
-      navigate('/');
+      navigate(from && from.startsWith('/') ? from : '/');
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
