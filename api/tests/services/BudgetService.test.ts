@@ -313,9 +313,17 @@ describe('BudgetService', () => {
       // Siguiente: nómina prevista 2000 - alquiler 700 - luz 60 - IVA 86 - ahorro 200
       expect(forecast.ciclos[1]).toMatchObject({ ingresos: 2000, facturas: 846, presupuestoGastable: 954, gastado: 0, disponible: 954 });
       expect(forecast.ciclos[1].temporales).toEqual([
-        { recurrente_id: ivaId.toString(), nombre: 'Aplazamiento IVA', fecha: '2026-12-20', importe: 86, estado: 'pendiente', ultima: false }
+        { recurrente_id: ivaId.toString(), nombre: 'Aplazamiento IVA', fecha: '2026-12-20', importe: 86, estado: 'pendiente', ultima: false, nueva: true }
       ]);
-      expect(forecast.ciclos[2].temporales).toMatchObject([{ fecha: '2027-01-20', ultima: true }]);
+      expect(forecast.ciclos[2].temporales).toMatchObject([{ fecha: '2027-01-20', ultima: true, nueva: false }]);
+      // Todas las facturas del ciclo, también las que no acaban; «nueva» solo en el ciclo en que empieza
+      expect(forecast.ciclos[1].partidas.map(p => [p.nombre, p.nueva, p.ultima])).toEqual(
+        expect.arrayContaining([['Aplazamiento IVA', true, false]])
+      );
+      expect(forecast.ciclos[1].partidas.length).toBeGreaterThan(1);
+      expect(forecast.ciclos[1].partidas.filter(p => p.nombre !== 'Aplazamiento IVA').every(p => !p.nueva && !p.ultima)).toBe(true);
+      expect(forecast.ciclos[2].partidas.find(p => p.nombre === 'Aplazamiento IVA')).toMatchObject({ nueva: false, ultima: true });
+      expect(forecast.ciclos[0].partidas.every(p => !p.nueva)).toBe(true);
       expect(forecast.ciclos[3]).toMatchObject({ facturas: 760, temporales: [] });
     });
 

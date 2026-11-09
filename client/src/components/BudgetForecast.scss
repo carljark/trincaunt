@@ -122,21 +122,64 @@
     }
   }
 
-  // Cada ciclo es un <tbody>: su fila y, si las hay, sus facturas temporales
+  // Cada ciclo es un <tbody>: su fila y, desplegado, el detalle de sus partidas
   &__cycle-group + &__cycle-group {
     border-top: 1px solid $color-border;
   }
 
+  // Separador de año: va antes del primer ciclo de cada año
+  &__year {
+    padding: map.get($spacing-scale, 3) 0 map.get($spacing-scale, 1);
+    font-size: map.get($font-sizes, xs);
+    font-weight: map.get($font-weights, semibold);
+    color: $color-text-muted;
+    text-align: left;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__row {
+    cursor: pointer;
+  }
+
   &__cycle {
-    padding: map.get($spacing-scale, 2) 0;
-    font-weight: map.get($font-weights, medium);
-    color: $color-gray-800;
+    padding: 0;
     text-align: left;
     white-space: nowrap;
   }
 
+  &__toggle {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+    min-height: 2.75rem;
+    padding: 0;
+    font: inherit;
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-800;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+  }
+
+  &__chevron {
+    flex-shrink: 0;
+    font-size: 1rem;
+    color: $color-gray-400;
+    transition: transform 0.15s ease;
+
+    &--open {
+      transform: rotate(90deg);
+    }
+  }
+
+  &__date {
+    display: flex;
+    flex-direction: column;
+  }
+
   &__current {
-    display: block;
     font-size: map.get($font-sizes, xs);
     font-weight: map.get($font-weights, regular);
     color: $color-text-muted;
@@ -160,11 +203,17 @@
     }
   }
 
-  &__temporary {
-    padding: 0 0 map.get($spacing-scale, 2);
+  &__detail {
+    padding: 0 0 map.get($spacing-scale, 2) 1.25rem;
   }
 
-  &__temporary-list {
+  &__detail-empty {
+    margin: 0;
+    font-size: map.get($font-sizes, xs);
+    color: $color-text-muted;
+  }
+
+  &__detail-list {
     display: flex;
     flex-direction: column;
     gap: map.get($spacing-scale, 1);
@@ -173,7 +222,7 @@
     list-style: none;
   }
 
-  &__temporary-item {
+  &__detail-item {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -182,24 +231,44 @@
     color: $color-text-muted;
   }
 
-  &__temporary-name {
+  &__detail-name {
     min-width: 0;
     overflow-wrap: anywhere;
   }
 
-  &__temporary-amount {
+  &__detail-date {
+    white-space: nowrap;
+  }
+
+  &__detail-amount {
     @include money;
     flex-shrink: 0;
   }
 
-  // Última cuota: a partir del ciclo siguiente ese dinero queda libre
   &__badge {
     margin-left: map.get($spacing-scale, 1);
     padding: 0 map.get($spacing-scale, 1);
     font-size: map.get($font-sizes, xs);
     font-weight: map.get($font-weights, semibold);
-    color: $color-positive;
-    background: rgba($color-positive, 0.1);
+    white-space: nowrap;
     border-radius: $border-radius-pill;
+
+    // Última cuota: a partir del ciclo siguiente ese dinero queda libre
+    &--last {
+      color: $color-positive;
+      background: rgba($color-positive, 0.1);
+    }
+
+    // Empieza en este ciclo
+    &--new {
+      color: $color-primary;
+      background: rgba($color-primary, 0.1);
+    }
+
+    // Se paga con lo apartado
+    &--fund {
+      color: $color-text-muted;
+      background: $color-gray-100;
+    }
   }
 }

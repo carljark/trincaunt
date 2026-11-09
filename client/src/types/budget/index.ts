@@ -127,6 +127,8 @@ export interface IForecastBill {
   importe: number;
   estado: 'pagada' | 'pendiente';
   ultima: boolean; // no vuelve a tocar después de este ciclo
+  nueva: boolean;  // empieza en este ciclo
+  deHucha?: number; // lo que se paga con lo apartado en su hucha
 }
 
 export interface ICycleForecastEntry {
@@ -140,6 +142,7 @@ export interface ICycleForecastEntry {
   presupuestoGastable: number;
   gastado: number;
   disponible: number;
+  partidas: IForecastBill[];   // todas las facturas del ciclo
   temporales: IForecastBill[]; // facturas con fecha de fin
 }
 

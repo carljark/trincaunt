@@ -116,7 +116,9 @@ export interface ForecastBill {
   fecha: string;
   importe: number;
   estado: BillEstado;
-  ultima: boolean; // no vuelve a tocar después de este ciclo
+  ultima: boolean;   // no vuelve a tocar después de este ciclo
+  nueva: boolean;    // empieza en este ciclo (nunca en el ciclo en curso)
+  deHucha?: number;  // lo que se paga con lo apartado en su hucha
 }
 
 export interface CycleForecastEntry {
@@ -130,7 +132,8 @@ export interface CycleForecastEntry {
   presupuestoGastable: number; // ingresos - facturas - reservas - ahorro
   gastado: number;             // lo que ya llevas (casi siempre 0 en ciclos futuros)
   disponible: number;          // presupuestoGastable - gastado
-  temporales: ForecastBill[];  // facturas con fecha de fin (préstamos, aplazamientos...)
+  partidas: ForecastBill[];    // todas las facturas del ciclo, por fecha
+  temporales: ForecastBill[];  // las que tienen fecha de fin (préstamos, aplazamientos...)
 }
 
 export interface BudgetForecast {
@@ -361,33 +364,50 @@ export class BudgetService {
     }
     await this.getBudgetGroup(groupId, userId);
     const [items, summaries] = await Promise.all([
-      RecurringItem.find({ grupo_id: groupId, tipo: 'factura', fechaFin: { $ne: null } }),
+      RecurringItem.find({ grupo_id: groupId, tipo: 'factura' }),
       Promise.all(Array.from({ length: ciclos }, (_, offset) => this.getSummary(groupId, userId, offset)))
     ]);
-    const temporales = new Map(items.filter(i => i.fechaFin).map(i => [idOf(i._id), i]));
+    const byId = new Map(items.map(i => [idOf(i._id), i]));
 
     return {
       ahorroObjetivo: summaries[0].ahorroObjetivo,
       ciclos: summaries.map(s => {
+        const cycleStart = toCalendarDate(s.ciclo.inicio);
         const cycleEnd = toCalendarDate(s.ciclo.fin);
+        const enCurso = s.ciclo.offset === 0;
+        const partidas = s.facturas.lineas.map(l => {
+          const item = l.recurrente_id ? byId.get(l.recurrente_id) : undefined;
+          let ultima = false;
+          if (item?.fechaFin) {
+            const afterEnd = new Date(toCalendarDate(item.fechaFin).getTime() + 24 * 60 * 60 * 1000);
+            ultima = afterEnd <= cycleEnd || occurrencesInRange(item, { inicio: cycleEnd, fin: afterEnd }).length === 0;
+          }
+          const nueva = !enCurso && !!item?.fechaInicio && toCalendarDate(item.fechaInicio) >= cycleStart;
+          return {
+            recurrente_id: l.recurrente_id ?? '',
+            nombre: l.nombre,
+            fecha: l.fecha,
+            importe: l.importe,
+            estado: l.estado,
+            ultima,
+            nueva,
+            ...(l.deHucha ? { deHucha: l.deHucha } : {}),
+            temporal: !!item?.fechaFin
+          };
+        });
         return {
           inicio: s.ciclo.inicio,
           fin: s.ciclo.fin,
           offset: s.ciclo.offset,
-          enCurso: s.ciclo.offset === 0,
+          enCurso,
           ingresos: s.ingresos.total,
           facturas: s.facturas.total,
           reservas: s.reservas.total,
           presupuestoGastable: s.presupuestoGastable,
           gastado: s.gastado,
           disponible: s.disponible,
-          temporales: s.facturas.lineas.flatMap(l => {
-            const item = l.recurrente_id ? temporales.get(l.recurrente_id) : undefined;
-            if (!item) return [];
-            const afterEnd = new Date(toCalendarDate(item.fechaFin!).getTime() + 24 * 60 * 60 * 1000);
-            const ultima = afterEnd <= cycleEnd || occurrencesInRange(item, { inicio: cycleEnd, fin: afterEnd }).length === 0;
-            return [{ recurrente_id: idOf(item._id), nombre: l.nombre, fecha: l.fecha, importe: l.importe, estado: l.estado, ultima }];
-          })
+          partidas: partidas.map(({ temporal, ...p }) => p),
+          temporales: partidas.filter(p => p.temporal).map(({ temporal, ...p }) => p)
         };
       })
     };
