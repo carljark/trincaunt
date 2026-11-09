@@ -43,9 +43,16 @@ interface HistoryTurn {
 
 type SentMessage =
   | { kind: 'text'; text: string }
-  | { kind: 'photo' }
+  | { kind: 'photo'; text?: string }
   | { kind: 'audio'; seconds: number }
-  | { kind: 'file'; name: string };
+  | { kind: 'file'; name: string; text?: string };
+
+/** Foto o archivo elegido que espera en la barra a que se escriba (o no) un mensaje y se envíe */
+interface Attachment {
+  file: File;
+  kind: 'photo' | 'file';
+  previewUrl?: string;
+}
 
 type Exchange = {
   /** Lo que mandó el usuario (null si falló antes de mandar nada, p. ej. sin micrófono) */
@@ -65,13 +72,28 @@ const MAX_HISTORY = 6;
 const parseAmount = (value: string) => Number.parseFloat(value.replace(',', '.'));
 const isNewExpense = (action: EditableAction) => action.tipo === 'crear_gasto';
 
+const withText = (label: string, text?: string) => (text ? `${label}\n${text}` : label);
+
 const sentLabel = (sent: SentMessage) => {
   switch (sent.kind) {
     case 'text': return sent.text;
-    case 'photo': return '📷 Foto';
+    case 'photo': return withText('📷 Foto', sent.text);
     case 'audio': return `🎤 Nota de voz (${formatRecordingTime(sent.seconds)})`;
-    case 'file': return `📎 ${sent.name}`;
+    case 'file': return withText(`📎 ${sent.name}`, sent.text);
   }
+};
+
+const previewOf = (file: File) => {
+  if (!file.type.startsWith('image/')) return undefined;
+  try {
+    return URL.createObjectURL(file);
+  } catch {
+    return undefined;
+  }
+};
+
+const releasePreview = (attachment: Attachment | null) => {
+  if (attachment?.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
 };
 
 const toEditable = (action: ProposedAction): EditableAction => {
@@ -85,7 +107,8 @@ const toEditable = (action: ProposedAction): EditableAction => {
 
 /**
  * Barra fija abajo, como la de un chat, para hablar con el asistente: se escribe un mensaje,
- * se graba una nota de voz o se manda una foto del ticket. Contesta preguntas sobre el grupo
+ * se graba una nota de voz o se manda una foto del ticket, que se puede acompañar de un
+ * mensaje ("apunta la mitad menos la carne") antes de enviarla. Contesta preguntas sobre el grupo
  * y propone cambios (gastos, partidas fijas, ingresos, presupuesto) en una burbuja; no se
  * aplica nada hasta que el usuario pulsa «Confirmar». Recuerda los últimos mensajes para que
  * se le pueda contestar cuando pregunta algo.
@@ -95,16 +118,23 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
   const [exchange, setExchange] = useState<Exchange | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
   const recorder = useAudioRecorder();
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const locationRef = useRef<Promise<string> | null>(null);
   const historyRef = useRef<HistoryTurn[]>([]);
   // Respuesta que se espera: si llega una anterior (el usuario ha mandado otra cosa), se ignora
   const requestIdRef = useRef(0);
 
   const isBusy = exchange?.status === 'thinking' || exchange?.status === 'saving';
+
+  // Al desmontar, suelta la miniatura de la foto que estuviera adjunta
+  const attachmentRef = useRef<Attachment | null>(null);
+  attachmentRef.current = attachment;
+  useEffect(() => () => releasePreview(attachmentRef.current), []);
 
   useEffect(() => {
     if (recorder.error) setExchange({ sent: null, status: 'error', acciones: [], error: recorder.error });
@@ -123,7 +153,7 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
 
     const formData = new FormData();
     if (media) formData.append('media', media);
-    if (sent.kind === 'text') formData.append('texto', sent.text);
+    if (sent.kind !== 'audio' && sent.text) formData.append('texto', sent.text);
     formData.append('historial', JSON.stringify(historyRef.current));
 
     try {
@@ -151,19 +181,36 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
     }
   };
 
+  const attach = (file: File, kind: Attachment['kind']) => {
+    releasePreview(attachment);
+    setAttachment({ file, kind, previewUrl: previewOf(file) });
+    textInputRef.current?.focus();
+  };
+
+  const removeAttachment = () => {
+    releasePreview(attachment);
+    setAttachment(null);
+  };
+
   const handleSubmitText = (e: React.FormEvent) => {
     e.preventDefault();
     const message = text.trim();
-    if (!message || isBusy) return;
+    if ((!message && !attachment) || isBusy) return;
     setText('');
+    if (attachment) {
+      const { file, kind } = attachment;
+      removeAttachment();
+      const extra = message ? { text: message } : {};
+      send(kind === 'photo' ? { kind: 'photo', ...extra } : { kind: 'file', name: file.name, ...extra }, file);
+      return;
+    }
     send({ kind: 'text', text: message });
   };
 
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>, kind: 'photo' | 'file') => {
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>, kind: Attachment['kind']) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
-    send(kind === 'photo' ? { kind: 'photo' } : { kind: 'file', name: file.name }, file);
+    if (file) attach(file, kind);
   };
 
   const handleCamera = () => {
@@ -388,33 +435,49 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
           </button>
         </div>
       ) : (
-        <form className="ai-chat-bar__bar" onSubmit={handleSubmitText}>
-          <button type="button" className="ai-chat-bar__icon" onClick={() => fileInputRef.current?.click()} aria-label="Adjuntar archivo" disabled={isBusy}>
-            <PaperclipIcon />
-          </button>
-          <input
-            className="ai-chat-bar__input"
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="Escribe un gasto o pregunta…"
-            aria-label="Escribe a la IA"
-            enterKeyHint="send"
-            maxLength={2000}
-          />
-          {!text.trim() && (
-            <button type="button" className="ai-chat-bar__icon" onClick={handleCamera} aria-label="Hacer foto" disabled={isBusy}>
-              <CameraIcon />
-            </button>
+        <form className="ai-chat-bar__composer" onSubmit={handleSubmitText}>
+          {attachment && (
+            <div className="ai-chat-bar__attachment">
+              {attachment.previewUrl
+                ? <img className="ai-chat-bar__attachment-preview" src={attachment.previewUrl} alt="" />
+                : <PaperclipIcon className="ai-chat-bar__attachment-icon" />}
+              <span className="ai-chat-bar__attachment-name">
+                {attachment.kind === 'photo' ? 'Foto' : attachment.file.name}
+              </span>
+              <button type="button" className="ai-chat-bar__attachment-remove" onClick={removeAttachment} aria-label="Quitar adjunto">
+                <CloseIcon />
+              </button>
+            </div>
           )}
-          {text.trim() ? (
-            <button type="submit" className="ai-chat-bar__send" aria-label="Enviar" disabled={isBusy}>
-              <SendIcon />
+          <div className="ai-chat-bar__bar">
+            <button type="button" className="ai-chat-bar__icon" onClick={() => fileInputRef.current?.click()} aria-label="Adjuntar archivo" disabled={isBusy}>
+              <PaperclipIcon />
             </button>
-          ) : (
-            <button type="button" className="ai-chat-bar__send" onClick={recorder.start} aria-label="Grabar nota de voz" disabled={isBusy}>
-              <MicIcon />
-            </button>
-          )}
+            <input
+              className="ai-chat-bar__input"
+              ref={textInputRef}
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder={attachment ? 'Añade un mensaje (opcional)…' : 'Escribe un gasto o pregunta…'}
+              aria-label="Escribe a la IA"
+              enterKeyHint="send"
+              maxLength={2000}
+            />
+            {!text.trim() && !attachment && (
+              <button type="button" className="ai-chat-bar__icon" onClick={handleCamera} aria-label="Hacer foto" disabled={isBusy}>
+                <CameraIcon />
+              </button>
+            )}
+            {text.trim() || attachment ? (
+              <button type="submit" className="ai-chat-bar__send" aria-label="Enviar" disabled={isBusy}>
+                <SendIcon />
+              </button>
+            ) : (
+              <button type="button" className="ai-chat-bar__send" onClick={recorder.start} aria-label="Grabar nota de voz" disabled={isBusy}>
+                <MicIcon />
+              </button>
+            )}
+          </div>
         </form>
       )}
 
@@ -423,7 +486,7 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
           onClose={() => setShowCameraModal(false)}
           onCapture={file => {
             setShowCameraModal(false);
-            send({ kind: 'photo' }, file);
+            attach(file, 'photo');
           }}
         />
       )}

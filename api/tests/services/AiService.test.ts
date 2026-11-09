@@ -101,6 +101,18 @@ describe('AiService - respaldo OpenRouter', () => {
     expect(body.messages[0].content[1].image_url.url).toBe(`data:image/png;base64,${Buffer.from('img').toString('base64')}`);
   });
 
+  it('debería mandar a OpenRouter el mensaje que acompaña a la foto', async () => {
+    await geminiFailing();
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '[]' } }] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await AiService.askWithFallback('prompt', { kind: 'media', buffer: Buffer.from('img'), mimeType: 'image/png', text: 'la mitad' }, t => t);
+
+    const content = JSON.parse(fetchMock.mock.calls[0][1].body).messages[0].content;
+    expect(content.map((c: any) => c.type)).toEqual(['text', 'image_url', 'text']);
+    expect(content[2].text).toBe('Mensaje que acompaña al archivo: la mitad');
+  });
+
   it.each([
     ['audio/webm', 'webm'],
     ['audio/mp4', 'mp4'],
@@ -185,5 +197,25 @@ describe('AiService - mensajes de texto y miembros', () => {
     expect(prompt).toContain('"nombre":"Ana"');
     expect(content).toBe('Mensaje: Ana pagó la cena, 40 €');
     expect(result[0]).toMatchObject({ descripcion: 'Cena', monto: 40, pagado_por: 'u2' });
+  });
+});
+
+describe('AiService - foto con mensaje', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('debería mandar a Gemini la foto y, detrás, el mensaje que la acompaña', async () => {
+    const { GoogleGenAI } = await import('@google/genai');
+    const aiInstance = new GoogleGenAI({});
+    const generateContent = vi.fn().mockResolvedValue({ text: '[]' });
+    aiInstance.models.generateContent = generateContent;
+    vi.spyOn(AiService as any, 'ai', 'get').mockReturnValue(aiInstance);
+
+    await AiService.askWithFallback('prompt', { kind: 'media', buffer: Buffer.from('img'), mimeType: 'image/jpeg', text: 'la mitad' }, t => t);
+
+    const [, media, message] = generateContent.mock.calls[0][0].contents;
+    expect(media.inlineData.mimeType).toBe('image/jpeg');
+    expect(message).toBe('Mensaje que acompaña al archivo: la mitad');
   });
 });

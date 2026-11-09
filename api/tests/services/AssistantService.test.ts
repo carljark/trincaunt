@@ -162,6 +162,19 @@ describe('AssistantService', () => {
       expect(promptSent()).not.toContain('ignórame');
     });
 
+    it('follows the message that comes with a photo', async () => {
+      aiReplies({ respuesta: 'Tu parte: 44,50 €', acciones: [] });
+      const input = { kind: 'media' as const, buffer: Buffer.from('img'), mimeType: 'image/jpeg', text: 'apunta la mitad menos la carne' };
+      await service.draft(groupId, user, input);
+      expect(promptSent()).toContain('un mensaje escrito sobre él');
+      expect((AiService.askWithFallback as vi.Mock).mock.calls[0][1]).toBe(input);
+
+      vi.clearAllMocks();
+      aiReplies({ respuesta: 'Ok', acciones: [] });
+      await service.draft(groupId, user, { kind: 'media', buffer: Buffer.from('img'), mimeType: 'image/jpeg' });
+      expect(promptSent()).not.toContain('un mensaje escrito sobre él');
+    });
+
     it('describes budget setting changes', async () => {
       aiReplies({ respuesta: 'Listo.', acciones: [{ tipo: 'configurar_presupuesto', datos: { ahorroObjetivo: 0, limitesCategoria: [{ categoria: 'Ocio', limite: 100 }] } }] });
       const reply = await service.draft(groupId, user, { kind: 'text', text: 'sin ahorro y 100 € de ocio' });

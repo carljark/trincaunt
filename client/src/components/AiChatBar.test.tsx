@@ -198,18 +198,47 @@ describe('AiChatBar', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('FALLO IA: sin cuota');
   });
 
-  it('manda un archivo adjunto', async () => {
+  it('deja el archivo adjunto en la barra y lo manda al pulsar enviar', async () => {
     fetchMock.mockResolvedValueOnce(draftsResponse([cena]));
     renderBar();
     const file = new File(['img'], 'ticket.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByTestId('ai-file-input'), { target: { files: [file] } });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText('ticket.jpg')).toBeInTheDocument();
+    expect(screen.getByLabelText('Escribe a la IA')).toHaveAttribute('placeholder', 'Añade un mensaje (opcional)…');
     await act(async () => {
-      fireEvent.change(screen.getByTestId('ai-file-input'), { target: { files: [file] } });
+      fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
     });
 
     const body = fetchMock.mock.calls[0][1].body as FormData;
     expect(body.get('media')).toBeInstanceOf(File);
     expect(body.get('texto')).toBeNull();
     expect(screen.getByText('📎 ticket.jpg')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Quitar adjunto' })).not.toBeInTheDocument();
+  });
+
+  it('manda la foto con el mensaje que se escribe debajo', async () => {
+    fetchMock.mockResolvedValueOnce(draftsResponse([cena]));
+    renderBar();
+    const file = new File(['img'], 'ticket.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByTestId('ai-camera-input'), { target: { files: [file] } });
+    await sendText('apunta la mitad menos la carne');
+
+    const body = fetchMock.mock.calls[0][1].body as FormData;
+    expect(body.get('media')).toBe(file);
+    expect(body.get('texto')).toBe('apunta la mitad menos la carne');
+    expect(screen.getByText(/📷 Foto/)).toHaveTextContent('📷 Foto apunta la mitad menos la carne');
+  });
+
+  it('quita el adjunto sin mandarlo', async () => {
+    renderBar();
+    fireEvent.change(screen.getByTestId('ai-file-input'), { target: { files: [new File(['img'], 'ticket.jpg', { type: 'image/jpeg' })] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar adjunto' }));
+
+    expect(screen.queryByText('ticket.jpg')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grabar nota de voz' })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('graba una nota de voz al pulsar el micrófono y la manda al pulsar enviar', async () => {
