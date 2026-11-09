@@ -3,6 +3,8 @@ client/node_modules
 api/node_modules
 client/dist
 api/dist
+mcp/node_modules
+mcp/dist
 .git
 .env
 temp

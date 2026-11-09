@@ -70,6 +70,16 @@ Si prefieres no usar el fichero, añade `"env": { "TRINCAUNT_TOKEN": "trc_…" }
 
 Variables opcionales: `TRINCAUNT_URL` para otra instancia, p. ej. `http://localhost:3000` en desarrollo.
 
+## Conector remoto (claude.ai web y móvil, otros clientes con OAuth)
+
+La API sirve el mismo servidor en **`https://trincaunt.ddns.net/mcp`** (Streamable HTTP, sin sesión), así que no hace falta instalar nada:
+
+1. En claude.ai: **Ajustes → Conectores → Añadir conector personalizado**, con la URL `https://trincaunt.ddns.net/mcp`.
+2. Al conectar, se abre Trincaunt (inicia sesión si hace falta) y pregunta si permites el acceso. Pulsa **Permitir**.
+3. Claude recibe un token de API normal llamado «Conector: …», que aparece en **Preferencias → Acceso para asistentes**. Borrarlo desconecta el conector.
+
+Por dentro: OAuth 2.1 con registro dinámico de clientes (`/oauth/register`), código de autorización con PKCE S256 (`/oauth/authorize`, que manda a la pantalla `/oauth/consent` de la app) y canje en `/oauth/token`. Los metadatos están en `/.well-known/oauth-authorization-server` y `/.well-known/oauth-protected-resource/mcp`. El código vive en `api/src/routes/oauth.ts`, `api/src/services/OAuthService.ts` y `mcp/src/http.ts`; la imagen de Docker incluye `mcp/dist`.
+
 ## Herramientas
 
 | Lectura | Escritura | Borrado (no se puede deshacer) |

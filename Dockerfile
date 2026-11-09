@@ -18,6 +18,14 @@ RUN npm ci
 COPY api/ ./
 RUN npm run build
 
+# Etapa 2b: Construir el servidor MCP (la API lo sirve como conector remoto en /mcp)
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build-mcp
+WORKDIR /app/mcp
+COPY mcp/package*.json ./
+RUN npm ci
+COPY mcp/ ./
+RUN npm run build
+
 # Etapa 3: Ensamblar la imagen de Producción
 FROM node:22-alpine
 # Permite borrar en el EC2 solo las imágenes viejas de esta app (docker image prune --filter)
@@ -31,6 +39,13 @@ RUN npm ci --omit=dev
 
 # Copiar el código compilado del backend
 COPY --from=build-api /app/api/dist ./dist
+
+# Servidor MCP: solo sus dependencias de producción y el JavaScript compilado. La API lo carga
+# desde /app/mcp/dist (ver api/src/services/RemoteMcp.ts)
+WORKDIR /app/mcp
+COPY mcp/package*.json ./
+RUN npm ci --omit=dev
+COPY --from=build-mcp /app/mcp/dist ./dist
 
 # Copiar el frontend compilado (El backend busca en ../../../client/dist desde dist/src/app.js)
 WORKDIR /app/client

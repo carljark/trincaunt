@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import routes from './routes';
+import oauthRoutes from './routes/oauth';
 import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
@@ -10,6 +11,8 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 app.use('/api/v1', routes);
+// Conector MCP remoto y OAuth (/mcp, /oauth/*, /.well-known/*)
+app.use(oauthRoutes);
 
 // Servir archivos estáticos del frontend en producción
 if (process.env.NODE_ENV === 'production') {
