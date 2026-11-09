@@ -20,7 +20,9 @@ vi.mock('../utils/budgetApi', () => ({
     confirmRecurringItem: vi.fn(),
     createIncome: vi.fn(),
     deleteIncome: vi.fn(),
-    deleteExpense: vi.fn()
+    deleteExpense: vi.fn(),
+    getReminders: vi.fn(),
+    markReminderDone: vi.fn()
   }
 }));
 
@@ -268,6 +270,34 @@ describe('BudgetTab', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
     await waitFor(() => expect(api.updateRecurringItem).toHaveBeenCalledWith('tok', 'luz', expect.objectContaining({
       prorratear: true, prorrateoDesde: '2027-02-01'
+    })));
+  });
+
+  it('lists what to do at the bank and lets each one be marked as done', async () => {
+    api.getReminders.mockResolvedValue([
+      { clave: 'hucha:2026-10-28', tipo: 'hucha', titulo: 'Pasa 127,04 € a la hucha del banco', detalle: 'IVA 73,71 € · Basura 53,33 €', fecha: '2026-10-28', importe: 127.04 },
+      { clave: 'partida:extra:2026-12-01', tipo: 'partida', titulo: 'Pide la amortización anticipada', detalle: 'Extra préstamo · 630,00 € · 1 dic', fecha: '2026-12-01', importe: 630, recurrente_id: 'extra' }
+    ]);
+    renderTab();
+    const card = await screen.findByRole('region', { name: 'Por hacer en el banco' });
+    expect(within(card).getByText('Pasa 127,04 € a la hucha del banco')).toBeInTheDocument();
+    expect(within(card).getByText('Extra préstamo · 630,00 € · 1 dic')).toBeInTheDocument();
+
+    fireEvent.click(within(card).getByRole('button', { name: 'Hecho: Pide la amortización anticipada' }));
+    expect(api.markReminderDone).toHaveBeenCalledWith('tok', 'g1', 'partida:extra:2026-12-01');
+    expect(within(card).queryByText('Pide la amortización anticipada')).not.toBeInTheDocument();
+  });
+
+  it('saves a reminder for a bill paid by hand', async () => {
+    renderTab();
+    fireEvent.click(await screen.findByRole('button', { name: 'Editar Luz' }));
+    const dialog = screen.getByRole('dialog', { name: 'Editar partida fija' });
+    fireEvent.change(within(dialog).getByLabelText('Recordatorio (opcional)'), { target: { value: 'Pagar en la oficina' } });
+    fireEvent.change(within(dialog).getByLabelText('Días antes'), { target: { value: '5' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(api.updateRecurringItem).toHaveBeenCalledWith('tok', 'luz', expect.objectContaining({
+      aviso: 'Pagar en la oficina', avisoDiasAntes: 5
     })));
   });
 

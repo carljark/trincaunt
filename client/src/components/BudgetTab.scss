@@ -422,6 +422,12 @@
   &__line-name {
     @include truncate;
     color: $color-gray-900;
+
+    // Recordatorios: el texto entero, aunque ocupe dos líneas
+    &--wrap {
+      overflow: visible;
+      white-space: normal;
+    }
   }
 
   &__line-meta {
@@ -431,6 +437,11 @@
 
     &--overdue {
       color: $color-warning-dark;
+    }
+
+    &--wrap {
+      overflow: visible;
+      white-space: normal;
     }
   }
 

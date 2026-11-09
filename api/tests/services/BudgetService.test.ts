@@ -474,6 +474,21 @@ describe('BudgetService', () => {
         expect(doc.prorrateoDesde).toEqual(d('2026-11-04'));
       });
 
+      it('keeps a reminder text and its days ahead, and an empty one clears it', async () => {
+        (RecurringItem.create as vi.Mock).mockImplementation(async (data: any) => data);
+        const base = { tipo: 'factura', nombre: 'Extra', importe: 630, frecuencia: 'mensual', fechaInicio: '2027-09-01' };
+        expect(await service.createRecurringItem(groupId, userId, { ...base, aviso: '  Pide la amortización ', avisoDiasAntes: 5 }))
+          .toMatchObject({ aviso: 'Pide la amortización', avisoDiasAntes: 5 });
+        expect(await service.createRecurringItem(groupId, userId, { ...base, aviso: '' })).not.toHaveProperty('aviso');
+        await expect(service.createRecurringItem(groupId, userId, { ...base, aviso: 'x'.repeat(201) })).rejects.toMatchObject({ statusCode: 400 });
+        await expect(service.createRecurringItem(groupId, userId, { ...base, avisoDiasAntes: 40 })).rejects.toMatchObject({ statusCode: 400 });
+
+        const doc = fakeDoc({ ...iva, aviso: 'Algo', grupo_id: groupId });
+        (RecurringItem.findById as vi.Mock).mockResolvedValue(doc);
+        await service.updateRecurringItem(ivaId.toString(), userId, { aviso: null });
+        expect(doc.aviso).toBeUndefined();
+      });
+
       it('sets nothing aside before a future start and catches up from it', async () => {
         (RecurringItem.find as vi.Mock).mockResolvedValue([...items, { ...iva, prorrateoDesde: d('2026-12-01') }]); // ciclo 28-nov
         const forecast = await service.getForecast(groupId, userId, 3);

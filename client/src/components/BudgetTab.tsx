@@ -5,7 +5,7 @@ import BudgetHistory from './BudgetHistory';
 import BudgetMovementDialog, { BudgetMovementValues } from './BudgetMovementDialog';
 import RecurringItemDialog from './RecurringItemDialog';
 import ConfirmationModal from './ConfirmationModal';
-import { FRECUENCIA_LABELS, IBudgetLine, IBudgetSummary, IRecurringItem, RecurringTipo } from '../types/budget';
+import { FRECUENCIA_LABELS, IBudgetLine, IBudgetReminder, IBudgetSummary, IRecurringItem, RecurringTipo } from '../types/budget';
 import { budgetApi, RecurringItemInput } from '../utils/budgetApi';
 import { addDays, formatEuros, formatShortDate, todayYmd } from '../utils/format';
 import './BudgetTab.scss';
@@ -46,17 +46,21 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
   const [offset, setOffset] = useState(0);
   const [summary, setSummary] = useState<IBudgetSummary | null>(null);
   const [items, setItems] = useState<IRecurringItem[]>([]);
+  const [reminders, setReminders] = useState<IBudgetReminder[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
 
   const load = useCallback(async () => {
     try {
-      const [s, list] = await Promise.all([
+      const [s, list, todo] = await Promise.all([
         budgetApi.getSummary(token, groupId, offset),
-        budgetApi.listRecurringItems(token, groupId)
+        budgetApi.listRecurringItems(token, groupId),
+        // Los recordatorios no deben impedir ver el presupuesto si fallan
+        offset === 0 ? budgetApi.getReminders(token, groupId).catch(() => []) : Promise.resolve([])
       ]);
       setSummary(s);
       setItems(list);
+      setReminders(todo ?? []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar el presupuesto.');
@@ -115,6 +119,14 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
     ).catch(err => {
       setDialog(null);
       setError(err instanceof Error ? err.message : 'No se pudo deshacer.');
+    });
+  };
+
+  const markDone = (reminder: IBudgetReminder) => {
+    setReminders(prev => prev.filter(r => r.clave !== reminder.clave));
+    budgetApi.markReminderDone(token, groupId, reminder.clave).catch(err => {
+      setReminders(prev => [...prev, reminder].sort((a, b) => a.fecha.localeCompare(b.fecha)));
+      setError(err instanceof Error ? err.message : 'No se pudo marcar como hecho.');
     });
   };
 
@@ -229,6 +241,32 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
           </p>
         )}
       </section>
+
+      {isCurrent && reminders.length > 0 && (
+        <section className="budget__card" aria-label="Por hacer en el banco">
+          <h3 className="budget__title">
+            Por hacer en el banco <span className="budget__badge">{reminders.length}</span>
+          </h3>
+          <ul className="budget__lines">
+            {reminders.map(reminder => (
+              <li key={reminder.clave} className="budget__line">
+                <span className="budget__line-text">
+                  <span className="budget__line-name budget__line-name--wrap">{reminder.titulo}</span>
+                  <span className="budget__line-meta budget__line-meta--wrap">{reminder.detalle}</span>
+                </span>
+                <button
+                  type="button"
+                  className="budget__line-action"
+                  onClick={() => markDone(reminder)}
+                  aria-label={`Hecho: ${reminder.titulo}`}
+                >
+                  Hecho
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {isEmpty && (
         <section className="budget__card budget__card--intro">

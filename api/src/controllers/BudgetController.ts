@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getIO } from '../config/socket';
 import { BudgetService } from '../services/BudgetService';
+import BudgetReminderService from '../services/BudgetReminderService';
 
 const budgetService = new BudgetService();
 
@@ -32,6 +33,20 @@ export const getBudgetForecast = async (req: Request, res: Response, next: NextF
     const ciclos = req.query.ciclos !== undefined ? Number(req.query.ciclos) : 6;
     const forecast = await budgetService.getForecast(req.params.groupId, userIdOf(req), ciclos);
     res.status(200).json({ status: 'success', data: forecast });
+  } catch (error) { next(error); }
+};
+
+export const getBudgetReminders = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reminders = await BudgetReminderService.list(req.params.groupId, userIdOf(req));
+    res.status(200).json({ status: 'success', data: reminders });
+  } catch (error) { next(error); }
+};
+
+export const markBudgetReminderDone = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await BudgetReminderService.markDone(req.params.groupId, userIdOf(req), String(req.body?.clave ?? ''));
+    res.status(204).send();
   } catch (error) { next(error); }
 };
 

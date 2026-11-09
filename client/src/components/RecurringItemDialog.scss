@@ -64,6 +64,11 @@
     @media (max-width: 340px) {
       grid-template-columns: 1fr;
     }
+
+    // El texto del recordatorio ancho; los días, estrechos
+    &--reminder {
+      grid-template-columns: minmax(0, 1fr) 5.5rem;
+    }
   }
 
   &__field {

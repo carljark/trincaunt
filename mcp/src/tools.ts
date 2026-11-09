@@ -338,6 +338,18 @@ export const tools: ToolDef[] = [
   }),
 
   tool({
+    name: 'get_budget_reminders',
+    title: 'Por hacer en el banco',
+    description:
+      'Lo que hay que hacer a mano en el banco: los recordatorios de las partidas con aviso (desde unos días antes de ' +
+      'cada fecha hasta que se confirma el pago o se marca como hecho), cuánto pasar este ciclo a la hucha del banco y ' +
+      'cuánto sacar de ella para las facturas que paga.',
+    input: { groupId: id },
+    kind: 'read',
+    run: (api, { groupId }) => api.get(`/groups/${groupId}/budget/reminders`)
+  }),
+
+  tool({
     name: 'update_budget_settings',
     title: 'Configurar presupuesto',
     description:
@@ -384,7 +396,9 @@ export const tools: ToolDef[] = [
       fechaFin: ymd.optional(),
       categoria: categories.optional(),
       prorratear: z.boolean().optional().describe('Factura no mensual, o mensual con fechaFin (cuotas de un aplazamiento): apartar cada ciclo una parte en una hucha y pagarla de ahí'),
-      prorrateoDesde: ymd.optional().describe('Con prorratear: desde cuándo empieza a apartar (hoy o después; por defecto hoy)')
+      prorrateoDesde: ymd.optional().describe('Con prorratear: desde cuándo empieza a apartar (hoy o después; por defecto hoy)'),
+      aviso: z.string().max(200).optional().describe('Algo que hacer a mano antes de cada fecha (p. ej. pedir al banco la amortización anticipada); se recuerda en la app y por push'),
+      avisoDiasAntes: z.number().int().min(0).max(31).optional().describe('Con cuántos días de antelación se recuerda el aviso (por defecto 3)')
     },
     kind: 'write',
     run: (api, { groupId, ...data }) => api.post(`/groups/${groupId}/recurring-items`, defined(data))
@@ -404,7 +418,9 @@ export const tools: ToolDef[] = [
       categoria: categories.optional(),
       activo: z.boolean().optional().describe('false la desactiva sin borrarla'),
       prorratear: z.boolean().optional().describe('Factura no mensual, o mensual con fechaFin (cuotas de un aplazamiento): apartar cada ciclo una parte en una hucha y pagarla de ahí'),
-      prorrateoDesde: ymd.nullable().optional().describe('Con hucha: desde cuándo empieza a apartar (no pasada); null la vuelve a hoy')
+      prorrateoDesde: ymd.nullable().optional().describe('Con hucha: desde cuándo empieza a apartar (no pasada); null la vuelve a hoy'),
+      aviso: z.string().max(200).nullable().optional().describe('Algo que hacer a mano antes de cada fecha; null o vacío lo quita'),
+      avisoDiasAntes: z.number().int().min(0).max(31).optional().describe('Con cuántos días de antelación se recuerda el aviso')
     },
     kind: 'write',
     run: (api, { itemId, ...data }) => api.put(`/recurring-items/${itemId}`, defined(data))

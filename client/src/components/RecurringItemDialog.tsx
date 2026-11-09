@@ -32,6 +32,8 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
   // Vacía: empieza hoy. Una ya pasada solo vale si es la que tenía (la hucha ya está en marcha)
   const savedDesde = item?.prorratear ? item.prorrateoDesde?.slice(0, 10) ?? '' : '';
   const [desde, setDesde] = useState(savedDesde);
+  const [aviso, setAviso] = useState(item?.aviso ?? '');
+  const [avisoDias, setAvisoDias] = useState(String(item?.avisoDiasAntes ?? 3));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -58,6 +60,9 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
     if (!(amount > 0)) return setError('El importe debe ser mayor que 0.');
     if (fechaFin && fechaFin < fechaInicio) return setError('La fecha de fin no puede ser anterior a la primera.');
     const huchaOn = canProrate && prorratear;
+    const recordatorio = tipo === 'factura' ? aviso.trim() : '';
+    const dias = Number(avisoDias);
+    if (recordatorio && !(Number.isInteger(dias) && dias >= 0 && dias <= 31)) return setError('Los días de antelación van de 0 a 31.');
     if (huchaOn && desde && desde !== savedDesde && desde < todayYmd()) return setError('La hucha no puede empezar antes de hoy.');
 
     void run(() => onSave({
@@ -70,7 +75,9 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
       categoria: categoria.split(',').map(c => c.trim()).filter(Boolean),
       activo,
       prorratear: huchaOn,
-      prorrateoDesde: huchaOn ? desde || (savedDesde ? null : undefined) : undefined
+      prorrateoDesde: huchaOn ? desde || (savedDesde ? null : undefined) : undefined,
+      aviso: recordatorio || (item?.aviso ? null : undefined),
+      avisoDiasAntes: recordatorio ? dias : undefined
     }));
   };
 
@@ -184,6 +191,36 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
             <span className="recurring-item__label">Categorías (separadas por comas)</span>
             <input className="recurring-item__input" type="text" value={categoria} onChange={e => setCategoria(e.target.value)} placeholder="Ej.: Hogar" />
           </label>
+        )}
+
+        {tipo === 'factura' && (
+          <>
+            <div className="recurring-item__row recurring-item__row--reminder">
+              <label className="recurring-item__field">
+                <span className="recurring-item__label">Recordatorio (opcional)</span>
+                <input
+                  className="recurring-item__input"
+                  type="text"
+                  value={aviso}
+                  onChange={e => setAviso(e.target.value)}
+                  placeholder="Ej.: Pedir la amortización al banco"
+                  maxLength={200}
+                />
+              </label>
+              <label className="recurring-item__field">
+                <span className="recurring-item__label">Días antes</span>
+                <input
+                  className="recurring-item__input"
+                  type="text"
+                  inputMode="numeric"
+                  value={avisoDias}
+                  onChange={e => setAvisoDias(e.target.value)}
+                  disabled={!aviso.trim()}
+                />
+              </label>
+            </div>
+            <p className="recurring-item__hint">Si lo tienes que hacer tú a mano, te lo recuerdo en «Por hacer» y con un aviso.</p>
+          </>
         )}
 
         {canProrate && (

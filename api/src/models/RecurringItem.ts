@@ -18,6 +18,8 @@ export interface IRecurringItem extends Document {
   activo: boolean;
   prorratear: boolean;      // Factura no mensual que se va apartando cada ciclo en una hucha
   prorrateoDesde?: Date;    // Cuándo se activó el prorrateo: la hucha empieza a llenarse en ese ciclo
+  aviso?: string;           // Algo que hacer a mano antes de cada fecha (pedir una amortización, cambiar una cuota)
+  avisoDiasAntes?: number;  // Cuántos días antes empieza a recordarse (por defecto 3)
 }
 
 const RecurringItemSchema: Schema = new Schema({
@@ -31,7 +33,9 @@ const RecurringItemSchema: Schema = new Schema({
   categoria: { type: [String], default: [] },
   activo: { type: Boolean, default: true },
   prorratear: { type: Boolean, default: false },
-  prorrateoDesde: { type: Date, required: false }
+  prorrateoDesde: { type: Date, required: false },
+  aviso: { type: String, trim: true, maxlength: 200 },
+  avisoDiasAntes: { type: Number, min: 0, max: 31 }
 });
 
 export default mongoose.model<IRecurringItem>('RecurringItem', RecurringItemSchema);
