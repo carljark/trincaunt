@@ -59,12 +59,14 @@ describe('BudgetForecast', () => {
     expect(normalize(summary.parentElement?.textContent)).toContain('−40,00 €');
   });
 
-  it('switches between a year and 6 months and shows errors', async () => {
+  it('switches between 6 months, one year and two years and shows errors', async () => {
     render(<BudgetForecast groupId="g1" token="tok" />);
     await screen.findByRole('table');
     expect(screen.getByRole('button', { name: '1 año' })).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(screen.getByRole('button', { name: '6 meses' }));
     await waitFor(() => expect(getForecast).toHaveBeenLastCalledWith('tok', 'g1', 6));
+    fireEvent.click(screen.getByRole('button', { name: '2 años' }));
+    await waitFor(() => expect(getForecast).toHaveBeenLastCalledWith('tok', 'g1', 25));
 
     getForecast.mockRejectedValueOnce(new Error('Sin conexión'));
     fireEvent.click(screen.getByRole('button', { name: '1 año' }));
