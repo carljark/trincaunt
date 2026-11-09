@@ -11,10 +11,11 @@ interface BudgetForecastProps {
   refreshKey?: number;
 }
 
-// Un año vista son el ciclo actual y los 12 siguientes
+// Un año vista son el ciclo actual y los 12 siguientes; dos años, los 24 siguientes
 const OPTIONS = [
   { ciclos: 6, label: '6 meses' },
-  { ciclos: 13, label: '1 año' }
+  { ciclos: 13, label: '1 año' },
+  { ciclos: 25, label: '2 años' }
 ] as const;
 
 const signed = (n: number) => (n < 0 ? `−${formatEuros(-n)}` : formatEuros(n));

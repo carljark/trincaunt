@@ -139,7 +139,7 @@ export interface BudgetForecast {
 }
 
 // El actual y los 12 siguientes: un año vista
-export const MAX_CICLOS_PREVISION = 13;
+export const MAX_CICLOS_PREVISION = 25;
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 
