@@ -4,6 +4,7 @@ import { initSocket } from './config/socket';
 import { connectDB } from './config/db';
 import dotenv from 'dotenv';
 import { runMigrations } from './migrations/runner';
+import BudgetReminderService from './services/BudgetReminderService';
 
 dotenv.config();
 
@@ -23,4 +24,9 @@ connectDB().then(async () => {
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
+
+  // Recordatorios del presupuesto por push: se comprueba cada hora (y al poco de arrancar)
+  const HOUR = 60 * 60 * 1000;
+  setTimeout(() => void BudgetReminderService.notifyDue(), 60 * 1000);
+  setInterval(() => void BudgetReminderService.notifyDue(), HOUR);
 });

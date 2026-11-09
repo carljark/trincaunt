@@ -1,4 +1,4 @@
-import { IBudgetConfig, IBudgetForecast, IBudgetHistory, IBudgetSummary, IIncome, IRecurringItem } from '../types/budget';
+import { IBudgetConfig, IBudgetForecast, IBudgetHistory, IBudgetReminder, IBudgetSummary, IIncome, IRecurringItem } from '../types/budget';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -20,7 +20,8 @@ const request = async <T>(token: string, path: string, init: RequestInit = {}): 
 
 const json = (method: string, data: unknown): RequestInit => ({ method, body: JSON.stringify(data) });
 
-export type RecurringItemInput = Omit<IRecurringItem, '_id' | 'grupo_id' | 'fechaFin' | 'prorrateoDesde'> & {
+export type RecurringItemInput = Omit<IRecurringItem, '_id' | 'grupo_id' | 'fechaFin' | 'prorrateoDesde' | 'aviso'> & {
+  aviso?: string | null; // vacío o null lo quita
   fechaFin?: string | null;
   prorrateoDesde?: string | null; // sin ella, la hucha empieza hoy; null la vuelve a hoy
 };
@@ -32,6 +33,10 @@ export const budgetApi = {
     request<IBudgetHistory>(token, `/groups/${groupId}/budget/history?ciclos=${ciclos}`),
   getForecast: (token: string, groupId: string, ciclos = 6) =>
     request<IBudgetForecast>(token, `/groups/${groupId}/budget/forecast?ciclos=${ciclos}`),
+  getReminders: (token: string, groupId: string) =>
+    request<IBudgetReminder[]>(token, `/groups/${groupId}/budget/reminders`),
+  markReminderDone: (token: string, groupId: string, clave: string) =>
+    request<void>(token, `/groups/${groupId}/budget/reminders/done`, json('POST', { clave })),
 
   listRecurringItems: (token: string, groupId: string) =>
     request<IRecurringItem[]>(token, `/groups/${groupId}/recurring-items`),

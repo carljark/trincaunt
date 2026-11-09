@@ -143,7 +143,7 @@ export const MAX_CICLOS_PREVISION = 13;
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 
-const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo', 'prorratear', 'prorrateoDesde'] as const;
+const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo', 'prorratear', 'prorrateoDesde', 'aviso', 'avisoDiasAntes'] as const;
 const INCOME_FIELDS = ['descripcion', 'monto', 'fecha'] as const;
 
 const ymd = (date: Date) => date.toISOString().slice(0, 10);
@@ -593,6 +593,15 @@ export class BudgetService {
     if (clean.importe !== undefined) clean.importe = round2(Number(clean.importe));
     if (clean.categoria !== undefined && !Array.isArray(clean.categoria)) clean.categoria = [clean.categoria];
     if (clean.prorratear !== undefined) clean.prorratear = clean.prorratear === true || clean.prorratear === 'true';
+    if (clean.aviso !== undefined) {
+      clean.aviso = typeof clean.aviso === 'string' ? clean.aviso.trim() : ''; // vacío o null lo quita
+      if ((clean.aviso as string).length > 200) throw new AppError('El recordatorio no puede pasar de 200 caracteres', 400);
+    }
+    if (clean.avisoDiasAntes !== undefined) {
+      const dias = Number(clean.avisoDiasAntes);
+      if (!Number.isInteger(dias) || dias < 0 || dias > 31) throw new AppError('Los días de antelación deben estar entre 0 y 31', 400);
+      clean.avisoDiasAntes = dias;
+    }
     return clean;
   }
 
@@ -626,6 +635,7 @@ export class BudgetService {
   async createRecurringItem(groupId: string, userId: string, data: Record<string, unknown>) {
     await this.getBudgetGroup(groupId, userId);
     const { prorrateoDesde, ...clean } = this.validateRecurring(data, false);
+    if (clean.aviso === '') delete clean.aviso;
     const desde = this.prorrateoStart(clean, false, prorrateoDesde as Date | null | undefined);
     return RecurringItem.create({ ...clean, ...(desde && { prorrateoDesde: desde }), grupo_id: groupId });
   }
@@ -636,6 +646,10 @@ export class BudgetService {
     if (clean.fechaFin === null) {
       item.set('fechaFin', undefined);
       delete clean.fechaFin;
+    }
+    if (clean.aviso === '') {
+      item.set('aviso', undefined);
+      delete clean.aviso;
     }
     const wasProrated = !!item.prorratear;
     const { prorrateoDesde, ...rest } = clean;

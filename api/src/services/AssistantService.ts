@@ -211,7 +211,8 @@ export class AssistantService {
         id: idOf(i._id), tipo: i.tipo, nombre: i.nombre, importe: i.importe, frecuencia: i.frecuencia,
         fechaInicio: ymd(i.fechaInicio), fechaFin: i.fechaFin ? ymd(i.fechaFin) : undefined,
         categoria: i.categoria, activo: i.activo, hucha: i.prorratear || undefined,
-        huchaDesde: i.prorratear && i.prorrateoDesde ? ymd(i.prorrateoDesde) : undefined
+        huchaDesde: i.prorratear && i.prorrateoDesde ? ymd(i.prorrateoDesde) : undefined,
+        aviso: i.aviso || undefined, avisoDiasAntes: i.aviso ? i.avisoDiasAntes ?? 3 : undefined
       }));
       datos.ingresosSueltos = incomes.map(i => ({ id: idOf(i._id), fecha: ymd(i.fecha), descripcion: i.descripcion, importe: i.monto }));
       if (resumen) {
@@ -262,7 +263,7 @@ Tipos de acción:
 - "crear_gasto": datos {descripcion, monto, fecha (AAAA-MM-DD), categoria: [..], localization?, pagado_por? (id de un miembro, solo si se dice quién pagó)}. Categoría precisa (["Cervezas"] mejor que ["Ocio"], ["Tren"] mejor que ["Transporte"]). Un ticket con varios productos suele ser un solo gasto.
 - "editar_gasto": id del gasto, datos solo con lo que cambia (descripcion, monto, fecha, categoria, localization, pagado_por).
 - "borrar_gasto": id del gasto.
-${ctx.personal ? `- "crear_partida": partida fija (factura o ingreso que se repite). datos {tipo: "factura"|"ingreso", nombre, importe, frecuencia: ${FRECUENCIAS.map(f => `"${f}"`).join('|')}, fechaInicio (primer pago, AAAA-MM-DD), fechaFin?, categoria?: [..], prorratear? (hucha: apartar cada ciclo una parte; solo facturas no mensuales o mensuales con fechaFin), prorrateoDesde? (AAAA-MM-DD, hoy o después: desde cuándo empieza a apartar la hucha; por defecto hoy)}.
+${ctx.personal ? `- "crear_partida": partida fija (factura o ingreso que se repite). datos {tipo: "factura"|"ingreso", nombre, importe, frecuencia: ${FRECUENCIAS.map(f => `"${f}"`).join('|')}, fechaInicio (primer pago, AAAA-MM-DD), fechaFin?, categoria?: [..], prorratear? (hucha: apartar cada ciclo una parte; solo facturas no mensuales o mensuales con fechaFin), prorrateoDesde? (AAAA-MM-DD, hoy o después: desde cuándo empieza a apartar la hucha; por defecto hoy), aviso? (algo que el usuario tiene que hacer a mano antes de cada fecha, p. ej. "Pide al banco la amortización anticipada"; se le recuerda en la app y por push), avisoDiasAntes? (días de antelación, por defecto 3)}.
 - "editar_partida": id, datos solo con lo que cambia (los mismos campos; activo: false la desactiva; fechaFin: null quita la fecha de fin).
 - "borrar_partida": id.
 - "confirmar_partida": marcar como pagada una factura fija (o cobrado un ingreso fijo) de este ciclo. id, datos {monto?, fecha?} si el real difiere del estimado.
@@ -372,7 +373,8 @@ ${JSON.stringify(datos)}`;
             `desde el ${shortDate(clean.fechaInicio as string)}`,
             clean.fechaFin ? `hasta el ${shortDate(clean.fechaFin as string)}` : '',
             categories(clean.categoria).join(', '),
-            clean.prorratear ? (clean.prorrateoDesde ? `hucha desde el ${shortDate(clean.prorrateoDesde as string)}` : 'con hucha') : ''
+            clean.prorratear ? (clean.prorrateoDesde ? `hucha desde el ${shortDate(clean.prorrateoDesde as string)}` : 'con hucha') : '',
+            clean.aviso ? `recordatorio «${clean.aviso}»` : ''
           ].filter(Boolean).join(' · ')
         };
       }
@@ -480,6 +482,10 @@ ${JSON.stringify(datos)}`;
     if (typeof datos.activo === 'boolean') clean.activo = datos.activo;
     if (typeof datos.prorratear === 'boolean') clean.prorratear = datos.prorratear;
     if (isDay(datos.prorrateoDesde)) clean.prorrateoDesde = datos.prorrateoDesde.slice(0, 10);
+    if (datos.aviso === null) clean.aviso = '';
+    else if (typeof datos.aviso === 'string') clean.aviso = datos.aviso.trim().slice(0, 200);
+    const dias = Number(datos.avisoDiasAntes);
+    if (datos.avisoDiasAntes !== undefined && Number.isInteger(dias) && dias >= 0 && dias <= 31) clean.avisoDiasAntes = dias;
     return clean;
   }
 
@@ -497,7 +503,9 @@ ${JSON.stringify(datos)}`;
       ['categoria', 'categoría', (item.categoria ?? []).join('|'), v => String(v).split('|').filter(Boolean).join(', ') || '—'],
       ['activo', 'activa', item.activo, yesNo],
       ['prorratear', 'hucha', !!item.prorratear, yesNo],
-      ['prorrateoDesde', 'hucha desde', item.prorratear && item.prorrateoDesde ? ymd(item.prorrateoDesde) : null, v => (v ? shortDate(v) : 'hoy')]
+      ['prorrateoDesde', 'hucha desde', item.prorratear && item.prorrateoDesde ? ymd(item.prorrateoDesde) : null, v => (v ? shortDate(v) : 'hoy')],
+      ['aviso', 'recordatorio', item.aviso ?? '', v => (v ? `«${v}»` : 'ninguno')],
+      ['avisoDiasAntes', 'días de antelación', item.avisoDiasAntes ?? 3, String]
     ];
     for (const [key, campo, before, fmt] of fields) {
       if (!(key in clean)) continue;

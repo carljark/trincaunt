@@ -33,6 +33,19 @@ export interface IRecurringItem {
   activo: boolean;
   prorratear?: boolean;    // factura no mensual que se aparta cada ciclo en una hucha
   prorrateoDesde?: string; // desde cuándo se aparta: hoy al activarla, o la fecha que se elija (no pasada)
+  aviso?: string;          // algo que hacer a mano antes de cada fecha (pedir una amortización…)
+  avisoDiasAntes?: number; // con cuántos días de antelación se recuerda (por defecto 3)
+}
+
+/** Algo que hacer a mano en el banco: lo de una partida con aviso, o mover dinero de la hucha. */
+export interface IBudgetReminder {
+  clave: string;
+  tipo: 'partida' | 'hucha';
+  titulo: string;
+  detalle: string;
+  fecha: string;
+  importe: number;
+  recurrente_id?: string;
 }
 
 export interface IIncome {

@@ -114,6 +114,8 @@ router.delete('/notes/:noteId', protect, NoteController.deleteNote);
 router.get('/groups/:groupId/budget', protect, BudgetController.getBudget);
 router.get('/groups/:groupId/budget/history', protect, BudgetController.getBudgetHistory);
 router.get('/groups/:groupId/budget/forecast', protect, BudgetController.getBudgetForecast);
+router.get('/groups/:groupId/budget/reminders', protect, BudgetController.getBudgetReminders);
+router.post('/groups/:groupId/budget/reminders/done', protect, BudgetController.markBudgetReminderDone);
 router.get('/groups/:groupId/recurring-items', protect, BudgetController.listRecurringItems);
 router.post('/groups/:groupId/recurring-items', protect, BudgetController.createRecurringItem);
 router.put('/recurring-items/:itemId', protect, BudgetController.updateRecurringItem);
