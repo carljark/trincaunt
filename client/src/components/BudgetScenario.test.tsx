@@ -98,7 +98,8 @@ describe('BudgetScenario', () => {
     const call = fetchMock.mock.calls.find(c => String(c[0]).includes('/simulate'))!;
     expect(bodyOf(call)).toEqual({ ciclos: 13, quitar: ['alquiler'], nuevas: [] });
     expect(await screen.findByText('1300,00 €')).toBeInTheDocument();
-    expect(screen.getByText('700,00 € más cada ciclo.')).toBeInTheDocument();
+    expect(screen.getByText('+700,00 € cada ciclo')).toBeInTheDocument();
+    expect(screen.getByText('Ahora: 600,00 €')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Aplicar' }).at(-1)!);
