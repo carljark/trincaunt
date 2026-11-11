@@ -32,8 +32,10 @@ router.post('/oauth/register', async (req, res, next) => {
   } catch (error) { oauthError(res, next, error); }
 });
 
-// Comprueba la petición y manda a la pantalla de permiso de la app, con los mismos parámetros
-router.get('/oauth/authorize', async (req, res, next) => {
+// Comprueba la petición y manda a la pantalla de permiso de la app, con los mismos parámetros.
+// La dirección que se anuncia es la de /api/: el service worker de la PWA nunca la intercepta
+// (las demás navegaciones las responde con la app en caché). /oauth/authorize sigue valiendo.
+router.get(['/api/oauth/authorize', '/oauth/authorize'], async (req, res, next) => {
   try {
     const { redirectUri, error } = await OAuthService.checkAuthorize(req.query);
     if (error) {
