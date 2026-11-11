@@ -9,6 +9,7 @@ import { IBudgetSummary, IRecurringItem } from '../types/budget';
 // El histórico tiene sus propios tests
 vi.mock('./BudgetHistory', () => ({ default: () => null }));
 vi.mock('./BudgetForecast', () => ({ default: () => null }));
+vi.mock('./BudgetScenario', () => ({ default: () => null }));
 
 vi.mock('../utils/budgetApi', () => ({
   budgetApi: {

@@ -36,6 +36,15 @@ export const getBudgetForecast = async (req: Request, res: Response, next: NextF
   } catch (error) { next(error); }
 };
 
+// «¿Y si…?»: la previsión quitando unas partidas y añadiendo otras inventadas, sin guardar nada
+export const simulateBudgetForecast = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ciclos = 13, quitar, nuevas } = req.body ?? {};
+    const forecast = await budgetService.getForecast(req.params.groupId, userIdOf(req), Number(ciclos), { quitar, nuevas });
+    res.status(200).json({ status: 'success', data: forecast });
+  } catch (error) { next(error); }
+};
+
 export const getBudgetReminders = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const reminders = await BudgetReminderService.list(req.params.groupId, userIdOf(req));

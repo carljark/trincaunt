@@ -119,6 +119,7 @@ export interface ForecastBill {
   ultima: boolean;   // no vuelve a tocar después de este ciclo
   nueva: boolean;    // empieza en este ciclo (nunca en el ciclo en curso)
   deHucha?: number;  // lo que se paga con lo apartado en su hucha
+  simulada?: boolean; // partida inventada en un escenario, no existe de verdad
 }
 
 export interface CycleForecastEntry {
@@ -143,6 +144,23 @@ export interface BudgetForecast {
 
 // El actual y los 12 siguientes: un año vista
 export const MAX_CICLOS_PREVISION = 25;
+
+/**
+ * Un «¿y si…?» sobre la previsión: partidas que se quitan (por id) y partidas inventadas
+ * que se añaden. No se guarda nada.
+ */
+export interface BudgetScenario {
+  quitar?: unknown;
+  nuevas?: unknown;
+}
+
+interface ResolvedScenario {
+  quitar: Set<string>;
+  nuevas: IRecurringItem[];
+}
+
+export const MAX_PARTIDAS_ESCENARIO = 50;
+const SCENARIO_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin'] as const;
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 
@@ -214,7 +232,7 @@ export class BudgetService {
 
   // ---------- Resumen del ciclo ----------
 
-  async getSummary(groupId: string, userId: string, offset = 0): Promise<BudgetSummary> {
+  async getSummary(groupId: string, userId: string, offset = 0, scenario?: ResolvedScenario): Promise<BudgetSummary> {
     if (!Number.isInteger(offset) || Math.abs(offset) > 120) throw new AppError('Ciclo no válido', 400);
     const group = await this.getBudgetGroup(groupId, userId);
     const config: IGroupPresupuesto = { ...PRESUPUESTO_POR_DEFECTO, ...(group.presupuesto ? JSON.parse(JSON.stringify(group.presupuesto)) : {}) };
@@ -223,11 +241,13 @@ export class BudgetService {
     const cycle = cycleContaining(today, config.diaInicioCiclo, offset);
     const fechaEnCiclo = { $gte: cycle.inicio, $lt: cycle.fin };
 
-    const [items, expenses, incomes] = await Promise.all([
+    const [stored, expenses, incomes] = await Promise.all([
       RecurringItem.find({ grupo_id: groupId }),
       Expense.find({ grupo_id: groupId, fecha: fechaEnCiclo }),
       Income.find({ grupo_id: groupId, fecha: fechaEnCiclo })
     ]);
+
+    const items = scenario ? this.applyScenario(stored, scenario) : stored;
 
     const facturas = this.buildLines(items.filter(i => i.tipo === 'factura'), billMovements(expenses, userId), cycle, 'pagada', 'pendiente');
     const reservas = await this.applySinkingFunds(items, facturas, userId, config.diaInicioCiclo, cycle);
@@ -358,16 +378,19 @@ export class BudgetService {
    * cuánto te quedará para gastar en cada uno. Es el mismo cálculo que el resumen de cada
    * ciclo. Las facturas con fecha de fin se listan aparte para ver cuándo se acaban.
    */
-  async getForecast(groupId: string, userId: string, ciclos = 6): Promise<BudgetForecast> {
+  async getForecast(groupId: string, userId: string, ciclos = 6, scenario?: BudgetScenario): Promise<BudgetForecast> {
     if (!Number.isInteger(ciclos) || ciclos < 1 || ciclos > MAX_CICLOS_PREVISION) {
       throw new AppError(`La previsión admite de 1 a ${MAX_CICLOS_PREVISION} ciclos`, 400);
     }
     await this.getBudgetGroup(groupId, userId);
+    // Las partidas inventadas se crean una vez, con el mismo id en todos los ciclos
+    const resolved = scenario ? this.resolveScenario(scenario) : undefined;
     const [items, summaries] = await Promise.all([
       RecurringItem.find({ grupo_id: groupId, tipo: 'factura' }),
-      Promise.all(Array.from({ length: ciclos }, (_, offset) => this.getSummary(groupId, userId, offset)))
+      Promise.all(Array.from({ length: ciclos }, (_, offset) => this.getSummary(groupId, userId, offset, resolved)))
     ]);
-    const byId = new Map(items.map(i => [idOf(i._id), i]));
+    const byId = new Map([...items, ...(resolved?.nuevas ?? [])].map(i => [idOf(i._id), i]));
+    const simuladas = new Set((resolved?.nuevas ?? []).map(i => idOf(i._id)));
 
     return {
       ahorroObjetivo: summaries[0].ahorroObjetivo,
@@ -392,6 +415,7 @@ export class BudgetService {
             ultima,
             nueva,
             ...(l.deHucha ? { deHucha: l.deHucha } : {}),
+            ...(l.recurrente_id && simuladas.has(l.recurrente_id) ? { simulada: true } : {}),
             temporal: !!item?.fechaFin
           };
         });
@@ -411,6 +435,48 @@ export class BudgetService {
         };
       })
     };
+  }
+
+  /**
+   * Valida un escenario: los ids a quitar y las partidas inventadas (tipo, nombre, importe,
+   * frecuencia y fechas, sin hucha ni recordatorio), que se crean en memoria con un id nuevo.
+   */
+  private resolveScenario(scenario: BudgetScenario): ResolvedScenario {
+    const { quitar = [], nuevas = [] } = scenario;
+    if (!Array.isArray(quitar) || !quitar.every(q => typeof q === 'string')) throw new AppError('quitar debe ser una lista de ids', 400);
+    if (!Array.isArray(nuevas)) throw new AppError('nuevas debe ser una lista de partidas', 400);
+    if (quitar.length > MAX_PARTIDAS_ESCENARIO || nuevas.length > MAX_PARTIDAS_ESCENARIO) {
+      throw new AppError(`Un escenario admite hasta ${MAX_PARTIDAS_ESCENARIO} partidas`, 400);
+    }
+    return {
+      quitar: new Set(quitar),
+      nuevas: nuevas.map(raw => {
+        const data: Record<string, unknown> = {};
+        for (const key of SCENARIO_FIELDS) if (raw && typeof raw === 'object' && key in raw) data[key] = (raw as Record<string, unknown>)[key];
+        const clean = this.validateRecurring(data, false);
+        if (clean.fechaFin && (clean.fechaFin as Date) < (clean.fechaInicio as Date)) {
+          throw new AppError('La fecha de fin no puede ser anterior a la de inicio', 400);
+        }
+        return {
+          _id: new mongoose.Types.ObjectId(),
+          frecuencia: 'mensual',
+          ...clean,
+          categoria: [],
+          activo: true,
+          prorratear: false
+        } as unknown as IRecurringItem;
+      })
+    };
+  }
+
+  /** Las partidas guardadas con el escenario aplicado: las quitadas, como inactivas. */
+  private applyScenario(items: IRecurringItem[], scenario: ResolvedScenario): IRecurringItem[] {
+    const kept = items.map(item => {
+      if (!scenario.quitar.has(idOf(item._id))) return item;
+      const plain = typeof item.toObject === 'function' ? item.toObject() : { ...item };
+      return { ...plain, activo: false } as IRecurringItem;
+    });
+    return [...kept, ...scenario.nuevas];
   }
 
   /**

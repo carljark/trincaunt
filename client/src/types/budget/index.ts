@@ -129,6 +129,7 @@ export interface IForecastBill {
   ultima: boolean; // no vuelve a tocar después de este ciclo
   nueva: boolean;  // empieza en este ciclo
   deHucha?: number; // lo que se paga con lo apartado en su hucha
+  simulada?: boolean; // partida inventada en un ensayo
 }
 
 export interface ICycleForecastEntry {
@@ -149,6 +150,21 @@ export interface ICycleForecastEntry {
 export interface IBudgetForecast {
   ahorroObjetivo: number;
   ciclos: ICycleForecastEntry[]; // del actual en adelante
+}
+
+// Partida inventada para un ensayo de la previsión (no se guarda)
+export interface IScenarioItem {
+  tipo: RecurringTipo;
+  nombre: string;
+  importe: number;
+  frecuencia: Frecuencia;
+  fechaInicio: string;
+  fechaFin?: string;
+}
+
+export interface IBudgetScenario {
+  quitar: string[];
+  nuevas: IScenarioItem[];
 }
 
 export const FRECUENCIA_LABELS: Record<Frecuencia, string> = {

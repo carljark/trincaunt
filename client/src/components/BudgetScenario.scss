@@ -1,0 +1,338 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// ENSAYO DE LA PREVISIÓN (BEM: .budget-scenario): pelotitas que se arrastran
+// ============================================
+
+.budget-scenario {
+  @include section-card;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__title {
+    @include section-title;
+  }
+
+  &__icon-button {
+    @include icon-button;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__error {
+    margin: 0;
+    padding: map.get($spacing-scale, 2) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, sm);
+    color: $color-negative;
+    background: rgba($color-negative, 0.08);
+    border-radius: $border-radius;
+  }
+
+  // Tablero: arriba las partidas, abajo la papelera
+  &__arena {
+    position: relative;
+    overflow: hidden;
+    background: $color-gray-100;
+    border-radius: $border-radius;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  &__zone {
+    position: absolute;
+    top: map.get($spacing-scale, 2);
+    font-size: map.get($font-sizes, xs);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+
+    &--income {
+      left: map.get($spacing-scale, 3);
+    }
+
+    &--bills {
+      right: map.get($spacing-scale, 3);
+    }
+  }
+
+  &__trash {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+    padding: 0 map.get($spacing-scale, 3);
+    color: $color-gray-500;
+    background: rgba($color-negative, 0.04);
+    border-top: 2px dashed $color-gray-300;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    pointer-events: none;
+
+    &--over {
+      color: $color-negative;
+      background: rgba($color-negative, 0.12);
+      border-top-color: $color-negative;
+    }
+  }
+
+  &__trash-icon {
+    font-size: 1.25rem;
+  }
+
+  &__trash-label {
+    font-size: map.get($font-sizes, xs);
+    font-weight: map.get($font-weights, medium);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__empty {
+    position: absolute;
+    top: 40%;
+    right: 0;
+    left: 0;
+    margin: 0;
+    padding: 0 map.get($spacing-scale, 4);
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+    text-align: center;
+  }
+
+  // La posición la pone la simulación con transform
+  &__bubble {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: map.get($spacing-scale, 1);
+    overflow: hidden;
+    font-family: inherit;
+    line-height: 1.1;
+    text-align: center;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    box-shadow: $box-shadow-md;
+    cursor: grab;
+    touch-action: none; // arrastrar con el dedo no desplaza la página
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+    }
+
+    &--bill {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--income {
+      color: white;
+      background: $color-positive;
+    }
+
+    // Inventadas: solo existen en el ensayo
+    &--new-bill {
+      color: $color-primary;
+      background: $color-surface;
+      border: 2px dashed $color-primary;
+    }
+
+    &--new-income {
+      color: $color-positive;
+      background: $color-surface;
+      border: 2px dashed $color-positive;
+    }
+
+    &--removed {
+      color: $color-gray-600;
+      background: $color-gray-300;
+      box-shadow: none;
+      opacity: 0.85;
+    }
+  }
+
+  // El tamaño de letra lo pone la pelotita según su radio; las palabras no se parten
+  &__bubble-name {
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 1em;
+    font-weight: map.get($font-weights, semibold);
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+    word-break: normal;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  &__bubble-amount {
+    font-size: 0.85em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    opacity: 0.9;
+  }
+
+  &__outcome {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__headline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 map.get($spacing-scale, 2);
+    margin: 0;
+  }
+
+  &__headline-label {
+    flex-basis: 100%;
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+
+  &__headline-amount {
+    @include money;
+    font-size: map.get($font-sizes, xl);
+    color: $color-gray-900;
+
+    &--negative {
+      color: $color-negative;
+    }
+  }
+
+  &__delta {
+    @include money;
+    font-size: map.get($font-sizes, sm);
+
+    &--up {
+      color: $color-positive;
+    }
+
+    &--down {
+      color: $color-negative;
+    }
+  }
+
+  &__chart {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+    margin: 0;
+  }
+
+  &__svg {
+    display: block;
+    width: 100%;
+    height: 120px;
+    overflow: visible;
+  }
+
+  &__zero {
+    stroke: $color-gray-300;
+    stroke-width: 1;
+  }
+
+  &__bar {
+    fill: $color-primary;
+
+    &--negative {
+      fill: $color-negative;
+    }
+  }
+
+  &__now {
+    stroke: $color-gray-800;
+    stroke-width: 2;
+  }
+
+  &__legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: map.get($spacing-scale, 1) map.get($spacing-scale, 3);
+    font-size: map.get($font-sizes, xs);
+    color: $color-text-muted;
+  }
+
+  &__legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+  }
+
+  &__legend-range {
+    margin-left: auto;
+  }
+
+  &__swatch {
+    display: inline-block;
+
+    &--bar {
+      width: 0.625rem;
+      height: 0.625rem;
+      background: $color-primary;
+      border-radius: 2px;
+    }
+
+    &--now {
+      width: 0.875rem;
+      height: 2px;
+      background: $color-gray-800;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__button {
+    @include action-button;
+
+    @include respond-below(md) {
+      flex: 1;
+    }
+
+    &--primary {
+      color: white;
+      background: $color-primary;
+    }
+
+    &--secondary {
+      color: $color-gray-700;
+      background: $color-surface;
+      border-color: $color-gray-300;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+}
