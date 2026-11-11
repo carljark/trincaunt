@@ -616,9 +616,12 @@ export class BudgetService {
     doneState: E,
     pendingState: E
   ): BudgetLine<E>[] {
+    // Lo ya pagado o cobrado sale con el nombre actual de su partida (si aún existe), no con
+    // la descripción que se le puso al confirmarlo: así un cambio de nombre se ve en todo el ciclo
+    const names = new Map(items.map(i => [idOf(i._id), i.nombre]));
     const lines: BudgetLine<E>[] = movements.map(m => ({
       recurrente_id: m.recurrente_id,
-      nombre: m.nombre,
+      nombre: (m.recurrente_id && names.get(m.recurrente_id)) || m.nombre,
       fecha: ymd(toCalendarDate(m.fecha)),
       importe: round2(m.importe),
       estado: doneState,

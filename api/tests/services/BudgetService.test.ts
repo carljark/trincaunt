@@ -232,6 +232,21 @@ describe('BudgetService', () => {
     });
   });
 
+  it('names paid bills after their item, even if it was renamed after paying', async () => {
+    (RecurringItem.find as vi.Mock).mockResolvedValue(items.map(i => (i._id === alquilerId ? { ...i, nombre: 'Piso' } : i)));
+    const summary = await service.getSummary(groupId, userId);
+
+    const paid = summary.facturas.lineas.find(l => l.recurrente_id === alquilerId.toString());
+    expect(paid).toMatchObject({ nombre: 'Piso', estado: 'pagada', importe: 700 });
+  });
+
+  it('keeps the expense description when its item no longer exists', async () => {
+    (RecurringItem.find as vi.Mock).mockResolvedValue(items.filter(i => i._id !== alquilerId));
+    const summary = await service.getSummary(groupId, userId);
+
+    expect(summary.facturas.lineas.find(l => l.recurrente_id === alquilerId.toString())).toMatchObject({ nombre: 'Alquiler', estado: 'pagada' });
+  });
+
   describe('getHistory', () => {
     const past = [
       { _id: oid(), grupo_id: groupId, descripcion: 'Alquiler', monto: 700, fecha: d('2026-10-01'), pagado_por: me, participantes: me, asume_gasto: false, recurrente_id: alquilerId },
