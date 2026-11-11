@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IExpense, IExpensePopulated } from '../types/expense';
 import { IUserPopulated } from '../types/user';
 import MemberToggleGroup from './MemberToggleGroup';
 import Dialog from './Dialog';
+import CategoryPicker from './CategoryPicker';
 import './AddExpenseModal.scss';
 
 interface AddExpenseModalProps {
@@ -27,15 +28,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   const [assumeExpense, setAssumeExpense] = useState<boolean>(expenseToEdit?.asume_gasto || false);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>(expenseToEdit?.participantes.map((p: IUserPopulated) => p._id) || []);
   const [categories, setCategories] = useState<string[]>(expenseToEdit?.categoria || []);
-  const [categoryInput, setCategoryInput] = useState('');
   const [paidByIds, setPaidByIds] = useState<string[]>([]);
-  const [suggestedCategories, setSuggestedCategories] = useState<{ category: string, count: number }[]>([]);
   const [suggestedLocations, setSuggestedLocations] = useState<{ localization: string, count: number }[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const categoryInputRef = useRef<HTMLInputElement>(null);
   const today = new Date();
   const formattedToday = today.toISOString().split('T')[0];
   const [expenseDate, setExpenseDate] = useState<string>(expenseToEdit?.fecha?.split('T')[0] || formattedToday);
@@ -59,26 +56,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
   }, [expenseToEdit, members, paidByInitial]);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/categories`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.data)) {
-            const validCategories = data.data.filter((item: { category?: unknown }) => item && typeof item.category === 'string');
-            setSuggestedCategories(validCategories);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-      }
-    };
-    fetchCategories();
-  }, [token]);
-
-  useEffect(() => {
     const fetchLocations = async () => {
       try {
         const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/locations`, {
@@ -96,24 +73,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
     };
     fetchLocations();
   }, [token]);
-
-  const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && categoryInput.trim() !== '') {
-      e.preventDefault();
-      addCategory(categoryInput.trim());
-    }
-  };
-
-  const addCategory = (categoryToAdd: string) => {
-    if (!categories.includes(categoryToAdd)) {
-      setCategories([...categories, categoryToAdd]);
-    }
-    setCategoryInput('');
-  };
-
-  const removeCategory = (categoryToRemove: string) => {
-    setCategories(categories.filter(cat => cat !== categoryToRemove));
-  };
 
   const handleSubmitExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,67 +252,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ groupId, token, membe
           </div>
 
           {/* Categorías */}
-          <div
-            className="expense-modal__field"
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                setShowSuggestions(false);
-              }
-            }}
-          >
-            <label className="expense-modal__label" htmlFor="category">Categoría</label>
-            <input
-              className="expense-modal__input"
-              type="text"
-              id="category"
-              placeholder="Comida, Ocio..."
-              value={categoryInput}
-              ref={categoryInputRef}
-              onChange={e => setCategoryInput(e.target.value)}
-              onKeyDown={handleCategoryKeyDown}
-              onFocus={() => setShowSuggestions(true)}
-              autoComplete="off"
-            />
-            {showSuggestions && (
-              <ul className="expense-modal__suggestions">
-                {categoryInput.trim() !== '' && !categories.includes(categoryInput.trim()) && (
-                  <li className="expense-modal__suggestion expense-modal__suggestion--add" onMouseDown={(e) => {
-                    e.preventDefault();
-                    addCategory(categoryInput.trim());
-                  }}>
-                    + Añadir &quot;{categoryInput.trim()}&quot;
-                  </li>
-                )}
-                {suggestedCategories
-                  .filter(c => c.category.toLowerCase().includes(categoryInput.toLowerCase()))
-                  .slice(0, 5)
-                  .map(c => (
-                    <li
-                      key={c.category}
-                      className="expense-modal__suggestion"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        addCategory(c.category);
-                      }}
-                    >
-                      {c.category}
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </div>
+          <CategoryPicker token={token} value={categories} onChange={setCategories} />
         </div>
-
-        {categories.length > 0 && (
-          <div className="expense-modal__chips">
-            {categories.map(cat => (
-              <div key={cat} className="expense-modal__chip">
-                {cat}
-                <button type="button" className="expense-modal__chip-remove" onClick={() => removeCategory(cat)} title="Eliminar">×</button>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Pagado por */}
         <div className="expense-modal__field">

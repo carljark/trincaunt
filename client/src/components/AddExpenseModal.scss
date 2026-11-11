@@ -78,50 +78,6 @@
       color: $color-primary;
       background: $color-gray-100;
     }
-
-    &--add {
-      font-weight: map.get($font-weights, medium);
-      color: $color-primary;
-    }
-  }
-
-  &__chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: map.get($spacing-scale, 2);
-  }
-
-  &__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: map.get($spacing-scale, 1);
-    min-height: 2.25rem;
-    padding: 0 map.get($spacing-scale, 1) 0 map.get($spacing-scale, 3);
-    font-size: map.get($font-sizes, sm);
-    font-weight: map.get($font-weights, medium);
-    color: $color-primary;
-    background: rgba($color-primary, 0.08);
-    border-radius: 999px;
-  }
-
-  &__chip-remove {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    padding: 0;
-    font-size: 1.125rem;
-    line-height: 1;
-    color: inherit;
-    background: none;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-
-    &:hover {
-      background: rgba($color-primary, 0.15);
-    }
   }
 
   // Toda la fila es pulsable (objetivo táctil de 44px)
