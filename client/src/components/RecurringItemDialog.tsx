@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import Dialog from './Dialog';
+import CategoryPicker from './CategoryPicker';
 import { FRECUENCIA_LABELS, Frecuencia, IRecurringItem, RecurringTipo } from '../types/budget';
 import { RecurringItemInput } from '../utils/budgetApi';
 import { todayYmd } from '../utils/format';
 import './RecurringItemDialog.scss';
 
 interface RecurringItemDialogProps {
+  token: string;
   item?: IRecurringItem;          // Sin item: alta nueva
   defaultTipo?: RecurringTipo;
   onSave: (data: RecurringItemInput) => Promise<void>;
@@ -19,14 +21,14 @@ const TIPOS: { id: RecurringTipo; label: string }[] = [
 ];
 
 // Alta y edición de una partida fija (nómina, alquiler, luz...)
-const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, defaultTipo = 'factura', onSave, onDelete, onClose }) => {
+const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ token, item, defaultTipo = 'factura', onSave, onDelete, onClose }) => {
   const [tipo, setTipo] = useState<RecurringTipo>(item?.tipo ?? defaultTipo);
   const [nombre, setNombre] = useState(item?.nombre ?? '');
   const [importe, setImporte] = useState(item ? String(item.importe) : '');
   const [frecuencia, setFrecuencia] = useState<Frecuencia>(item?.frecuencia ?? 'mensual');
   const [fechaInicio, setFechaInicio] = useState(item?.fechaInicio.slice(0, 10) ?? todayYmd());
   const [fechaFin, setFechaFin] = useState(item?.fechaFin?.slice(0, 10) ?? '');
-  const [categoria, setCategoria] = useState(item?.categoria.join(', ') ?? '');
+  const [categoria, setCategoria] = useState<string[]>(item?.categoria ?? []);
   const [activo, setActivo] = useState(item?.activo ?? true);
   const [prorratear, setProrratear] = useState(item?.prorratear ?? false);
   // Vacía: empieza hoy. Una ya pasada solo vale si es la que tenía (la hucha ya está en marcha)
@@ -72,7 +74,7 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
       frecuencia,
       fechaInicio,
       fechaFin: fechaFin || (item?.fechaFin ? null : undefined),
-      categoria: categoria.split(',').map(c => c.trim()).filter(Boolean),
+      categoria,
       activo,
       prorratear: huchaOn,
       prorrateoDesde: huchaOn ? desde || (savedDesde ? null : undefined) : undefined,
@@ -187,10 +189,7 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ item, default
         <p className="recurring-item__hint">El día de la primera fecha es el que se repite cada vez.</p>
 
         {tipo === 'factura' && (
-          <label className="recurring-item__field">
-            <span className="recurring-item__label">Categorías (separadas por comas)</span>
-            <input className="recurring-item__input" type="text" value={categoria} onChange={e => setCategoria(e.target.value)} placeholder="Ej.: Hogar" />
-          </label>
+          <CategoryPicker token={token} value={categoria} onChange={setCategoria} label="Categorías" placeholder="Ej.: Hogar" />
         )}
 
         {tipo === 'factura' && (

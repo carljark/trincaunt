@@ -539,6 +539,7 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
 
       {dialog?.kind === 'item' && (
         <RecurringItemDialog
+          token={token}
           item={dialog.item}
           defaultTipo={dialog.tipo}
           onSave={saveItem}
