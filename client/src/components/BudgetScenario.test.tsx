@@ -13,12 +13,21 @@ const item = (over: Partial<IRecurringItem>): IRecurringItem => ({
 const items = [
   item({ _id: 'nomina', tipo: 'ingreso', nombre: 'Nómina', importe: 2000 }),
   item({ _id: 'alquiler', nombre: 'Alquiler', importe: 700 }),
-  item({ _id: 'gym', nombre: 'Gimnasio', importe: 40, activo: false })
+  item({ _id: 'gym', nombre: 'Gimnasio', importe: 40, activo: false }),
+  item({ _id: 'visa1', nombre: 'Visa (cuota 110 €)', importe: 110 }),
+  item({ _id: 'visa2', nombre: 'Visa (cuota 120 €)', importe: 120 }),
+  item({ _id: 'lejana', nombre: 'Préstamo (último pago)', importe: 128, fechaInicio: '2028-03-01' })
 ];
+
+const bill = (recurrente_id: string, nombre: string, importe: number) => ({
+  recurrente_id, nombre, fecha: '2026-12-01', importe, estado: 'pendiente', ultima: false, nueva: false
+});
 
 const cycle = (inicio: string, disponible: number, enCurso = false) => ({
   inicio, fin: inicio, offset: 0, enCurso, ingresos: 2000, facturas: 700, reservas: 0,
-  presupuestoGastable: disponible, gastado: 0, disponible, partidas: [], temporales: []
+  presupuestoGastable: disponible, gastado: 0, disponible, temporales: [],
+  // «lejana» no toca en el próximo año: no sale en ningún ciclo
+  partidas: [bill('alquiler', 'Alquiler', 700), bill('visa1', 'Visa (cuota 110 €)', 110), bill('visa2', 'Visa (cuota 120 €)', 120)]
 });
 
 const forecast = (disponible: number) => ({
@@ -42,26 +51,54 @@ describe('BudgetScenario', () => {
 
   const bodyOf = (call: unknown[]) => JSON.parse((call[1] as RequestInit).body as string);
 
-  it('shows one bubble per active item and the average left per cycle', async () => {
+  it('shows a bubble per active item, grouping variants and hiding those outside the next year', async () => {
     render(<BudgetScenario groupId="g1" token="tok" items={items} onApplied={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /^Nómina/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Alquiler/ })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Gimnasio/ })).not.toBeInTheDocument();
     expect(await screen.findByText('600,00 €')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /^Nómina/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Alquiler/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Visa, 2 partidas/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Gimnasio/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Préstamo/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/Una partida no sale porque no toca en el próximo año/)).toBeInTheDocument();
+  });
+
+  it('removes every item of a grouped bubble at once', async () => {
+    render(<BudgetScenario groupId="g1" token="tok" items={items} onApplied={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Visa, 2 partidas/ }));
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(c => String(c[0]).includes('/simulate'));
+      expect(call && bodyOf(call).quitar).toEqual(['visa1', 'visa2']);
+    });
+  });
+
+  it('groups the smallest bills into «Otras» and opens it when tapped', async () => {
+    const many = Array.from({ length: 14 }, (_, i) => item({ _id: `b${i}`, nombre: `Factura ${i}`, importe: 100 - i }));
+    const big = { ...forecast(600), ciclos: forecast(600).ciclos.map(c => ({ ...c, partidas: many.map(m => bill(m._id, m.nombre, m.importe)) })) };
+    fetchMock.mockImplementation(async () => ({ ok: true, status: 200, json: async () => ({ data: big }) }));
+    render(<BudgetScenario groupId="g1" token="tok" items={many} onApplied={vi.fn()} />);
+
+    const otras = await screen.findByRole('button', { name: /^Otras: Factura 11, Factura 12, Factura 13/ });
+    expect(screen.getByRole('button', { name: /^Factura 10,/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Factura 13,/ })).not.toBeInTheDocument();
+
+    fireEvent.click(otras);
+    expect(await screen.findByRole('button', { name: /^Factura 13,/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Juntar otra vez las pequeñas' }));
+    expect(await screen.findByRole('button', { name: /^Otras/ })).toBeInTheDocument();
   });
 
   it('simulates without a removed item and applies it by deactivating it', async () => {
     const onApplied = vi.fn();
     render(<BudgetScenario groupId="g1" token="tok" items={items} onApplied={onApplied} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^Alquiler/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Alquiler/ }));
     expect(screen.getByRole('button', { name: /^Alquiler/ })).toHaveAttribute('aria-pressed', 'true');
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/budget/forecast/simulate'), expect.anything()));
     const call = fetchMock.mock.calls.find(c => String(c[0]).includes('/simulate'))!;
     expect(bodyOf(call)).toEqual({ ciclos: 13, quitar: ['alquiler'], nuevas: [] });
     expect(await screen.findByText('1300,00 €')).toBeInTheDocument();
-    expect(screen.getByText(/\+700,00 € que ahora/)).toBeInTheDocument();
+    expect(screen.getByText('700,00 € más cada ciclo.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Aplicar' }).at(-1)!);
