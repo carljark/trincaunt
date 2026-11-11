@@ -35,7 +35,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/socket\.io\//],
+        // Lo que tiene que llegar al servidor aunque sea una navegación: la autorización OAuth
+        // de los conectores (redirige a la pantalla de permiso), el MCP y sus metadatos
+        navigateFallbackDenylist: [/^\/api\//, /^\/socket\.io\//, /^\/oauth\/authorize/, /^\/mcp/, /^\/\.well-known\//],
         // Eventos push y clic en notificaciones (public/push-sw.js)
         importScripts: ['/push-sw.js']
       }

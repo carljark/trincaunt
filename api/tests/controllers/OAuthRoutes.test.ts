@@ -72,6 +72,13 @@ describe('OAuth and remote MCP routes', () => {
     expect(res.headers.get('location')).toBe('https://claude.ai/cb?error=invalid_request&state=s');
   });
 
+  it('also answers the authorization request under /api/, which the service worker never intercepts', async () => {
+    (OAuthService.checkAuthorize as any).mockResolvedValueOnce({ redirectUri: 'https://claude.ai/cb' });
+    const res = await fetch(`${base}/api/oauth/authorize?client_id=c1&state=s`, { redirect: 'manual' });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('/oauth/consent?client_id=c1&state=s');
+  });
+
   it('reads the token request as a form', async () => {
     (OAuthService.token as any).mockResolvedValue({ access_token: 'trc_x', token_type: 'Bearer' });
     const res = await fetch(`${base}/oauth/token`, {

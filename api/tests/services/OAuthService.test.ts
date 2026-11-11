@@ -40,7 +40,7 @@ describe('OAuthService', () => {
   it('publishes the metadata clients look for', () => {
     expect(service.metadata('https://t.example')).toMatchObject({
       issuer: 'https://t.example',
-      authorization_endpoint: 'https://t.example/oauth/authorize',
+      authorization_endpoint: 'https://t.example/api/oauth/authorize',
       token_endpoint: 'https://t.example/oauth/token',
       registration_endpoint: 'https://t.example/oauth/register',
       code_challenge_methods_supported: ['S256']

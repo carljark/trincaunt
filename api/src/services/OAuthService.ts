@@ -59,7 +59,7 @@ export class OAuthService {
   metadata(issuer: string) {
     return {
       issuer,
-      authorization_endpoint: `${issuer}/oauth/authorize`,
+      authorization_endpoint: `${issuer}/api/oauth/authorize`, // en /api/ para que no lo capture el service worker
       token_endpoint: `${issuer}/oauth/token`,
       registration_endpoint: `${issuer}/oauth/register`,
       response_types_supported: ['code'],
