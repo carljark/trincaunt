@@ -327,6 +327,43 @@ describe('BudgetService', () => {
       expect(forecast.ciclos[3]).toMatchObject({ facturas: 760, temporales: [] });
     });
 
+    describe('scenarios', () => {
+      it('drops removed items from the next cycles but keeps what was already paid', async () => {
+        const forecast = await service.getForecast(groupId, userId, 2, { quitar: [alquilerId.toString(), luzId.toString()] });
+
+        // En curso: el alquiler ya está pagado y sigue contando; la luz pendiente desaparece
+        expect(forecast.ciclos[0]).toMatchObject({ facturas: 700, disponible: 1000 });
+        // Siguiente: solo el IVA (2000 - 86 - 200 de ahorro)
+        expect(forecast.ciclos[1]).toMatchObject({ facturas: 86, disponible: 1714 });
+        expect(forecast.ciclos[1].partidas.map(p => p.nombre)).toEqual(['Aplazamiento IVA']);
+        expect(RecurringItem.prototype.save).not.toHaveBeenCalled();
+      });
+
+      it('adds made-up items, marked as simulated, with the same id in every cycle', async () => {
+        const forecast = await service.getForecast(groupId, userId, 3, {
+          nuevas: [
+            { tipo: 'factura', nombre: 'Coche', importe: 300, fechaInicio: '2026-12-01' },
+            { tipo: 'ingreso', nombre: 'Clases', importe: 150, fechaInicio: '2026-12-10', prorratear: true }
+          ]
+        });
+
+        expect(forecast.ciclos[0]).toMatchObject({ facturas: 760, ingresos: 2050 });
+        expect(forecast.ciclos[1]).toMatchObject({ facturas: 1146, ingresos: 2150, disponible: 804 });
+        const coche = forecast.ciclos.slice(1).map(c => c.partidas.find(p => p.nombre === 'Coche'));
+        expect(coche[0]).toMatchObject({ importe: 300, nueva: true, simulada: true });
+        expect(coche[1]).toMatchObject({ nueva: false, simulada: true, recurrente_id: coche[0]!.recurrente_id });
+        expect(forecast.ciclos[1].partidas.find(p => p.nombre === 'Alquiler')?.simulada).toBeUndefined();
+      });
+
+      it('rejects malformed scenarios', async () => {
+        await expect(service.getForecast(groupId, userId, 2, { quitar: 'x' })).rejects.toMatchObject({ statusCode: 400 });
+        await expect(service.getForecast(groupId, userId, 2, { nuevas: [{ tipo: 'factura', nombre: 'Coche' }] })).rejects.toMatchObject({ statusCode: 400 });
+        await expect(service.getForecast(groupId, userId, 2, {
+          nuevas: [{ tipo: 'factura', nombre: 'Coche', importe: 10, fechaInicio: '2027-01-01', fechaFin: '2026-01-01' }]
+        })).rejects.toMatchObject({ statusCode: 400 });
+      });
+    });
+
     it('rejects a bad number of cycles', async () => {
       await expect(service.getForecast(groupId, userId, 0)).rejects.toMatchObject({ statusCode: 400 });
       await expect(service.getForecast(groupId, userId, 26)).rejects.toMatchObject({ statusCode: 400 });

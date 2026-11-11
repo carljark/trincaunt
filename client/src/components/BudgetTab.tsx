@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from './icons';
 import BudgetForecast from './BudgetForecast';
 import BudgetHistory from './BudgetHistory';
+import BudgetScenario from './BudgetScenario';
 import BudgetMovementDialog, { BudgetMovementValues } from './BudgetMovementDialog';
 import RecurringItemDialog from './RecurringItemDialog';
 import ConfirmationModal from './ConfirmationModal';
@@ -49,6 +50,8 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
   const [reminders, setReminders] = useState<IBudgetReminder[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
+  // Sube con cada cambio hecho aquí, para que la previsión y el ensayo recalculen
+  const [changeKey, setChangeKey] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -76,6 +79,7 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
     await action();
     setDialog(null);
     await load();
+    setChangeKey(k => k + 1);
     if (expensesChanged) onExpensesChanged?.();
   };
 
@@ -460,7 +464,15 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
         </section>
       )}
 
-      <BudgetForecast groupId={groupId} token={token} refreshKey={refreshKey} />
+      <BudgetForecast groupId={groupId} token={token} refreshKey={refreshKey + changeKey} />
+
+      <BudgetScenario
+        groupId={groupId}
+        token={token}
+        items={items}
+        refreshKey={refreshKey + changeKey}
+        onApplied={() => afterChange(() => Promise.resolve())}
+      />
 
       <BudgetHistory groupId={groupId} token={token} refreshKey={refreshKey} />
 

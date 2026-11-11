@@ -60,7 +60,8 @@ describe('Trincaunt MCP server', () => {
   it('exposes the tools with read/destructive hints', async () => {
     const { tools } = await client.listTools();
     const byName = new Map(tools.map(t => [t.name, t]));
-    expect(byName.size).toBe(32);
+    expect(byName.size).toBe(33);
+    expect(byName.get('simulate_budget_forecast')!.annotations).toMatchObject({ readOnlyHint: true });
     expect(byName.get('remove_group_member')!.annotations).toMatchObject({ destructiveHint: true });
     expect(byName.get('list_users')!.annotations).toMatchObject({ readOnlyHint: true });
     expect(byName.get('list_expenses')!.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });

@@ -338,6 +338,30 @@ export const tools: ToolDef[] = [
   }),
 
   tool({
+    name: 'simulate_budget_forecast',
+    title: 'Simular un escenario',
+    description:
+      '«¿Y si…?»: la misma previsión que get_budget_forecast quitando unas partidas fijas y añadiendo otras ' +
+      'inventadas (p. ej. «si me compro un coche de 300 €/mes desde marzo»). No guarda nada; las partidas ' +
+      'inventadas salen con simulada: true.',
+    input: {
+      groupId: id,
+      ciclos: z.number().int().min(1).max(25).default(13),
+      quitar: z.array(id).max(50).optional().describe('Ids de partidas fijas que se dan de baja en el escenario'),
+      nuevas: z.array(z.object({
+        tipo: z.enum(['ingreso', 'factura']),
+        nombre: z.string().min(1),
+        importe: amount,
+        frecuencia: z.enum(['mensual', 'bimestral', 'trimestral', 'semestral', 'anual']).default('mensual'),
+        fechaInicio: ymd.describe('Primera fecha en que toca'),
+        fechaFin: ymd.optional()
+      })).max(50).optional().describe('Partidas inventadas que se añaden en el escenario')
+    },
+    kind: 'read',
+    run: (api, { groupId, ...data }) => api.post(`/groups/${groupId}/budget/forecast/simulate`, defined(data))
+  }),
+
+  tool({
     name: 'get_budget_reminders',
     title: 'Por hacer en el banco',
     description:

@@ -1,4 +1,4 @@
-import { IBudgetConfig, IBudgetForecast, IBudgetHistory, IBudgetReminder, IBudgetSummary, IIncome, IRecurringItem } from '../types/budget';
+import { IBudgetConfig, IBudgetForecast, IBudgetScenario, IBudgetHistory, IBudgetReminder, IBudgetSummary, IIncome, IRecurringItem } from '../types/budget';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -33,6 +33,8 @@ export const budgetApi = {
     request<IBudgetHistory>(token, `/groups/${groupId}/budget/history?ciclos=${ciclos}`),
   getForecast: (token: string, groupId: string, ciclos = 6) =>
     request<IBudgetForecast>(token, `/groups/${groupId}/budget/forecast?ciclos=${ciclos}`),
+  simulateForecast: (token: string, groupId: string, ciclos: number, scenario: IBudgetScenario) =>
+    request<IBudgetForecast>(token, `/groups/${groupId}/budget/forecast/simulate`, json('POST', { ciclos, ...scenario })),
   getReminders: (token: string, groupId: string) =>
     request<IBudgetReminder[]>(token, `/groups/${groupId}/budget/reminders`),
   markReminderDone: (token: string, groupId: string, clave: string) =>
