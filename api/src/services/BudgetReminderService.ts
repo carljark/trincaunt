@@ -2,7 +2,7 @@ import Group from '../models/Group';
 import RecurringItem from '../models/RecurringItem';
 import BudgetReminder from '../models/BudgetReminder';
 import { AppError } from '../utils/AppError';
-import { todayIn } from '../utils/budgetCycle';
+import { paymentOn, toCalendarDate, todayIn } from '../utils/budgetCycle';
 import { BudgetService, BudgetSummary } from './BudgetService';
 import PushService, { formatAmount } from './PushService';
 
@@ -112,20 +112,25 @@ export class BudgetReminderService {
     const current = await this.budget.getSummary(groupId, userId, 0);
     const next = await this.budget.getSummary(groupId, userId, 1);
     const today = ymd(todayIn('Europe/Madrid', this.now()));
-    const items = await RecurringItem.find({ grupo_id: groupId, aviso: { $nin: [null, ''] } });
+    // Con aviso propio o en alguno de sus pagos especiales
+    const items = await RecurringItem.find({
+      grupo_id: groupId,
+      $or: [{ aviso: { $nin: [null, ''] } }, { 'pagosEspeciales.aviso': { $nin: [null, ''] } }]
+    });
 
     const reminders: BudgetReminderItem[] = [...this.huchaReminders(current, today)];
     const lines = [...current.facturas.lineas, ...next.facturas.lineas];
     for (const item of items) {
-      const dias = item.avisoDiasAntes ?? AVISO_DIAS_ANTES;
       for (const line of lines) {
         if (line.recurrente_id !== idOf(item._id) || line.estado !== 'pendiente') continue;
-        if (today < addDays(line.fecha, -dias)) continue;
+        const { aviso, avisoDiasAntes } = paymentOn(item, toCalendarDate(line.fecha));
+        if (!aviso) continue;
+        if (today < addDays(line.fecha, -(avisoDiasAntes ?? AVISO_DIAS_ANTES))) continue;
         reminders.push({
           clave: `partida:${idOf(item._id)}:${line.fecha}`,
           tipo: 'partida',
-          titulo: item.aviso!,
-          detalle: `${item.nombre} · ${formatAmount(line.importe)} · ${shortDate(line.fecha)}`,
+          titulo: aviso,
+          detalle: `${item.nombre} · ${formatAmount(line.importe)}${line.extra ? ` (${formatAmount(line.extra)} extra)` : ''} · ${shortDate(line.fecha)}`,
           fecha: line.fecha,
           importe: line.importe,
           recurrente_id: idOf(item._id)

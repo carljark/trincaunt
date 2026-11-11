@@ -327,6 +327,24 @@ describe('BudgetService', () => {
       expect(forecast.ciclos[3]).toMatchObject({ facturas: 760, temporales: [] });
     });
 
+    it('applies special payments: another instalment or an extra on top', async () => {
+      const visa = {
+        _id: oid(), tipo: 'factura', nombre: 'Visa', importe: 43, frecuencia: 'mensual', fechaInicio: d('2026-11-01'), activo: true,
+        pagosEspeciales: [
+          { tipo: 'cuota', desde: d('2026-12-01'), hasta: d('2027-01-01'), importe: 110 },
+          { tipo: 'extra', desde: d('2027-01-01'), hasta: d('2027-01-01'), importe: 200 }
+        ]
+      };
+      (RecurringItem.find as vi.Mock).mockImplementation(async (q: any) => (q.fechaFin ? [] : [...items, visa]));
+
+      const forecast = await service.getForecast(groupId, userId, 3);
+      const of = (i: number) => forecast.ciclos[i].partidas.find(p => p.nombre === 'Visa');
+      expect(of(1)).toMatchObject({ fecha: '2026-12-01', importe: 110 });
+      expect(of(1)!.extra).toBeUndefined();
+      expect(of(2)).toMatchObject({ fecha: '2027-01-01', importe: 310, extra: 200 });
+      expect(forecast.ciclos[2].facturas).toBe(760 + 310);
+    });
+
     describe('scenarios', () => {
       it('drops removed items from the next cycles but keeps what was already paid', async () => {
         const forecast = await service.getForecast(groupId, userId, 2, { quitar: [alquilerId.toString(), luzId.toString()] });
@@ -629,6 +647,30 @@ describe('BudgetService', () => {
       expect(RecurringItem.create).toHaveBeenCalledWith({
         tipo: 'factura', nombre: 'Gimnasio', importe: 35.5, frecuencia: 'mensual', fechaInicio: d('2026-11-10'), grupo_id: groupId
       });
+    });
+
+    it('stores special payments sorted, with calendar dates and their reminders', async () => {
+      await service.createRecurringItem(groupId, userId, {
+        tipo: 'factura', nombre: 'Préstamo', importe: 92.37, fechaInicio: '2026-11-01',
+        pagosEspeciales: [
+          { tipo: 'extra', desde: '2027-09-01', hasta: '2027-10-01', importe: '630', aviso: '  ', avisoDiasAntes: 4 },
+          { tipo: 'extra', desde: '2027-08-01', importe: 466.894, aviso: ' Pide la amortización ', avisoDiasAntes: 5 }
+        ]
+      });
+
+      expect((RecurringItem.create as vi.Mock).mock.calls[0][0].pagosEspeciales).toEqual([
+        { tipo: 'extra', desde: d('2027-08-01'), hasta: d('2027-08-01'), importe: 466.89, aviso: 'Pide la amortización', avisoDiasAntes: 5 },
+        { tipo: 'extra', desde: d('2027-09-01'), hasta: d('2027-10-01'), importe: 630 }
+      ]);
+    });
+
+    it.each([
+      ['a special payment of an unknown type', { tipo: 'factura', nombre: 'X', importe: 1, fechaInicio: '2026-11-10', pagosEspeciales: [{ tipo: 'otro', desde: '2027-01-01', importe: 5 }] }],
+      ['a special payment that ends before it starts', { tipo: 'factura', nombre: 'X', importe: 1, fechaInicio: '2026-11-10', pagosEspeciales: [{ tipo: 'extra', desde: '2027-02-01', hasta: '2027-01-01', importe: 5 }] }],
+      ['a special payment without amount', { tipo: 'factura', nombre: 'X', importe: 1, fechaInicio: '2026-11-10', pagosEspeciales: [{ tipo: 'cuota', desde: '2027-01-01' }] }],
+      ['special payments that are not a list', { tipo: 'factura', nombre: 'X', importe: 1, fechaInicio: '2026-11-10', pagosEspeciales: 'x' }]
+    ])('rejects %s', async (_label, data) => {
+      await expect(service.createRecurringItem(groupId, userId, data)).rejects.toMatchObject({ statusCode: 400 });
     });
 
     it.each([

@@ -20,6 +20,19 @@ export interface ICategoryLimitStatus extends ILimiteCategoria {
   porcentaje: number;
 }
 
+// Tramo de fechas en que una partida se paga distinto: otra cuota (sustituye al importe)
+// o un pago extra que se suma (una amortización anticipada)
+export type PagoEspecialTipo = 'cuota' | 'extra';
+
+export interface IPagoEspecial {
+  tipo: PagoEspecialTipo;
+  desde: string; // ISO, incluida
+  hasta: string; // ISO, incluida; un solo pago: la misma que desde
+  importe: number;
+  aviso?: string;
+  avisoDiasAntes?: number;
+}
+
 export interface IRecurringItem {
   _id: string;
   grupo_id: string;
@@ -35,6 +48,7 @@ export interface IRecurringItem {
   prorrateoDesde?: string; // desde cuándo se aparta: hoy al activarla, o la fecha que se elija (no pasada)
   aviso?: string;          // algo que hacer a mano antes de cada fecha (pedir una amortización…)
   avisoDiasAntes?: number; // con cuántos días de antelación se recuerda (por defecto 3)
+  pagosEspeciales?: IPagoEspecial[];
 }
 
 /** Algo que hacer a mano en el banco: lo de una partida con aviso, o mover dinero de la hucha. */
@@ -65,6 +79,7 @@ export interface IBudgetLine<E extends string> {
   estado: E;
   movimiento_id?: string;
   deHucha?: number; // parte que se paga con lo apartado
+  extra?: number;   // parte que son pagos extra
 }
 
 export interface IReserveLine {
@@ -129,6 +144,7 @@ export interface IForecastBill {
   ultima: boolean; // no vuelve a tocar después de este ciclo
   nueva: boolean;  // empieza en este ciclo
   deHucha?: number; // lo que se paga con lo apartado en su hucha
+  extra?: number;   // parte del importe que son pagos extra
   simulada?: boolean; // partida inventada en un ensayo
 }
 

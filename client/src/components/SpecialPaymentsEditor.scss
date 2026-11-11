@@ -1,0 +1,160 @@
+@use 'sass:map';
+@use 'abstracts/variables' as *;
+@use 'abstracts/mixins' as *;
+
+// ============================================
+// PAGOS ESPECIALES DE UNA PARTIDA (BEM: .special-payments)
+// ============================================
+
+.special-payments {
+  display: flex;
+  flex-direction: column;
+  gap: map.get($spacing-scale, 3);
+
+  // Cada tramo en su recuadro
+  &__item {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 3);
+    min-width: 0;
+    margin: 0;
+    padding: map.get($spacing-scale, 3);
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+  }
+
+  &__legend {
+    padding: 0 map.get($spacing-scale, 1);
+    font-size: map.get($font-sizes, xs);
+    font-weight: map.get($font-weights, semibold);
+    color: $color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__types {
+    display: grid;
+    flex: 1;
+    grid-template-columns: 1fr 1fr;
+    gap: map.get($spacing-scale, 1);
+    padding: map.get($spacing-scale, 1);
+    background: $color-gray-100;
+    border-radius: $border-radius;
+  }
+
+  &__type {
+    min-height: 2.5rem;
+    padding: 0 map.get($spacing-scale, 2);
+    font-family: inherit;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-gray-700;
+    background: transparent;
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+
+    &--active {
+      color: $color-primary;
+      background: white;
+      box-shadow: $box-shadow-sm;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 1px;
+    }
+  }
+
+  &__remove {
+    @include icon-button;
+    color: $color-negative;
+    background: transparent;
+
+    &:hover {
+      background: rgba($color-negative, 0.08);
+    }
+  }
+
+  // Dos campos lado a lado; en pantallas muy estrechas, uno debajo de otro
+  &__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: map.get($spacing-scale, 3);
+
+    @media (max-width: 340px) {
+      grid-template-columns: 1fr;
+    }
+
+    // El texto del aviso ancho; los días, estrechos
+    &--reminder {
+      grid-template-columns: minmax(0, 1fr) 5.5rem;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 1);
+    min-width: 0;
+  }
+
+  &__label {
+    @include field-label;
+  }
+
+  &__input {
+    @include text-input;
+
+    &--amount {
+      padding-right: 2.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &__amount {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__currency {
+    position: absolute;
+    right: map.get($spacing-scale, 3);
+    color: $color-text-muted;
+    pointer-events: none;
+  }
+
+  &__add {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: map.get($spacing-scale, 1);
+    min-height: 2.75rem;
+    padding: 0 map.get($spacing-scale, 3);
+    font-family: inherit;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-primary;
+    background: rgba($color-primary, 0.08);
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba($color-primary, 0.15);
+    }
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: map.get($font-sizes, sm);
+    color: $color-text-muted;
+  }
+}

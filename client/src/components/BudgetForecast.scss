@@ -270,5 +270,11 @@
       color: $color-text-muted;
       background: $color-gray-100;
     }
+
+    // Pagos especiales que se suman a la cuota
+    &--extra {
+      color: $color-secondary;
+      background: rgba($color-secondary, 0.08);
+    }
   }
 }

@@ -49,6 +49,16 @@ const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha AAAA-MM-DD');
 const amount = z.number().positive().describe('Importe en euros, mayor que 0');
 const categories = z.array(z.string().min(1)).describe('Categorías, p. ej. ["Comida", "Restaurantes"]');
 
+// Tramos en que una partida se paga distinto (la lista entera sustituye a la anterior)
+const specials = z.array(z.object({
+  tipo: z.enum(['cuota', 'extra']).describe('cuota: en esas fechas se paga este importe en vez del normal (sube la cuota de la tarjeta); extra: se paga además de la cuota (amortización anticipada)'),
+  desde: ymd.describe('Primera fecha de pago del tramo (incluida)'),
+  hasta: ymd.optional().describe('Última fecha de pago del tramo (incluida); sin ella, solo la de desde'),
+  importe: amount,
+  aviso: z.string().max(200).optional().describe('Algo que hacer a mano antes de esas fechas; manda sobre el aviso de la partida'),
+  avisoDiasAntes: z.number().int().min(0).max(31).optional()
+})).max(50)
+
 const idOf = (v: string | { _id: string }) => (typeof v === 'string' ? v : String(v._id));
 const day = (iso: string) => iso.slice(0, 10);
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -409,7 +419,7 @@ export const tools: ToolDef[] = [
   tool({
     name: 'create_recurring_item',
     title: 'Crear partida fija',
-    description: 'Añade un ingreso o una factura fija a un grupo personal.',
+    description: 'Añade un ingreso o una factura fija a un grupo personal. Si la cuota cambia en fechas concretas o hay pagos extra (amortizaciones), van en pagosEspeciales de la misma partida, no en partidas aparte.',
     input: {
       groupId: id,
       tipo: z.enum(['ingreso', 'factura']),
@@ -422,7 +432,8 @@ export const tools: ToolDef[] = [
       prorratear: z.boolean().optional().describe('Factura no mensual, o mensual con fechaFin (cuotas de un aplazamiento): apartar cada ciclo una parte en una hucha y pagarla de ahí'),
       prorrateoDesde: ymd.optional().describe('Con prorratear: desde cuándo empieza a apartar (hoy o después; por defecto hoy)'),
       aviso: z.string().max(200).optional().describe('Algo que hacer a mano antes de cada fecha (p. ej. pedir al banco la amortización anticipada); se recuerda en la app y por push'),
-      avisoDiasAntes: z.number().int().min(0).max(31).optional().describe('Con cuántos días de antelación se recuerda el aviso (por defecto 3)')
+      avisoDiasAntes: z.number().int().min(0).max(31).optional().describe('Con cuántos días de antelación se recuerda el aviso (por defecto 3)'),
+      pagosEspeciales: specials.optional().describe('Tramos de fechas con otra cuota o con un pago extra (y su aviso), dentro de la misma partida')
     },
     kind: 'write',
     run: (api, { groupId, ...data }) => api.post(`/groups/${groupId}/recurring-items`, defined(data))
@@ -444,7 +455,8 @@ export const tools: ToolDef[] = [
       prorratear: z.boolean().optional().describe('Factura no mensual, o mensual con fechaFin (cuotas de un aplazamiento): apartar cada ciclo una parte en una hucha y pagarla de ahí'),
       prorrateoDesde: ymd.nullable().optional().describe('Con hucha: desde cuándo empieza a apartar (no pasada); null la vuelve a hoy'),
       aviso: z.string().max(200).nullable().optional().describe('Algo que hacer a mano antes de cada fecha; null o vacío lo quita'),
-      avisoDiasAntes: z.number().int().min(0).max(31).optional().describe('Con cuántos días de antelación se recuerda el aviso')
+      avisoDiasAntes: z.number().int().min(0).max(31).optional().describe('Con cuántos días de antelación se recuerda el aviso'),
+      pagosEspeciales: specials.nullable().optional().describe('Sustituye la lista entera de pagos especiales; null o [] los quita')
     },
     kind: 'write',
     run: (api, { itemId, ...data }) => api.put(`/recurring-items/${itemId}`, defined(data))

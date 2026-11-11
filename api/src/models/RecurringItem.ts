@@ -1,7 +1,20 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Frecuencia, FRECUENCIAS } from '../utils/budgetCycle';
+import { Frecuencia, FRECUENCIAS, PAGO_ESPECIAL_TIPOS, PagoEspecialTipo } from '../utils/budgetCycle';
 
 export type RecurringTipo = 'ingreso' | 'factura';
+
+// Un tramo de fechas en que la partida se paga distinto: otra cuota (sustituye al importe,
+// como cuando sube la cuota de la tarjeta) o un pago extra que se suma (una amortización
+// anticipada del préstamo). Puede llevar su propio aviso para esas fechas.
+export interface IPagoEspecial {
+  _id?: mongoose.Types.ObjectId;
+  tipo: PagoEspecialTipo;
+  desde: Date;             // Primera fecha del tramo (incluida)
+  hasta: Date;             // Última fecha del tramo (incluida); un solo pago: la misma
+  importe: number;
+  aviso?: string;
+  avisoDiasAntes?: number;
+}
 
 // Partida fija de un grupo personal: la nómina, el alquiler, la luz, Netflix...
 // No genera nada por sí sola: el usuario la confirma cada ciclo y entonces se crea
@@ -20,7 +33,17 @@ export interface IRecurringItem extends Document {
   prorrateoDesde?: Date;    // Cuándo se activó el prorrateo: la hucha empieza a llenarse en ese ciclo
   aviso?: string;           // Algo que hacer a mano antes de cada fecha (pedir una amortización, cambiar una cuota)
   avisoDiasAntes?: number;  // Cuántos días antes empieza a recordarse (por defecto 3)
+  pagosEspeciales?: IPagoEspecial[];
 }
+
+const PagoEspecialSchema = new Schema({
+  tipo: { type: String, enum: PAGO_ESPECIAL_TIPOS, required: true },
+  desde: { type: Date, required: true },
+  hasta: { type: Date, required: true },
+  importe: { type: Number, required: true, min: [0.01, 'El importe debe ser mayor a 0'] },
+  aviso: { type: String, trim: true, maxlength: 200 },
+  avisoDiasAntes: { type: Number, min: 0, max: 31 }
+});
 
 const RecurringItemSchema: Schema = new Schema({
   grupo_id: { type: Schema.Types.ObjectId, ref: 'Group', required: true, index: true },
@@ -35,7 +58,8 @@ const RecurringItemSchema: Schema = new Schema({
   prorratear: { type: Boolean, default: false },
   prorrateoDesde: { type: Date, required: false },
   aviso: { type: String, trim: true, maxlength: 200 },
-  avisoDiasAntes: { type: Number, min: 0, max: 31 }
+  avisoDiasAntes: { type: Number, min: 0, max: 31 },
+  pagosEspeciales: { type: [PagoEspecialSchema], default: undefined }
 });
 
 export default mongoose.model<IRecurringItem>('RecurringItem', RecurringItemSchema);

@@ -66,6 +66,26 @@ describe('BudgetReminderService', () => {
     expect(await setup('2026-11-24T10:00:00Z', data).service.list(groupId, userId)).toEqual([]);
   });
 
+  it('reminds what a special payment asks for, only on its dates', async () => {
+    const visa = {
+      _id: 'visa', nombre: 'Visa',
+      pagosEspeciales: [{ tipo: 'cuota', desde: new Date('2026-12-01T00:00:00Z'), hasta: new Date('2026-12-01T00:00:00Z'), importe: 110, aviso: 'Pon la cuota a 110 €', avisoDiasAntes: 7 }]
+    };
+    (RecurringItem.find as any).mockResolvedValue([visa]);
+    const data = summaries({
+      current: [line('visa', 'Visa', '2026-11-01', 43)],
+      next: [line('visa', 'Visa', '2026-12-01', 110), line('visa', 'Visa', '2026-12-15', 43)]
+    });
+    const reminders = await setup('2026-11-25T10:00:00Z', data).service.list(groupId, userId);
+    expect(reminders.map(r => [r.clave, r.titulo])).toEqual([['partida:visa:2026-12-01', 'Pon la cuota a 110 €']]);
+  });
+
+  it('says how much of a payment is extra', async () => {
+    const data = summaries({ next: [line('extra', 'Préstamo', '2026-12-01', 559.26, { extra: 466.89 })] });
+    const [reminder] = await setup('2026-11-30T10:00:00Z', data).service.list(groupId, userId);
+    expect(plain(reminder.detalle)).toBe('Extra préstamo · 559,26 € (466,89 € extra) · 1 dic');
+  });
+
   it('says what to move into and out of the bank sinking fund', async () => {
     (RecurringItem.find as any).mockResolvedValue([]);
     const data = summaries({

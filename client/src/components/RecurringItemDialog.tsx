@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Dialog from './Dialog';
 import CategoryPicker from './CategoryPicker';
+import SpecialPaymentsEditor, { parseRows, toRows } from './SpecialPaymentsEditor';
 import { FRECUENCIA_LABELS, Frecuencia, IRecurringItem, RecurringTipo } from '../types/budget';
 import { RecurringItemInput } from '../utils/budgetApi';
 import { todayYmd } from '../utils/format';
@@ -36,6 +37,9 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ token, item, 
   const [desde, setDesde] = useState(savedDesde);
   const [aviso, setAviso] = useState(item?.aviso ?? '');
   const [avisoDias, setAvisoDias] = useState(String(item?.avisoDiasAntes ?? 3));
+  const hadSpecials = !!item?.pagosEspeciales?.length;
+  const [conEspeciales, setConEspeciales] = useState(hadSpecials);
+  const [especiales, setEspeciales] = useState(() => toRows(item?.pagosEspeciales));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -66,6 +70,9 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ token, item, 
     const dias = Number(avisoDias);
     if (recordatorio && !(Number.isInteger(dias) && dias >= 0 && dias <= 31)) return setError('Los días de antelación van de 0 a 31.');
     if (huchaOn && desde && desde !== savedDesde && desde < todayYmd()) return setError('La hucha no puede empezar antes de hoy.');
+    const parsed = conEspeciales ? parseRows(especiales, tipo === 'factura') : null;
+    if (parsed && 'error' in parsed) return setError(parsed.error);
+    const pagosEspeciales = parsed ? parsed.data : hadSpecials ? null : undefined;
 
     void run(() => onSave({
       tipo,
@@ -79,7 +86,8 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ token, item, 
       prorratear: huchaOn,
       prorrateoDesde: huchaOn ? desde || (savedDesde ? null : undefined) : undefined,
       aviso: recordatorio || (item?.aviso ? null : undefined),
-      avisoDiasAntes: recordatorio ? dias : undefined
+      avisoDiasAntes: recordatorio ? dias : undefined,
+      pagosEspeciales
     }));
   };
 
@@ -220,6 +228,29 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ token, item, 
             </div>
             <p className="recurring-item__hint">Si lo tienes que hacer tú a mano, te lo recuerdo en «Por hacer» y con un aviso.</p>
           </>
+        )}
+
+        <label className="recurring-item__check">
+          <input
+            className="recurring-item__checkbox"
+            type="checkbox"
+            checked={conEspeciales}
+            onChange={e => {
+              setConEspeciales(e.target.checked);
+              if (e.target.checked && especiales.length === 0) {
+                setEspeciales(toRows([{ tipo: 'cuota', desde: fechaInicio, hasta: '', importe: 0 }]).map(r => ({ ...r, importe: '' })));
+              }
+            }}
+          />
+          <span>Pagos especiales (otra cuota o pagos extra en fechas concretas)</span>
+        </label>
+        {conEspeciales && (
+          <SpecialPaymentsEditor
+            rows={especiales}
+            onChange={setEspeciales}
+            conAvisos={tipo === 'factura'}
+            defaultDesde={fechaInicio}
+          />
         )}
 
         {canProrate && (
