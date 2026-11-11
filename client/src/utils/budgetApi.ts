@@ -1,4 +1,4 @@
-import { IBudgetConfig, IBudgetForecast, IBudgetScenario, IBudgetHistory, IBudgetReminder, IBudgetSummary, IIncome, IRecurringItem } from '../types/budget';
+import { IBudgetConfig, IBudgetForecast, IBudgetScenario, IBudgetHistory, IBudgetReminder, IBudgetSummary, IIncome, IPagoEspecial, IRecurringItem } from '../types/budget';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -20,7 +20,8 @@ const request = async <T>(token: string, path: string, init: RequestInit = {}): 
 
 const json = (method: string, data: unknown): RequestInit => ({ method, body: JSON.stringify(data) });
 
-export type RecurringItemInput = Omit<IRecurringItem, '_id' | 'grupo_id' | 'fechaFin' | 'prorrateoDesde' | 'aviso'> & {
+export type RecurringItemInput = Omit<IRecurringItem, '_id' | 'grupo_id' | 'fechaFin' | 'prorrateoDesde' | 'aviso' | 'pagosEspeciales'> & {
+  pagosEspeciales?: IPagoEspecial[] | null; // la lista entera; null la quita
   aviso?: string | null; // vacío o null lo quita
   fechaFin?: string | null;
   prorrateoDesde?: string | null; // sin ella, la hucha empieza hoy; null la vuelve a hoy

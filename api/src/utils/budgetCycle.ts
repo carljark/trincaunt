@@ -7,6 +7,10 @@
 export const FRECUENCIAS = ['mensual', 'bimestral', 'trimestral', 'semestral', 'anual'] as const;
 export type Frecuencia = typeof FRECUENCIAS[number];
 
+// Pagos especiales de una partida: otra cuota en esas fechas, o un extra que se suma
+export const PAGO_ESPECIAL_TIPOS = ['cuota', 'extra'] as const;
+export type PagoEspecialTipo = typeof PAGO_ESPECIAL_TIPOS[number];
+
 export const MESES_POR_FRECUENCIA: Record<Frecuencia, number> = {
   mensual: 1,
   bimestral: 2,
@@ -97,4 +101,48 @@ export const occurrencesInRange = (
     if (occurrence >= inicio) result.push(occurrence);
   }
   return result;
+};
+
+interface SpecialPayment {
+  tipo: PagoEspecialTipo;
+  desde: Date;
+  hasta: Date;
+  importe: number;
+  aviso?: string;
+  avisoDiasAntes?: number;
+}
+
+export interface PaymentOn {
+  importe: number;          // lo que se paga ese día: cuota + extra
+  cuota: number;            // el importe normal o el del tramo que lo cambia
+  extra: number;            // pagos extra que se suman ese día
+  aviso?: string;           // el de los tramos de ese día o, si no tienen, el de la partida
+  avisoDiasAntes?: number;
+}
+
+/**
+ * Lo que toca pagar en una fecha de la partida según sus pagos especiales: un tramo de
+ * cuota sustituye al importe normal y los extras se suman. Los avisos de los tramos de ese
+ * día mandan sobre el de la partida.
+ */
+export const paymentOn = (
+  item: { importe: number; aviso?: string | null; avisoDiasAntes?: number | null; pagosEspeciales?: SpecialPayment[] | null },
+  date: Date
+): PaymentOn => {
+  const day = toCalendarDate(date).getTime();
+  const tramos = (item.pagosEspeciales ?? []).filter(p =>
+    toCalendarDate(p.desde).getTime() <= day && day <= toCalendarDate(p.hasta).getTime());
+  const cambio = tramos.find(p => p.tipo === 'cuota');
+  const cuota = cambio ? cambio.importe : item.importe;
+  const extra = Math.round(tramos.filter(p => p.tipo === 'extra').reduce((acc, p) => acc + p.importe, 0) * 100) / 100;
+  const conAviso = tramos.filter(p => p.aviso?.trim());
+  const dias = conAviso.map(p => p.avisoDiasAntes).filter((d): d is number => typeof d === 'number');
+  return {
+    importe: Math.round((cuota + extra) * 100) / 100,
+    cuota,
+    extra,
+    ...(conAviso.length
+      ? { aviso: conAviso.map(p => p.aviso!.trim()).join(' · '), ...(dias.length ? { avisoDiasAntes: Math.max(...dias) } : {}) }
+      : item.aviso ? { aviso: item.aviso, ...(item.avisoDiasAntes != null ? { avisoDiasAntes: item.avisoDiasAntes } : {}) } : {})
+  };
 };

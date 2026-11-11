@@ -212,7 +212,11 @@ export class AssistantService {
         fechaInicio: ymd(i.fechaInicio), fechaFin: i.fechaFin ? ymd(i.fechaFin) : undefined,
         categoria: i.categoria, activo: i.activo, hucha: i.prorratear || undefined,
         huchaDesde: i.prorratear && i.prorrateoDesde ? ymd(i.prorrateoDesde) : undefined,
-        aviso: i.aviso || undefined, avisoDiasAntes: i.aviso ? i.avisoDiasAntes ?? 3 : undefined
+        aviso: i.aviso || undefined, avisoDiasAntes: i.aviso ? i.avisoDiasAntes ?? 3 : undefined,
+        // cuota: sustituye al importe en esas fechas; extra: se suma
+        pagosEspeciales: i.pagosEspeciales?.length
+          ? i.pagosEspeciales.map(p => ({ tipo: p.tipo, desde: ymd(p.desde), hasta: ymd(p.hasta), importe: p.importe, aviso: p.aviso || undefined }))
+          : undefined
       }));
       datos.ingresosSueltos = incomes.map(i => ({ id: idOf(i._id), fecha: ymd(i.fecha), descripcion: i.descripcion, importe: i.monto }));
       if (resumen) {

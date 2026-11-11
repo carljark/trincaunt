@@ -169,6 +169,7 @@ const BudgetForecast: React.FC<BudgetForecastProps> = ({ groupId, token, refresh
                                 {t.nueva && <span className="budget-forecast__badge budget-forecast__badge--new">nueva</span>}
                                 {t.ultima && <span className="budget-forecast__badge budget-forecast__badge--last">última</span>}
                                 {!!t.deHucha && <span className="budget-forecast__badge budget-forecast__badge--fund">de la hucha</span>}
+                                {!!t.extra && <span className="budget-forecast__badge budget-forecast__badge--extra">{formatEuros(t.extra)} extra</span>}
                               </span>
                               <span className="budget-forecast__detail-amount">{formatEuros(t.importe)}</span>
                             </li>

@@ -1,4 +1,4 @@
-import { cycleContaining, dateOn, daysBetween, occurrencesInRange, todayIn, toCalendarDate } from '../../src/utils/budgetCycle';
+import { cycleContaining, dateOn, daysBetween, occurrencesInRange, paymentOn, todayIn, toCalendarDate } from '../../src/utils/budgetCycle';
 
 const d = (s: string) => new Date(`${s}T00:00:00.000Z`);
 const ymd = (date: Date) => date.toISOString().slice(0, 10);
@@ -111,6 +111,34 @@ describe('budgetCycle', () => {
     it('counts whole days', () => {
       expect(daysBetween(d('2026-10-28'), d('2026-11-28'))).toBe(31);
       expect(daysBetween(d('2026-02-28'), d('2026-03-31'))).toBe(31);
+    });
+  });
+
+  describe('paymentOn', () => {
+    const u = (x: string) => new Date(`${x}T00:00:00.000Z`);
+    const prestamo = {
+      importe: 92.37,
+      aviso: 'Revisa el recibo',
+      avisoDiasAntes: 2,
+      pagosEspeciales: [
+        { tipo: 'extra' as const, desde: u('2027-08-01'), hasta: u('2027-08-01'), importe: 466.89, aviso: 'Pide la amortización', avisoDiasAntes: 5 },
+        { tipo: 'extra' as const, desde: u('2027-09-01'), hasta: u('2027-10-01'), importe: 630 },
+        { tipo: 'cuota' as const, desde: u('2027-11-01'), hasta: u('2027-11-01'), importe: 50, aviso: 'Última cuota' }
+      ]
+    };
+
+    it('uses the normal amount and reminder outside every special payment', () => {
+      expect(paymentOn(prestamo, u('2027-07-01'))).toEqual({ importe: 92.37, cuota: 92.37, extra: 0, aviso: 'Revisa el recibo', avisoDiasAntes: 2 });
+    });
+
+    it('adds extras on top of the instalment and lets their reminder win', () => {
+      expect(paymentOn(prestamo, u('2027-08-01'))).toEqual({ importe: 559.26, cuota: 92.37, extra: 466.89, aviso: 'Pide la amortización', avisoDiasAntes: 5 });
+      // Tramo de varias fechas, ambas incluidas; sin aviso propio sirve el de la partida
+      expect(paymentOn(prestamo, u('2027-10-01'))).toMatchObject({ importe: 722.37, extra: 630, aviso: 'Revisa el recibo' });
+    });
+
+    it('replaces the instalment with a «cuota» special payment', () => {
+      expect(paymentOn(prestamo, u('2027-11-01'))).toEqual({ importe: 50, cuota: 50, extra: 0, aviso: 'Última cuota' });
     });
   });
 });

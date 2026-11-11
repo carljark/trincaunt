@@ -8,11 +8,13 @@ import { AppError } from '../utils/AppError';
 import {
   Cycle,
   FRECUENCIAS,
+  PAGO_ESPECIAL_TIPOS,
   cycleAt,
   cycleContaining,
   cycleIndex,
   daysBetween,
   occurrencesInRange,
+  paymentOn,
   toCalendarDate,
   todayIn
 } from '../utils/budgetCycle';
@@ -43,6 +45,7 @@ export interface BudgetLine<E> {
   estado: E;
   movimiento_id?: string; // Gasto o ingreso real, si existe
   deHucha?: number;       // Parte de la factura que se paga con lo apartado (factura prorrateada)
+  extra?: number;         // Parte del importe que son pagos extra (pagos especiales)
 }
 
 /** Hucha de una factura prorrateada en un ciclo. */
@@ -119,6 +122,7 @@ export interface ForecastBill {
   ultima: boolean;   // no vuelve a tocar después de este ciclo
   nueva: boolean;    // empieza en este ciclo (nunca en el ciclo en curso)
   deHucha?: number;  // lo que se paga con lo apartado en su hucha
+  extra?: number;    // parte del importe que son pagos extra
   simulada?: boolean; // partida inventada en un escenario, no existe de verdad
 }
 
@@ -164,7 +168,7 @@ const SCENARIO_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase('es');
 
-const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo', 'prorratear', 'prorrateoDesde', 'aviso', 'avisoDiasAntes'] as const;
+const RECURRING_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin', 'categoria', 'activo', 'prorratear', 'prorrateoDesde', 'aviso', 'avisoDiasAntes', 'pagosEspeciales'] as const;
 const INCOME_FIELDS = ['descripcion', 'monto', 'fecha'] as const;
 
 const ymd = (date: Date) => date.toISOString().slice(0, 10);
@@ -415,6 +419,7 @@ export class BudgetService {
             ultima,
             nueva,
             ...(l.deHucha ? { deHucha: l.deHucha } : {}),
+            ...(l.extra ? { extra: l.extra } : {}),
             ...(l.recurrente_id && simuladas.has(l.recurrente_id) ? { simulada: true } : {}),
             temporal: !!item?.fechaFin
           };
@@ -578,9 +583,9 @@ export class BudgetService {
       const next = dateCycles.findIndex(c => c >= k);
       if (next === -1) cuota = 0;
       else if (plan) {
-        const pendientes = dateCycles.length - next;
-        cuota = Math.max(0, round2((item.importe * pendientes - saldo) / (dateCycles[dateCycles.length - 1] - k + 1)));
-      } else cuota = Math.max(0, round2((item.importe - saldo) / (dateCycles[next] - k + 1)));
+        const restante = dates.slice(next).reduce((acc, d) => acc + paymentOn(item, d).importe, 0);
+        cuota = Math.max(0, round2((restante - saldo) / (dateCycles[dateCycles.length - 1] - k + 1)));
+      } else cuota = Math.max(0, round2((paymentOn(item, dates[next]).importe - saldo) / (dateCycles[next] - k + 1)));
       saldo = round2(saldo + cuota);
       lines = this.buildLines([item], own.filter(m => inCycle(m.fecha, cycle)), cycle, 'pagada', 'pendiente');
       cubiertos = lines.map(line => {
@@ -594,7 +599,7 @@ export class BudgetService {
     const after = dates.find((_, i) => dateCycles[i] > last);
     const proximoPago = pending !== -1
       ? { fecha: lines[pending].fecha, importe: lines[pending].importe, cubierto: cubiertos[pending] }
-      : after ? { fecha: ymd(after), importe: round2(item.importe), cubierto: Math.min(saldo, round2(item.importe)) } : null;
+      : after ? { fecha: ymd(after), importe: round2(paymentOn(item, after).importe), cubierto: Math.min(saldo, round2(paymentOn(item, after).importe)) } : null;
     return { cuota, saldo, cubiertos, proximoPago };
   }
 
@@ -623,7 +628,10 @@ export class BudgetService {
     for (const item of items.filter(i => i.activo)) {
       const covered = movements.filter(m => m.recurrente_id === idOf(item._id)).length;
       occurrencesInRange(item, cycle).slice(covered).forEach(date => {
-        lines.push({ recurrente_id: idOf(item._id), nombre: item.nombre, fecha: ymd(date), importe: round2(item.importe), estado: pendingState });
+        const { importe, extra } = paymentOn(item, date);
+        lines.push({
+          recurrente_id: idOf(item._id), nombre: item.nombre, fecha: ymd(date), importe: round2(importe), estado: pendingState, ...(extra ? { extra } : {})
+        });
       });
     }
 
@@ -688,7 +696,41 @@ export class BudgetService {
       if (!Number.isInteger(dias) || dias < 0 || dias > 31) throw new AppError('Los días de antelación deben estar entre 0 y 31', 400);
       clean.avisoDiasAntes = dias;
     }
+    if (clean.pagosEspeciales !== undefined) clean.pagosEspeciales = this.validateSpecials(clean.pagosEspeciales);
     return clean;
+  }
+
+  /**
+   * Pagos especiales: la lista entera (null o [] los quita). Cada tramo dice si cambia la
+   * cuota o suma un extra, entre qué fechas (incluidas), cuánto y, si hace falta, su aviso.
+   */
+  private validateSpecials(value: unknown) {
+    if (value === null) return [];
+    if (!Array.isArray(value)) throw new AppError('pagosEspeciales debe ser una lista', 400);
+    if (value.length > 50) throw new AppError('Una partida admite hasta 50 pagos especiales', 400);
+    return value.map((raw, i) => {
+      const p = (raw ?? {}) as Record<string, unknown>;
+      const n = i + 1;
+      if (!PAGO_ESPECIAL_TIPOS.includes(p.tipo as any)) throw new AppError(`Pago especial ${n}: el tipo debe ser cuota o extra`, 400);
+      const desde = new Date(p.desde as string);
+      const hasta = new Date((p.hasta ?? p.desde) as string);
+      if (Number.isNaN(desde.getTime()) || Number.isNaN(hasta.getTime())) throw new AppError(`Pago especial ${n}: fecha no válida`, 400);
+      if (hasta < desde) throw new AppError(`Pago especial ${n}: la fecha final no puede ser anterior a la inicial`, 400);
+      if (!(Number(p.importe) > 0)) throw new AppError(`Pago especial ${n}: el importe debe ser mayor a 0`, 400);
+      const aviso = typeof p.aviso === 'string' ? p.aviso.trim() : '';
+      if (aviso.length > 200) throw new AppError(`Pago especial ${n}: el aviso no puede pasar de 200 caracteres`, 400);
+      const dias = p.avisoDiasAntes === undefined || p.avisoDiasAntes === null ? undefined : Number(p.avisoDiasAntes);
+      if (dias !== undefined && (!Number.isInteger(dias) || dias < 0 || dias > 31)) {
+        throw new AppError(`Pago especial ${n}: los días de antelación deben estar entre 0 y 31`, 400);
+      }
+      return {
+        tipo: p.tipo,
+        desde: toCalendarDate(p.desde as string),
+        hasta: toCalendarDate((p.hasta ?? p.desde) as string),
+        importe: round2(Number(p.importe)),
+        ...(aviso ? { aviso, ...(dias !== undefined ? { avisoDiasAntes: dias } : {}) } : {})
+      };
+    }).sort((a, b) => a.desde.getTime() - b.desde.getTime());
   }
 
   /**
@@ -763,10 +805,10 @@ export class BudgetService {
     data: { monto?: number; fecha?: string }
   ): Promise<{ tipo: 'gasto'; data: IExpense } | { tipo: 'ingreso'; data: IIncome }> {
     const { item, group } = await this.getOwnedRecurringItem(itemId, userId);
-    const monto = data.monto !== undefined ? Number(data.monto) : item.importe;
-    if (!(monto > 0)) throw new AppError('El monto debe ser mayor a 0', 400);
     if (data.fecha !== undefined && Number.isNaN(new Date(data.fecha).getTime())) throw new AppError('Fecha no válida', 400);
     const fecha = data.fecha ? toCalendarDate(data.fecha) : todayIn('Europe/Madrid', this.now());
+    const monto = data.monto !== undefined ? Number(data.monto) : paymentOn(item, fecha).importe;
+    if (!(monto > 0)) throw new AppError('El monto debe ser mayor a 0', 400);
 
     if (item.tipo === 'factura') {
       const expense = await Expense.create({

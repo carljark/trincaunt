@@ -155,6 +155,7 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
           <span className={`budget__line-meta ${overdue ? 'budget__line-meta--overdue' : ''}`}>
             {formatShortDate(line.fecha)} · {done ? (tipo === 'factura' ? 'Pagada' : 'Cobrado') : overdue ? 'Sin confirmar' : (tipo === 'factura' ? 'Pendiente' : 'Previsto')}
             {line.deHucha ? ` · ${formatEuros(line.deHucha)} de la hucha` : ''}
+            {line.extra ? ` · ${formatEuros(line.extra)} extra` : ''}
           </span>
         </span>
         <span className="budget__line-amount">{formatEuros(line.importe)}</span>
@@ -511,6 +512,9 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
                           <span className="budget__line-meta">
                             {FRECUENCIA_LABELS[item.frecuencia]} · día {Number(item.fechaInicio.slice(8, 10))}
                             {item.prorratear ? huchaLabel(item.prorrateoDesde) : ''}
+                            {item.pagosEspeciales?.length
+                              ? ` · ${item.pagosEspeciales.length} ${item.pagosEspeciales.length === 1 ? 'pago especial' : 'pagos especiales'}`
+                              : ''}
                             {item.activo ? '' : ' · desactivada'}
                           </span>
                         </span>
