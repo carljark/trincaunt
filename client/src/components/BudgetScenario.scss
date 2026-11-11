@@ -166,6 +166,12 @@
       border: 2px dashed $color-positive;
     }
 
+    // Las pequeñas juntas: gris claro para que no compitan con las sueltas
+    &--others {
+      color: $color-gray-700;
+      background: $color-gray-200;
+    }
+
     &--removed {
       color: $color-gray-600;
       background: $color-gray-300;
@@ -193,6 +199,19 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     opacity: 0.9;
+  }
+
+  &__link {
+    align-self: flex-start;
+    min-height: 2.75rem;
+    padding: 0;
+    font-family: inherit;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-primary;
+    background: none;
+    border: none;
+    cursor: pointer;
   }
 
   &__outcome {
