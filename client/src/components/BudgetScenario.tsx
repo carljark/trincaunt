@@ -211,14 +211,15 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
           <PlusIcon />
         </button>
       </div>
+      {error && <p className="budget-scenario__error" role="alert">{error}</p>}
+
+      {before && after && <Score before={before} after={after} changed={changed} />}
+
+      <Arena bubbles={bubbles} onToggle={toggle} onOpen={() => setAbiertas(true)} />
       <p className="budget-scenario__text">
         Arrastra una partida a la papelera (o tócala) para ver qué pasaría sin ella, o inventa una con «+». Es un ensayo: no
         cambia nada hasta que lo apliques.
       </p>
-
-      {error && <p className="budget-scenario__error" role="alert">{error}</p>}
-
-      <Arena bubbles={bubbles} onToggle={toggle} onOpen={() => setAbiertas(true)} />
       {abiertas && muchas && (
         <button type="button" className="budget-scenario__link" onClick={() => setAbiertas(false)}>
           Juntar otra vez las pequeñas
@@ -234,9 +235,7 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
         </p>
       )}
 
-      {before && after && (
-        <Outcome base={base!} shown={shown!} before={before} after={after} changed={changed} />
-      )}
+      {base && shown && <Outcome base={base} shown={shown} changed={changed} />}
 
       {changed && (
         <div className="budget-scenario__actions">
@@ -463,18 +462,55 @@ const Arena: React.FC<ArenaProps> = ({ bubbles, onToggle, onOpen }) => {
 
 // ---------- Resultado ----------
 
-interface OutcomeProps {
-  base: IBudgetForecast;
-  shown: IBudgetForecast;
+interface ScoreProps {
   before: ReturnType<typeof stats>;
   after: ReturnType<typeof stats>;
   changed: boolean;
 }
 
+// Las cifras del ensayo, pegadas a las pelotitas y fijas arriba al desplazarse por el tablero
+const Score: React.FC<ScoreProps> = ({ before, after, changed }) => {
+  const diff = Math.round((after.media - before.media) * 100) / 100;
+  return (
+    <div className="budget-scenario__score" aria-live="polite">
+      <p className="budget-scenario__score-main">
+        <span className="budget-scenario__score-label">Para gastar cada ciclo{changed ? ', con el ensayo' : ''}</span>
+        <span className={`budget-scenario__score-amount ${after.media < 0 ? 'budget-scenario__score-amount--negative' : ''}`}>
+          {signed(after.media)}
+        </span>
+      </p>
+      <p className="budget-scenario__score-side">
+        {changed ? (
+          <>
+            <span className={`budget-scenario__delta budget-scenario__delta--${diff > 0 ? 'up' : diff < 0 ? 'down' : 'same'}`}>
+              {diff === 0 ? 'Igual que ahora' : `${diff > 0 ? '+' : '−'}${formatEuros(Math.abs(diff))} cada ciclo`}
+            </span>
+            <span className="budget-scenario__score-detail">Ahora: {signed(before.media)}</span>
+          </>
+        ) : (
+          <span className="budget-scenario__score-detail">Media del próximo año</span>
+        )}
+        {after.peor && (
+          <span className={`budget-scenario__score-detail ${after.negativos > 0 ? 'budget-scenario__score-detail--negative' : ''}`}>
+            {after.negativos > 0
+              ? `${after.negativos} ${after.negativos === 1 ? 'ciclo' : 'ciclos'} en negativo`
+              : `Más justo: ${formatShortDate(after.peor.inicio)} · ${signed(after.peor.disponible)}`}
+          </span>
+        )}
+      </p>
+    </div>
+  );
+};
+
+interface OutcomeProps {
+  base: IBudgetForecast;
+  shown: IBudgetForecast;
+  changed: boolean;
+}
+
 const CHART_HEIGHT = 120;
 
-const Outcome: React.FC<OutcomeProps> = ({ base, shown, before, after, changed }) => {
-  const diff = Math.round((after.media - before.media) * 100) / 100;
+const Outcome: React.FC<OutcomeProps> = ({ base, shown, changed }) => {
   const cycles = shown.ciclos.filter(c => !c.enCurso);
   const baseByStart = new Map(base.ciclos.map(c => [c.inicio, c.disponible]));
   const values = cycles.flatMap(c => [c.disponible, baseByStart.get(c.inicio) ?? 0]);
@@ -486,35 +522,6 @@ const Outcome: React.FC<OutcomeProps> = ({ base, shown, before, after, changed }
 
   return (
     <div className="budget-scenario__outcome">
-      <p className="budget-scenario__headline">
-        <span className="budget-scenario__headline-label">
-          {changed ? 'Con el ensayo, te quedaría para gastar en cada ciclo' : 'Te queda para gastar en cada ciclo'} (media del próximo año)
-        </span>
-        <span className={`budget-scenario__headline-amount ${after.media < 0 ? 'budget-scenario__headline-amount--negative' : ''}`}>
-          {signed(after.media)}
-        </span>
-      </p>
-      {changed && (
-        <p className="budget-scenario__text">
-          Ahora: {signed(before.media)}.{' '}
-          {diff === 0 ? (
-            'No cambia.'
-          ) : (
-            <span className={`budget-scenario__delta budget-scenario__delta--${diff > 0 ? 'up' : 'down'}`}>
-              {formatEuros(Math.abs(diff))} {diff > 0 ? 'más' : 'menos'} cada ciclo.
-            </span>
-          )}
-        </p>
-      )}
-      {after.peor && (
-        <p className="budget-scenario__text">
-          El ciclo más justo empieza el {formatShortDate(after.peor.inicio)}: {signed(after.peor.disponible)}.
-          {after.negativos > 0
-            ? ` ${after.negativos} ${after.negativos === 1 ? 'ciclo acabaría' : 'ciclos acabarían'} en negativo.`
-            : ' Ningún ciclo acaba en negativo.'}
-        </p>
-      )}
-
       {cycles.length > 0 && (
         <figure className="budget-scenario__chart">
           <svg

@@ -220,26 +220,57 @@
     gap: map.get($spacing-scale, 2);
   }
 
-  &__headline {
+  // Marcador: fijo arriba mientras se recorre el tablero, para ver el efecto de cada pelotita
+  &__score {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 2;
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0 map.get($spacing-scale, 2);
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 1) map.get($spacing-scale, 3);
+    margin: 0 (-(map.get($spacing-scale, 2)));
+    padding: map.get($spacing-scale, 2);
+    background: $color-surface;
+    border-radius: $border-radius;
+    box-shadow: 0 1px 0 $color-border;
+  }
+
+  &__score-main,
+  &__score-side {
+    display: flex;
+    flex-direction: column;
     margin: 0;
   }
 
-  &__headline-label {
-    flex-basis: 100%;
-    font-size: map.get($font-sizes, sm);
+  &__score-side {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  &__score-label {
+    font-size: map.get($font-sizes, xs);
     color: $color-text-muted;
   }
 
-  &__headline-amount {
+  &__score-amount {
     @include money;
     font-size: map.get($font-sizes, xl);
+    line-height: 1.2;
     color: $color-gray-900;
 
     &--negative {
+      color: $color-negative;
+    }
+  }
+
+  &__score-detail {
+    font-size: map.get($font-sizes, xs);
+    color: $color-text-muted;
+
+    &--negative {
+      font-weight: map.get($font-weights, semibold);
       color: $color-negative;
     }
   }
@@ -254,6 +285,10 @@
 
     &--down {
       color: $color-negative;
+    }
+
+    &--same {
+      color: $color-text-muted;
     }
   }
 
