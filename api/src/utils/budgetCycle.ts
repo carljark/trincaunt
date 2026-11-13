@@ -51,6 +51,12 @@ export const toCalendarDate = (value: string | Date): Date => {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 };
 
+/** La misma fecha `meses` meses después (antes si es negativo); si el mes es más corto, su último día. */
+export const shiftMonths = (value: Date, meses: number): Date => {
+  const date = toCalendarDate(value);
+  return dateOn(date.getUTCFullYear(), date.getUTCMonth() + meses, date.getUTCDate());
+};
+
 export const daysBetween = (from: Date, to: Date) => Math.round((to.getTime() - from.getTime()) / MS_PER_DAY);
 
 /**

@@ -39,8 +39,8 @@ export const getBudgetForecast = async (req: Request, res: Response, next: NextF
 // «¿Y si…?»: la previsión quitando unas partidas y añadiendo otras inventadas, sin guardar nada
 export const simulateBudgetForecast = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { ciclos = 13, quitar, nuevas } = req.body ?? {};
-    const forecast = await budgetService.getForecast(req.params.groupId, userIdOf(req), Number(ciclos), { quitar, nuevas });
+    const { ciclos = 13, quitar, nuevas, cambiar } = req.body ?? {};
+    const forecast = await budgetService.getForecast(req.params.groupId, userIdOf(req), Number(ciclos), { quitar, nuevas, cambiar });
     res.status(200).json({ status: 'success', data: forecast });
   } catch (error) { next(error); }
 };

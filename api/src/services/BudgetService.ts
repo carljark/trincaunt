@@ -3,7 +3,7 @@ import Group, { IGroup, IGroupPresupuesto, ILimiteCategoria, PRESUPUESTO_POR_DEF
 import CategoryAlias from '../models/CategoryAlias';
 import Expense, { IExpense } from '../models/Expense';
 import Income, { IIncome } from '../models/Income';
-import RecurringItem, { IRecurringItem } from '../models/RecurringItem';
+import RecurringItem, { IPagoEspecial, IRecurringItem } from '../models/RecurringItem';
 import { AppError } from '../utils/AppError';
 import {
   Cycle,
@@ -15,6 +15,7 @@ import {
   daysBetween,
   occurrencesInRange,
   paymentOn,
+  shiftMonths,
   toCalendarDate,
   todayIn
 } from '../utils/budgetCycle';
@@ -150,18 +151,29 @@ export interface BudgetForecast {
 export const MAX_CICLOS_PREVISION = 25;
 
 /**
- * Un «¿y si…?» sobre la previsión: partidas que se quitan (por id) y partidas inventadas
- * que se añaden. No se guarda nada.
+ * Un «¿y si…?» sobre la previsión: partidas que se quitan (por id), partidas inventadas
+ * que se añaden y partidas que se retocan: su importe multiplicado por `escala` y sus fechas
+ * movidas `meses` meses. No se guarda nada.
  */
 export interface BudgetScenario {
   quitar?: unknown;
   nuevas?: unknown;
+  cambiar?: unknown;
+}
+
+export interface ScenarioChange {
+  escala: number;
+  meses: number;
 }
 
 interface ResolvedScenario {
   quitar: Set<string>;
   nuevas: IRecurringItem[];
+  cambiar: Map<string, ScenarioChange>;
 }
+
+export const MAX_ESCALA_ESCENARIO = 10;
+export const MAX_MESES_ESCENARIO = 60;
 
 export const MAX_PARTIDAS_ESCENARIO = 50;
 const SCENARIO_FIELDS = ['tipo', 'nombre', 'importe', 'frecuencia', 'fechaInicio', 'fechaFin'] as const;
@@ -389,11 +401,12 @@ export class BudgetService {
     await this.getBudgetGroup(groupId, userId);
     // Las partidas inventadas se crean una vez, con el mismo id en todos los ciclos
     const resolved = scenario ? this.resolveScenario(scenario) : undefined;
-    const [items, summaries] = await Promise.all([
+    const [stored, summaries] = await Promise.all([
       RecurringItem.find({ grupo_id: groupId, tipo: 'factura' }),
       Promise.all(Array.from({ length: ciclos }, (_, offset) => this.getSummary(groupId, userId, offset, resolved)))
     ]);
-    const byId = new Map([...items, ...(resolved?.nuevas ?? [])].map(i => [idOf(i._id), i]));
+    const items = resolved ? this.applyScenario(stored, resolved) : stored;
+    const byId = new Map(items.map(i => [idOf(i._id), i]));
     const simuladas = new Set((resolved?.nuevas ?? []).map(i => idOf(i._id)));
 
     return {
@@ -447,14 +460,26 @@ export class BudgetService {
    * frecuencia y fechas, sin hucha ni recordatorio), que se crean en memoria con un id nuevo.
    */
   private resolveScenario(scenario: BudgetScenario): ResolvedScenario {
-    const { quitar = [], nuevas = [] } = scenario;
+    const { quitar = [], nuevas = [], cambiar = [] } = scenario;
     if (!Array.isArray(quitar) || !quitar.every(q => typeof q === 'string')) throw new AppError('quitar debe ser una lista de ids', 400);
     if (!Array.isArray(nuevas)) throw new AppError('nuevas debe ser una lista de partidas', 400);
-    if (quitar.length > MAX_PARTIDAS_ESCENARIO || nuevas.length > MAX_PARTIDAS_ESCENARIO) {
+    if (!Array.isArray(cambiar)) throw new AppError('cambiar debe ser una lista de cambios', 400);
+    if (quitar.length > MAX_PARTIDAS_ESCENARIO || nuevas.length > MAX_PARTIDAS_ESCENARIO || cambiar.length > MAX_PARTIDAS_ESCENARIO) {
       throw new AppError(`Un escenario admite hasta ${MAX_PARTIDAS_ESCENARIO} partidas`, 400);
     }
     return {
       quitar: new Set(quitar),
+      cambiar: new Map(cambiar.map(raw => {
+        const { id, escala = 1, meses = 0 } = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+        if (typeof id !== 'string' || !id) throw new AppError('Cada cambio necesita el id de la partida', 400);
+        if (typeof escala !== 'number' || !Number.isFinite(escala) || escala <= 0 || escala > MAX_ESCALA_ESCENARIO) {
+          throw new AppError(`escala debe ser un número mayor que 0 y hasta ${MAX_ESCALA_ESCENARIO}`, 400);
+        }
+        if (!Number.isInteger(meses) || Math.abs(meses as number) > MAX_MESES_ESCENARIO) {
+          throw new AppError(`meses debe ser un número entero entre -${MAX_MESES_ESCENARIO} y ${MAX_MESES_ESCENARIO}`, 400);
+        }
+        return [id, { escala, meses: meses as number }];
+      })),
       nuevas: nuevas.map(raw => {
         const data: Record<string, unknown> = {};
         for (const key of SCENARIO_FIELDS) if (raw && typeof raw === 'object' && key in raw) data[key] = (raw as Record<string, unknown>)[key];
@@ -474,12 +499,27 @@ export class BudgetService {
     };
   }
 
-  /** Las partidas guardadas con el escenario aplicado: las quitadas, como inactivas. */
+  /**
+   * Las partidas guardadas con el escenario aplicado: las quitadas, como inactivas; las
+   * retocadas, con el importe escalado (también el de sus pagos especiales) y las fechas movidas.
+   */
   private applyScenario(items: IRecurringItem[], scenario: ResolvedScenario): IRecurringItem[] {
     const kept = items.map(item => {
-      if (!scenario.quitar.has(idOf(item._id))) return item;
+      const id = idOf(item._id);
+      const cambio = scenario.cambiar.get(id);
+      if (!scenario.quitar.has(id) && !cambio) return item;
       const plain = typeof item.toObject === 'function' ? item.toObject() : { ...item };
-      return { ...plain, activo: false } as IRecurringItem;
+      if (scenario.quitar.has(id)) return { ...plain, activo: false } as IRecurringItem;
+      const { escala, meses } = cambio!;
+      const scale = (n: number) => round2(n * escala);
+      const move = (date: Date) => shiftMonths(date, meses);
+      return {
+        ...plain,
+        importe: scale(plain.importe),
+        fechaInicio: move(plain.fechaInicio),
+        fechaFin: plain.fechaFin ? move(plain.fechaFin) : plain.fechaFin,
+        pagosEspeciales: plain.pagosEspeciales?.map((p: IPagoEspecial) => ({ ...p, importe: scale(p.importe), desde: move(p.desde), hasta: move(p.hasta) }))
+      } as IRecurringItem;
     });
     return [...kept, ...scenario.nuevas];
   }

@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { forceCollide, forceSimulation, forceX, forceY, Simulation, SimulationNodeDatum } from 'd3-force';
 import ConfirmationModal from './ConfirmationModal';
 import ScenarioItemDialog from './ScenarioItemDialog';
-import { PlusIcon, TrashIcon } from './icons';
+import { CloseIcon, PlusIcon, TrashIcon } from './icons';
 import { Frecuencia, IBudgetForecast, ICycleForecastEntry, IRecurringItem, IScenarioItem, RecurringTipo } from '../types/budget';
-import { budgetApi } from '../utils/budgetApi';
-import { formatEuros, formatShortDate } from '../utils/format';
+import { budgetApi, RecurringItemInput } from '../utils/budgetApi';
+import { formatEuros, formatShortDate, todayYmd } from '../utils/format';
+import { MAX_MESES, SIN_RETOQUE, Tweak, isTweaked, monthIndex, niceAmount, paysInMonth, shiftMonths, tweakScenarioItem, tweakedFields } from '../utils/scenario';
 import './BudgetScenario.scss';
 
 interface BudgetScenarioProps {
@@ -29,7 +30,12 @@ interface Bubble {
   quitada: boolean;
   simulada: boolean;
   otras?: boolean;  // las pequeñas juntas: al tocarla se abre
+  importe?: number; // el de la partida, sin retocar (si es una sola)
+  partidas: Payable[]; // para saber en qué meses toca
+  tweak: Tweak;
 }
+
+type Payable = Pick<IRecurringItem, 'frecuencia' | 'fechaInicio' | 'fechaFin' | 'pagosEspeciales'>;
 
 interface BubbleNode extends SimulationNodeDatum {
   id: string;
@@ -73,10 +79,11 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [abiertas, setAbiertas] = useState(false);
+  const [tweaks, setTweaks] = useState<Record<string, Tweak>>({});
+  const [selected, setSelected] = useState<string | null>(null);
   const nextId = useRef(0);
 
   const active = useMemo(() => items.filter(i => i.activo), [items]);
-  const changed = quitar.length > 0 || nuevas.length > 0;
 
   // Lo que suma cada factura en la previsión del próximo año (los ingresos no salen en ella)
   const yearly = useMemo(() => {
@@ -92,20 +99,31 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
       const key = `${item.tipo}:${familyOf(item.nombre).toLocaleLowerCase('es')}`;
       families.set(key, [...(families.get(key) ?? []), item]);
     }
-    const all: Bubble[] = [...families.entries()].map(([key, group]) => ({
-      id: key,
-      ids: group.map(i => i._id),
-      nombre: familyOf(group[0].nombre),
-      titulo: group.length === 1 ? group[0].nombre : familyOf(group[0].nombre),
-      detalle: group.length === 1 ? amountOf(group[0]) : `${group.length} partidas`,
-      peso: group.reduce((acc, i) => acc + (i.tipo === 'factura' && yearly ? yearly.get(i._id) ?? 0 : perYear(i)), 0),
-      tipo: group[0].tipo,
-      quitada: group.every(i => quitar.includes(i._id)),
-      simulada: false
-    }));
-    const inventadas: Bubble[] = nuevas.map(({ id, item }) => ({
-      id, ids: [], nombre: item.nombre, titulo: item.nombre, detalle: amountOf(item), peso: perYear(item), tipo: item.tipo, quitada: false, simulada: true
-    }));
+    const all: Bubble[] = [...families.entries()].map(([key, group]) => {
+      const tweak = tweaks[key] ?? SIN_RETOQUE;
+      return {
+        id: key,
+        ids: group.map(i => i._id),
+        nombre: familyOf(group[0].nombre),
+        titulo: group.length === 1 ? group[0].nombre : familyOf(group[0].nombre),
+        detalle: group.length === 1 ? amountOf({ ...group[0], importe: group[0].importe * tweak.escala }) : `${group.length} partidas`,
+        peso: tweak.escala * group.reduce((acc, i) => acc + (i.tipo === 'factura' && yearly ? yearly.get(i._id) ?? 0 : perYear(i)), 0),
+        tipo: group[0].tipo,
+        quitada: group.every(i => quitar.includes(i._id)),
+        simulada: false,
+        importe: group.length === 1 ? group[0].importe : undefined,
+        partidas: group,
+        tweak
+      };
+    });
+    const inventadas: Bubble[] = nuevas.map(({ id, item }) => {
+      const tweak = tweaks[id] ?? SIN_RETOQUE;
+      const shown = tweakScenarioItem(item, tweak);
+      return {
+        id, ids: [], nombre: item.nombre, titulo: item.nombre, detalle: amountOf(shown), peso: perYear(shown), tipo: item.tipo,
+        quitada: false, simulada: true, importe: item.importe, partidas: [item], tweak
+      };
+    });
     // Las que no tocan en el próximo año no cambian nada en el ensayo
     const visibles = all.filter(b => b.peso > 0 || b.quitada);
     const facturas = visibles.filter(b => b.tipo === 'factura').sort((a, b) => b.peso - a.peso);
@@ -122,10 +140,24 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
       tipo: 'factura',
       quitada: pequenas.every(b => b.quitada),
       simulada: false,
-      otras: true
+      otras: true,
+      partidas: [],
+      tweak: SIN_RETOQUE
     }] : [];
     return { bubbles: [...sueltas, ...otras, ...inventadas], ocultas: all.length - visibles.length, muchas };
-  }, [active, nuevas, quitar, yearly, abiertas]);
+  }, [active, nuevas, quitar, yearly, abiertas, tweaks]);
+
+  // Lo que se manda a simular: los retoques de las guardadas van aparte; las inventadas, ya retocadas
+  const scenario = useMemo(() => {
+    const cambiar = Object.entries(tweaks)
+      .filter(([, t]) => isTweaked(t))
+      .flatMap(([key, t]) => (bubbles.find(b => b.id === key && !b.simulada)?.ids ?? [])
+        .filter(id => !quitar.includes(id))
+        .map(id => ({ id, ...(t.escala !== 1 ? { escala: t.escala } : {}), ...(t.meses !== 0 ? { meses: t.meses } : {}) })));
+    return { quitar, nuevas: nuevas.map(n => tweakScenarioItem(n.item, tweaks[n.id] ?? SIN_RETOQUE)), cambiar };
+  }, [quitar, nuevas, tweaks, bubbles]);
+  const changed = quitar.length > 0 || nuevas.length > 0 || scenario.cambiar.length > 0;
+  const tweaking = bubbles.find(b => b.id === selected && !b.quitada && !b.otras);
 
   // Si una partida desaparece (borrada en otro sitio), deja de estar quitada
   useEffect(() => {
@@ -145,12 +177,12 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
       return;
     }
     const timer = setTimeout(() => {
-      budgetApi.simulateForecast(token, groupId, CICLOS, { quitar, nuevas: nuevas.map(n => n.item) })
+      budgetApi.simulateForecast(token, groupId, CICLOS, scenario)
         .then(f => { setEnsayo(f); setError(null); })
         .catch(err => setError(err instanceof Error ? err.message : 'No se pudo simular.'));
     }, 250);
     return () => clearTimeout(timer);
-  }, [token, groupId, quitar, nuevas, changed, refreshKey]);
+  }, [token, groupId, scenario, changed, refreshKey]);
 
   const toggle = useCallback((bubble: Bubble, quitada: boolean) => {
     if (bubble.simulada) {
@@ -164,6 +196,16 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
     });
   }, []);
 
+  const setTweak = useCallback((id: string, change: Partial<Tweak>) => {
+    setTweaks(prev => ({ ...prev, [id]: { ...(prev[id] ?? SIN_RETOQUE), ...change } }));
+  }, []);
+
+  // Al estirar: el importe en pasos redondos (o de 5 % en 5 % si la pelotita junta varias)
+  const stretch = useCallback((bubble: Bubble, escala: number) => {
+    const next = bubble.importe ? niceAmount(bubble.importe * escala) / bubble.importe : Math.max(0.05, Math.round(escala * 20) / 20);
+    setTweak(bubble.id, { escala: Math.min(10, next) });
+  }, [setTweak]);
+
   const addNueva = (item: IScenarioItem) => {
     setNuevas(prev => [...prev, { id: `nueva-${nextId.current++}`, item }]);
     setAdding(false);
@@ -172,14 +214,23 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
   const reset = () => {
     setQuitar([]);
     setNuevas([]);
+    setTweaks({});
+    setSelected(null);
   };
+
+  // Las guardadas retocadas (y no quitadas), con lo que hay que guardar de cada una
+  const retocadas = active.flatMap(item => {
+    const change = scenario.cambiar.find(c => c.id === item._id);
+    return change ? [{ item, data: tweakedFields(item, { ...SIN_RETOQUE, ...change }) }] : [];
+  });
 
   const apply = async () => {
     setBusy(true);
     try {
       await Promise.all([
         ...quitar.map(id => budgetApi.updateRecurringItem(token, id, { activo: false })),
-        ...nuevas.map(({ item }) => budgetApi.createRecurringItem(token, groupId, { ...item, categoria: [], activo: true }))
+        ...retocadas.map(({ item, data }) => budgetApi.updateRecurringItem(token, item._id, data)),
+        ...scenario.nuevas.map(item => budgetApi.createRecurringItem(token, groupId, { ...item, categoria: [], activo: true }))
       ]);
       reset();
       setConfirming(false);
@@ -215,11 +266,28 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
 
       {before && after && <Score before={before} after={after} changed={changed} />}
 
-      <Arena bubbles={bubbles} onToggle={toggle} onOpen={() => setAbiertas(true)} />
-      <p className="budget-scenario__text">
-        Arrastra una partida a la papelera (o tócala) para ver qué pasaría sin ella, o inventa una con «+». Es un ensayo: no
-        cambia nada hasta que lo apliques.
-      </p>
+      <Arena
+        bubbles={bubbles}
+        selected={tweaking?.id ?? null}
+        onToggle={toggle}
+        onOpen={() => setAbiertas(true)}
+        onSelect={id => setSelected(prev => (prev === id ? null : id))}
+        onStretch={stretch}
+      />
+      {tweaking ? (
+        <TweakPanel
+          key={tweaking.id}
+          bubble={tweaking}
+          onChange={change => setTweak(tweaking.id, change)}
+          onRemove={() => { toggle(tweaking, true); setSelected(null); }}
+          onClose={() => setSelected(null)}
+        />
+      ) : (
+        <p className="budget-scenario__text">
+          Arrastra una partida a la papelera para ver qué pasaría sin ella. Tócala para retocarla: estírala desde el tirador
+          para cambiar el importe o muévela de mes. Con «+» inventas una. Es un ensayo: no cambia nada hasta que lo apliques.
+        </p>
+      )}
       {abiertas && muchas && (
         <button type="button" className="budget-scenario__link" onClick={() => setAbiertas(false)}>
           Juntar otra vez las pequeñas
@@ -255,6 +323,7 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
           title="Aplicar el ensayo"
           message={[
             quitar.length ? `Se desactivarán: ${active.filter(i => quitar.includes(i._id)).map(i => i.nombre).join(', ')}.` : '',
+            retocadas.length ? `Se cambiarán: ${retocadas.map(({ item, data }) => `${item.nombre} (${describeChange(item, data)})`).join(', ')}.` : '',
             nuevas.length ? `Se crearán como partidas fijas: ${nuevas.map(n => n.item.nombre).join(', ')}.` : ''
           ].filter(Boolean).join(' ')}
           confirmLabel="Aplicar"
@@ -266,15 +335,26 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
   );
 };
 
+const describeChange = (item: IRecurringItem, data: Partial<RecurringItemInput>) => [
+  data.importe !== undefined ? amountOf({ ...item, importe: data.importe }) : '',
+  data.fechaInicio ? `${monthsLabel(monthIndex(data.fechaInicio) - monthIndex(item.fechaInicio))}` : ''
+].filter(Boolean).join(', ');
+
+const monthsLabel = (meses: number) =>
+  meses === 0 ? 'en sus fechas' : `${Math.abs(meses)} ${Math.abs(meses) === 1 ? 'mes' : 'meses'} ${meses > 0 ? 'más tarde' : 'antes'}`;
+
 // ---------- Pelotitas ----------
 
 interface ArenaProps {
   bubbles: Bubble[];
+  selected: string | null;
   onToggle: (bubble: Bubble, quitada: boolean) => void;
   onOpen: () => void;
+  onSelect: (id: string) => void;
+  onStretch: (bubble: Bubble, escala: number) => void;
 }
 
-const Arena: React.FC<ArenaProps> = ({ bubbles, onToggle, onOpen }) => {
+const Arena: React.FC<ArenaProps> = ({ bubbles, selected, onToggle, onOpen, onSelect, onStretch }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(320);
   const [, setFrame] = useState(0);
@@ -282,6 +362,8 @@ const Arena: React.FC<ArenaProps> = ({ bubbles, onToggle, onOpen }) => {
   const sim = useRef<Simulation<BubbleNode, undefined> | null>(null);
   const drag = useRef<{ id: string; startX: number; startY: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
+  // Estirando una pelotita desde su tirador: el radio sigue al dedo hasta soltarla
+  const stretching = useRef<{ id: string; r0: number; escala0: number; r: number } | null>(null);
   const [overTrash, setOverTrash] = useState(false);
 
   useEffect(() => {
@@ -325,7 +407,7 @@ const Arena: React.FC<ArenaProps> = ({ bubbles, onToggle, onOpen }) => {
     for (const id of [...map.keys()]) if (!ids.has(id)) map.delete(id);
     const list = bubbles.map((b, i) => {
       const node = map.get(b.id) ?? { id: b.id, r: 0, x: width / 2 + (i % 5 - 2) * 10, y: 20 };
-      node.r = layout.radii.get(b.id)!;
+      node.r = stretching.current?.id === b.id ? stretching.current.r : layout.radii.get(b.id)!;
       map.set(b.id, node);
       return node;
     });
@@ -403,6 +485,43 @@ const Arena: React.FC<ArenaProps> = ({ bubbles, onToggle, onOpen }) => {
     else sim.current?.alpha(0.5).restart();
   };
 
+  const onHandleDown = (e: React.PointerEvent<HTMLSpanElement>, bubble: Bubble) => {
+    if (e.button !== 0) return;
+    const node = nodes.current.get(bubble.id);
+    if (!node) return;
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    node.fx = node.x;
+    node.fy = node.y;
+    stretching.current = { id: bubble.id, r0: node.r, escala0: bubble.tweak.escala, r: node.r };
+  };
+
+  const onHandleMove = (e: React.PointerEvent<HTMLSpanElement>) => {
+    const s = stretching.current;
+    const node = s && nodes.current.get(s.id);
+    const bubble = s && bubbles.find(b => b.id === s.id);
+    if (!s || !node || !bubble) return;
+    const { x, y } = local(e);
+    // El tirador está en diagonal: la distancia al centro es el radio nuevo
+    s.r = Math.max(14, Math.min(width / 2.5, arenaH / 2, Math.hypot(x - (node.x ?? 0), y - (node.y ?? 0))));
+    node.r = s.r;
+    // Proporcional al radio, no al área: con el dedo, el área se dispara enseguida
+    onStretch(bubble, s.escala0 * (s.r / s.r0));
+    sim.current?.alpha(0.3).restart();
+  };
+
+  const onHandleUp = () => {
+    const s = stretching.current;
+    stretching.current = null;
+    const node = s && nodes.current.get(s.id);
+    if (node) {
+      node.fx = null;
+      node.fy = null;
+      node.r = layout.radii.get(node.id) ?? node.r;
+    }
+    sim.current?.alpha(0.5).restart();
+  };
+
   return (
     <div className="budget-scenario__arena" ref={ref} style={{ height: arenaH + trashH }}>
       <span className="budget-scenario__zone budget-scenario__zone--income" aria-hidden="true">Ingresos</span>
@@ -430,13 +549,15 @@ const Arena: React.FC<ArenaProps> = ({ bubbles, onToggle, onOpen }) => {
               'budget-scenario__bubble',
               `budget-scenario__bubble--${b.simulada ? 'new-' : ''}${b.tipo === 'ingreso' ? 'income' : 'bill'}`,
               b.otras ? 'budget-scenario__bubble--others' : '',
-              b.quitada ? 'budget-scenario__bubble--removed' : ''
+              b.quitada ? 'budget-scenario__bubble--removed' : '',
+              isTweaked(b.tweak) ? 'budget-scenario__bubble--tweaked' : '',
+              selected === b.id ? 'budget-scenario__bubble--selected' : ''
             ].filter(Boolean).join(' ')}
             style={{ width: r * 2, height: r * 2, fontSize: Math.max(10, Math.min(13, r / 3)), transform: `translate(${(node.x ?? 0) - r}px, ${(node.y ?? 0) - r}px)` }}
-            aria-pressed={b.quitada}
+            aria-pressed={b.otras || b.quitada ? undefined : selected === b.id}
             aria-label={b.otras && !b.quitada
               ? `${b.titulo}. Toca para verlas por separado; arrástrala a la papelera para quitarlas todas`
-              : `${b.titulo}, ${b.detalle}${b.simulada ? ', inventada' : ''}. ${b.quitada ? 'Fuera del ensayo: toca para recuperarla' : 'Toca para quitarla del ensayo'}`}
+              : `${b.titulo}, ${b.detalle}${b.simulada ? ', inventada' : ''}${isTweaked(b.tweak) ? ', retocada' : ''}. ${b.quitada ? 'Fuera del ensayo: toca para recuperarla' : 'Toca para retocarla'}`}
             title={`${b.titulo} · ${b.detalle}`}
             onPointerDown={e => onPointerDown(e, b.id)}
             onPointerMove={onPointerMove}
@@ -448,7 +569,8 @@ const Arena: React.FC<ArenaProps> = ({ bubbles, onToggle, onOpen }) => {
                 return;
               }
               if (b.otras && !b.quitada) onOpen();
-              else onToggle(b, !b.quitada);
+              else if (b.quitada) onToggle(b, false);
+              else onSelect(b.id);
             }}
           >
             <span className="budget-scenario__bubble-name">{b.nombre}</span>
@@ -456,6 +578,213 @@ const Arena: React.FC<ArenaProps> = ({ bubbles, onToggle, onOpen }) => {
           </button>
         );
       })}
+      {bubbles.filter(b => b.id === selected).map(b => {
+        const node = nodes.current.get(b.id);
+        if (!node) return null;
+        // Abajo a la derecha, en el borde de la pelotita
+        const offset = node.r * Math.SQRT1_2;
+        return (
+          <span
+            key="handle"
+            className="budget-scenario__handle"
+            style={{ transform: `translate(${(node.x ?? 0) + offset}px, ${(node.y ?? 0) + offset}px)` }}
+            aria-hidden="true"
+            title="Estira para cambiar el importe"
+            onPointerDown={e => onHandleDown(e, b)}
+            onPointerMove={onHandleMove}
+            onPointerUp={onHandleUp}
+            onPointerCancel={onHandleUp}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+// ---------- Retoque de una pelotita ----------
+
+interface TweakPanelProps {
+  bubble: Bubble;
+  onChange: (change: Partial<Tweak>) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}
+
+const MESES_TIRA = 12;
+const monthName = (index: number) =>
+  new Date(Date.UTC(Math.floor(index / 12), index % 12, 1)).toLocaleDateString('es-ES', { month: 'short', timeZone: 'UTC' }).replace('.', '');
+
+// Debajo del tablero: el importe (lo mismo que estirar) y la tira de meses para mover sus fechas
+const TweakPanel: React.FC<TweakPanelProps> = ({ bubble, onChange, onRemove, onClose }) => {
+  const { tweak, importe } = bubble;
+  const strip = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; meses: number; moved: boolean } | null>(null);
+  const first = monthIndex(todayYmd());
+  const months = Array.from({ length: MESES_TIRA }, (_, i) => first + i);
+  const pays = (month: number, meses: number) => bubble.partidas.some(p => paysInMonth(p, month, meses));
+  // Todos los meses y sin fin: moverla no cambia nada
+  const moves = bubble.partidas.some(p =>
+    p.frecuencia !== 'mensual' || p.fechaFin || p.pagosEspeciales?.length || monthIndex(p.fechaInicio) >= first);
+
+  const [draft, setDraft] = useState<string | null>(null);
+  const actual = importe !== undefined ? Math.round(importe * tweak.escala * 100) / 100 : undefined;
+  const setMeses = (meses: number) => onChange({ meses: Math.max(-MAX_MESES, Math.min(MAX_MESES, meses)) });
+  const step = (dir: 1 | -1) => {
+    setDraft(null);
+    if (actual === undefined) {
+      onChange({ escala: Math.max(0.05, Math.round((tweak.escala + dir * 0.05) * 20) / 20) });
+      return;
+    }
+    const size = actual < 50 ? 1 : actual < 500 ? 5 : 10;
+    const next = niceAmount(actual + dir * size);
+    onChange({ escala: next / importe! });
+  };
+
+  const cellAt = (clientX: number) => {
+    const rect = strip.current!.getBoundingClientRect();
+    return Math.max(0, Math.min(MESES_TIRA - 1, Math.floor(((clientX - rect.left) / rect.width) * MESES_TIRA)));
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    drag.current = { x: e.clientX, meses: tweak.meses, moved: false };
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const width = strip.current!.getBoundingClientRect().width / MESES_TIRA;
+    const delta = Math.round((e.clientX - d.x) / width);
+    if (delta !== 0) d.moved = true;
+    if (d.moved) setMeses(d.meses + delta);
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.moved) return;
+    // Un toque en un mes: el primer pago que se ve pasa a ese mes
+    const target = months[cellAt(e.clientX)];
+    const firstPay = months.find(m => pays(m, tweak.meses));
+    if (firstPay !== undefined) setMeses(tweak.meses + target - firstPay);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const keys: Record<string, number> = { ArrowLeft: tweak.meses - 1, ArrowDown: tweak.meses - 1, ArrowRight: tweak.meses + 1, ArrowUp: tweak.meses + 1, Home: 0 };
+    if (!(e.key in keys)) return;
+    e.preventDefault();
+    setMeses(keys[e.key]);
+  };
+
+  const fin = bubble.partidas.length === 1 && bubble.partidas[0].fechaFin;
+
+  return (
+    <div className="budget-scenario__tweak" role="group" aria-label={`Retocar ${bubble.titulo}`}>
+      <div className="budget-scenario__tweak-header">
+        <h4 className="budget-scenario__tweak-title">{bubble.titulo}</h4>
+        <button type="button" className="budget-scenario__icon-button" onClick={onClose} aria-label="Cerrar el retoque" title="Cerrar">
+          <CloseIcon />
+        </button>
+      </div>
+
+      <div className="budget-scenario__tweak-row">
+        <span className="budget-scenario__tweak-label" id={`importe-${bubble.id}`}>
+          {actual === undefined ? 'Importes' : 'Importe'}
+        </span>
+        <div className="budget-scenario__stepper">
+          <button type="button" className="budget-scenario__step" onClick={() => step(-1)} aria-label="Menos">−</button>
+          {actual === undefined ? (
+            <span className="budget-scenario__step-value" aria-labelledby={`importe-${bubble.id}`}>
+              {tweak.escala === 1 ? 'Igual' : `${tweak.escala > 1 ? '+' : '−'}${Math.round(Math.abs(tweak.escala - 1) * 100)} %`}
+            </span>
+          ) : (
+            <span className="budget-scenario__amount">
+              <input
+                className="budget-scenario__input"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                aria-labelledby={`importe-${bubble.id}`}
+                value={draft ?? String(actual)}
+                onChange={e => {
+                  setDraft(e.target.value);
+                  const value = Number(e.target.value.replace(',', '.'));
+                  if (value > 0 && value / importe! <= 10) onChange({ escala: value / importe! });
+                }}
+                onBlur={() => setDraft(null)}
+              />
+              <span className="budget-scenario__currency" aria-hidden="true">€</span>
+            </span>
+          )}
+          <button type="button" className="budget-scenario__step" onClick={() => step(1)} aria-label="Más">+</button>
+        </div>
+      </div>
+      {tweak.escala !== 1 && importe !== undefined && (
+        <p className="budget-scenario__text">Ahora: {formatEuros(importe)}</p>
+      )}
+
+      <div className="budget-scenario__tweak-row budget-scenario__tweak-row--column">
+        <span className="budget-scenario__tweak-label">Cuándo toca</span>
+        {moves || tweak.meses !== 0 ? (
+          <>
+            <div
+              ref={strip}
+              className="budget-scenario__months"
+              role="slider"
+              tabIndex={0}
+              aria-label="Mover sus fechas"
+              aria-valuemin={-MAX_MESES}
+              aria-valuemax={MAX_MESES}
+              aria-valuenow={tweak.meses}
+              aria-valuetext={monthsLabel(tweak.meses)}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={() => { drag.current = null; }}
+              onKeyDown={onKeyDown}
+            >
+              {months.map(m => {
+                const now = pays(m, tweak.meses);
+                const before = tweak.meses !== 0 && pays(m, 0);
+                return (
+                  <span key={m} className="budget-scenario__month">
+                    <span
+                      className={[
+                        'budget-scenario__dot',
+                        now ? 'budget-scenario__dot--on' : '',
+                        !now && before ? 'budget-scenario__dot--before' : ''
+                      ].filter(Boolean).join(' ')}
+                    />
+                    <span className="budget-scenario__month-name">{monthName(m)}</span>
+                  </span>
+                );
+              })}
+            </div>
+            <p className="budget-scenario__text">
+              {tweak.meses === 0 ? 'En sus fechas. Arrastra los puntos (o toca un mes) para moverla.' : `${monthsLabel(tweak.meses)[0].toUpperCase()}${monthsLabel(tweak.meses).slice(1)}.`}
+              {fin ? ` Último pago: ${formatShortDate(shiftMonths(fin, tweak.meses))} ${shiftMonths(fin, tweak.meses).slice(0, 4)}.` : ''}
+            </p>
+          </>
+        ) : (
+          <p className="budget-scenario__text">Se paga todos los meses y no tiene fin: moverla no cambiaría nada.</p>
+        )}
+      </div>
+
+      <div className="budget-scenario__actions">
+        <button
+          type="button"
+          className="budget-scenario__button budget-scenario__button--secondary"
+          onClick={() => onChange(SIN_RETOQUE)}
+          disabled={!isTweaked(tweak)}
+        >
+          Como estaba
+        </button>
+        <button type="button" className="budget-scenario__button budget-scenario__button--secondary" onClick={onRemove}>
+          {bubble.simulada ? 'Descartarla' : 'Quitar del ensayo'}
+        </button>
+      </div>
     </div>
   );
 };

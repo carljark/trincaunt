@@ -65,6 +65,7 @@ describe('BudgetScenario', () => {
   it('removes every item of a grouped bubble at once', async () => {
     render(<BudgetScenario groupId="g1" token="tok" items={items} onApplied={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: /^Visa, 2 partidas/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar del ensayo' }));
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(c => String(c[0]).includes('/simulate'));
       expect(call && bodyOf(call).quitar).toEqual(['visa1', 'visa2']);
@@ -93,10 +94,12 @@ describe('BudgetScenario', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /^Alquiler/ }));
     expect(screen.getByRole('button', { name: /^Alquiler/ })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar del ensayo' }));
+    expect(screen.getByRole('button', { name: /^Alquiler.*Fuera del ensayo/ })).toBeInTheDocument();
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/budget/forecast/simulate'), expect.anything()));
     const call = fetchMock.mock.calls.find(c => String(c[0]).includes('/simulate'))!;
-    expect(bodyOf(call)).toEqual({ ciclos: 13, quitar: ['alquiler'], nuevas: [] });
+    expect(bodyOf(call)).toEqual({ ciclos: 13, quitar: ['alquiler'], nuevas: [], cambiar: [] });
     expect(await screen.findByText('1300,00 €')).toBeInTheDocument();
     expect(screen.getByText('+700,00 € cada ciclo')).toBeInTheDocument();
     expect(screen.getByText('Ahora: 600,00 €')).toBeInTheDocument();
@@ -107,6 +110,56 @@ describe('BudgetScenario', () => {
     const put = fetchMock.mock.calls.find(c => (c[1] as RequestInit | undefined)?.method === 'PUT')!;
     expect(put[0]).toContain('/recurring-items/alquiler');
     expect(bodyOf(put)).toEqual({ activo: false });
+  });
+
+  it('changes the amount of an item and saves it when applied', async () => {
+    const onApplied = vi.fn();
+    render(<BudgetScenario groupId="g1" token="tok" items={items} onApplied={onApplied} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Alquiler/ }));
+    fireEvent.change(screen.getByLabelText('Importe'), { target: { value: '770' } });
+    expect(screen.getByRole('button', { name: /^Alquiler, 770,00 €, retocada/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Más' }));
+    expect(screen.getByLabelText('Importe')).toHaveValue(780);
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(c => String(c[0]).includes('/simulate'));
+      expect(call && bodyOf(call).cambiar).toEqual([{ id: 'alquiler', escala: 780 / 700 }]);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
+    expect(screen.getByText(/Se cambiarán: Alquiler \(780,00 €\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Aplicar' }).at(-1)!);
+    await waitFor(() => expect(onApplied).toHaveBeenCalled());
+    const put = fetchMock.mock.calls.find(c => (c[1] as RequestInit | undefined)?.method === 'PUT')!;
+    expect(put[0]).toContain('/recurring-items/alquiler');
+    expect(bodyOf(put)).toEqual({ importe: 780 });
+  });
+
+  it('moves the dates of an item along the months strip', async () => {
+    // Una cuota que acaba: moverla sí cambia algo
+    const conFin = items.map(i => (i._id === 'visa2' ? { ...i, fechaFin: '2027-06-01' } : i));
+    render(<BudgetScenario groupId="g1" token="tok" items={conFin} onApplied={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Visa, 2 partidas/ }));
+    const slider = screen.getByRole('slider', { name: 'Mover sus fechas' });
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    expect(slider).toHaveAttribute('aria-valuetext', '2 meses más tarde');
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(c => String(c[0]).includes('/simulate'));
+      expect(call && bodyOf(call).cambiar).toEqual([{ id: 'visa1', meses: 2 }, { id: 'visa2', meses: 2 }]);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Como estaba' }));
+    expect(slider).toHaveAttribute('aria-valuenow', '0');
+  });
+
+  it('says when moving a monthly item without end would change nothing', async () => {
+    render(<BudgetScenario groupId="g1" token="tok" items={items} onApplied={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Alquiler/ }));
+    expect(screen.getByText(/moverla no cambiaría nada/)).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
   });
 
   it('adds a made-up item to the scenario', async () => {

@@ -178,9 +178,17 @@ export interface IScenarioItem {
   fechaFin?: string;
 }
 
+// Retoque de una partida en el ensayo: importe multiplicado por escala y fechas movidas meses
+export interface IScenarioChange {
+  id: string;
+  escala?: number;
+  meses?: number;
+}
+
 export interface IBudgetScenario {
   quitar: string[];
   nuevas: IScenarioItem[];
+  cambiar?: IScenarioChange[];
 }
 
 export const FRECUENCIA_LABELS: Record<Frecuencia, string> = {
