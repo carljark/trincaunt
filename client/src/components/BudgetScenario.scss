@@ -178,6 +178,177 @@
       box-shadow: none;
       opacity: 0.85;
     }
+
+    // Retocada en el ensayo: un anillo de puntos por dentro
+    &--tweaked {
+      box-shadow: $box-shadow-md, inset 0 0 0 2px rgba(white, 0.7);
+    }
+
+    &--selected {
+      outline: 3px solid $color-gray-900;
+      outline-offset: 2px;
+    }
+  }
+
+  // Tirador para estirar la pelotita seleccionada; se agarra con el dedo, así que el área es amplia
+  &__handle {
+    position: absolute;
+    top: -22px;
+    left: -22px;
+    z-index: 1;
+    width: 44px;
+    height: 44px;
+    cursor: nwse-resize;
+    touch-action: none;
+
+    &::after {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 20px;
+      height: 20px;
+      content: '';
+      background: $color-surface;
+      border: 3px solid $color-gray-900;
+      border-radius: 50%;
+      box-shadow: $box-shadow-md;
+    }
+  }
+
+  // Retoque de la pelotita seleccionada
+  &__tweak {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 3);
+    padding: map.get($spacing-scale, 3);
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+  }
+
+  &__tweak-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 2);
+  }
+
+  &__tweak-title {
+    margin: 0;
+    font-size: map.get($font-sizes, base);
+    font-weight: map.get($font-weights, semibold);
+    color: $color-gray-900;
+  }
+
+  &__tweak-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: map.get($spacing-scale, 2);
+
+    &--column {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  &__tweak-label {
+    @include field-label;
+  }
+
+  &__stepper {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+  }
+
+  &__step {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-family: inherit;
+    font-size: map.get($font-sizes, lg);
+    color: $color-primary;
+    background: rgba($color-primary, 0.08);
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba($color-primary, 0.15);
+    }
+  }
+
+  &__step-value {
+    @include money;
+    min-width: 5rem;
+    text-align: center;
+  }
+
+  &__amount {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 7.5rem;
+  }
+
+  &__input {
+    @include text-input;
+    padding-right: 2rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  &__currency {
+    position: absolute;
+    right: map.get($spacing-scale, 3);
+    color: $color-text-muted;
+    pointer-events: none;
+  }
+
+  // Tira de meses: los puntos son los pagos; se arrastra para moverlos
+  &__months {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    padding: map.get($spacing-scale, 2) 0;
+    background: $color-gray-100;
+    border-radius: $border-radius;
+    cursor: ew-resize;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+    }
+  }
+
+  &__month {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: map.get($spacing-scale, 1);
+    min-width: 0;
+  }
+
+  &__dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 2px solid transparent;
+    border-radius: 50%;
+
+    &--on {
+      background: $color-primary;
+    }
+
+    // Donde tocaba antes de moverla
+    &--before {
+      border: 2px dashed $color-gray-400;
+    }
+  }
+
+  &__month-name {
+    font-size: 0.6875rem;
+    color: $color-text-muted;
   }
 
   // El tamaño de letra lo pone la pelotita según su radio; las palabras no se parten

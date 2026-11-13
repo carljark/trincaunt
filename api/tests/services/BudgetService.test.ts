@@ -388,7 +388,40 @@ describe('BudgetService', () => {
         expect(forecast.ciclos[1].partidas.find(p => p.nombre === 'Alquiler')?.simulada).toBeUndefined();
       });
 
+      it('scales amounts and moves dates of changed items', async () => {
+        const forecast = await service.getForecast(groupId, userId, 4, {
+          cambiar: [{ id: luzId.toString(), escala: 2 }, { id: ivaId.toString(), meses: 1 }]
+        });
+
+        // La luz pasa a 120; el IVA empieza en enero y acaba en febrero
+        expect(forecast.ciclos[1]).toMatchObject({ facturas: 820, temporales: [] });
+        expect(forecast.ciclos[2].temporales).toEqual([
+          { recurrente_id: ivaId.toString(), nombre: 'Aplazamiento IVA', fecha: '2027-01-20', importe: 86, estado: 'pendiente', ultima: false, nueva: true }
+        ]);
+        expect(forecast.ciclos[3].temporales).toMatchObject([{ fecha: '2027-02-20', ultima: true }]);
+        expect(forecast.ciclos[3].facturas).toBe(906);
+        expect(RecurringItem.prototype.save).not.toHaveBeenCalled();
+      });
+
+      it('scales and moves special payments too', async () => {
+        const visa = {
+          _id: oid(), tipo: 'factura', nombre: 'Visa', importe: 40, frecuencia: 'mensual', fechaInicio: d('2026-11-01'), activo: true,
+          pagosEspeciales: [{ tipo: 'extra', desde: d('2026-12-01'), hasta: d('2026-12-01'), importe: 100 }]
+        };
+        (RecurringItem.find as vi.Mock).mockImplementation(async () => [...items, visa]);
+
+        const forecast = await service.getForecast(groupId, userId, 3, { cambiar: [{ id: visa._id.toString(), escala: 1.5, meses: 1 }] });
+        const of = (i: number) => forecast.ciclos[i].partidas.find(p => p.nombre === 'Visa');
+        // Empieza un mes más tarde, el 1 de diciembre, y el extra pasa a enero
+        expect(of(1)).toMatchObject({ fecha: '2026-12-01', importe: 60, nueva: true });
+        expect(of(1)!.extra).toBeUndefined();
+        expect(of(2)).toMatchObject({ fecha: '2027-01-01', importe: 210, extra: 150 });
+      });
+
       it('rejects malformed scenarios', async () => {
+        await expect(service.getForecast(groupId, userId, 2, { cambiar: [{ id: 'x', escala: 0 }] })).rejects.toMatchObject({ statusCode: 400 });
+        await expect(service.getForecast(groupId, userId, 2, { cambiar: [{ id: 'x', meses: 1.5 }] })).rejects.toMatchObject({ statusCode: 400 });
+        await expect(service.getForecast(groupId, userId, 2, { cambiar: [{ escala: 2 }] })).rejects.toMatchObject({ statusCode: 400 });
         await expect(service.getForecast(groupId, userId, 2, { quitar: 'x' })).rejects.toMatchObject({ statusCode: 400 });
         await expect(service.getForecast(groupId, userId, 2, { nuevas: [{ tipo: 'factura', nombre: 'Coche' }] })).rejects.toMatchObject({ statusCode: 400 });
         await expect(service.getForecast(groupId, userId, 2, {

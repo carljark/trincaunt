@@ -351,9 +351,9 @@ export const tools: ToolDef[] = [
     name: 'simulate_budget_forecast',
     title: 'Simular un escenario',
     description:
-      '«¿Y si…?»: la misma previsión que get_budget_forecast quitando unas partidas fijas y añadiendo otras ' +
-      'inventadas (p. ej. «si me compro un coche de 300 €/mes desde marzo»). No guarda nada; las partidas ' +
-      'inventadas salen con simulada: true.',
+      '«¿Y si…?»: la misma previsión que get_budget_forecast quitando unas partidas fijas, añadiendo otras ' +
+      'inventadas (p. ej. «si me compro un coche de 300 €/mes desde marzo») o retocando las que hay (más caras, ' +
+      'más baratas o con las fechas movidas). No guarda nada; las partidas inventadas salen con simulada: true.',
     input: {
       groupId: id,
       ciclos: z.number().int().min(1).max(25).default(13),
@@ -365,7 +365,12 @@ export const tools: ToolDef[] = [
         frecuencia: z.enum(['mensual', 'bimestral', 'trimestral', 'semestral', 'anual']).default('mensual'),
         fechaInicio: ymd.describe('Primera fecha en que toca'),
         fechaFin: ymd.optional()
-      })).max(50).optional().describe('Partidas inventadas que se añaden en el escenario')
+      })).max(50).optional().describe('Partidas inventadas que se añaden en el escenario'),
+      cambiar: z.array(z.object({
+        id,
+        escala: z.number().positive().max(10).optional().describe('Multiplica el importe (y el de sus pagos especiales): 1.1 es un 10 % más'),
+        meses: z.number().int().min(-60).max(60).optional().describe('Mueve todas sus fechas (inicio, fin y pagos especiales) estos meses; negativo, antes')
+      })).max(50).optional().describe('Partidas fijas retocadas en el escenario')
     },
     kind: 'read',
     run: (api, { groupId, ...data }) => api.post(`/groups/${groupId}/budget/forecast/simulate`, defined(data))
