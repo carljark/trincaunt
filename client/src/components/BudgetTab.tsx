@@ -30,6 +30,30 @@ type DialogState =
   | { kind: 'undo'; line: BillLine | IncomeLine; tipo: RecurringTipo }
   | null;
 
+// La pestaña se parte en vistas para no apilar todas las tarjetas
+type View = 'ciclo' | 'futuro' | 'historial' | 'partidas';
+
+const VIEWS: { id: View; label: string }[] = [
+  { id: 'ciclo', label: 'Ciclo' },
+  { id: 'futuro', label: 'Futuro' },
+  { id: 'historial', label: 'Historial' },
+  { id: 'partidas', label: 'Partidas' }
+];
+
+type SectionId = 'cuenta' | 'limites' | 'facturas' | 'huchas' | 'ingresos' | 'otros';
+
+interface SectionProps {
+  id: SectionId;
+  title: string;
+  // Lo que se ve con la sección cerrada
+  resumen: string;
+  tono?: 'warning' | 'negative';
+  // Si hay algo que hacer, empieza abierta
+  atencion?: boolean;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}
+
 // Una hucha que aún no ha empezado dice desde cuándo
 const huchaLabel = (desde?: string) =>
   desde && desde.slice(0, 10) > todayYmd() ? ` · hucha desde el ${formatShortDate(desde)}` : ' · con hucha';
@@ -52,6 +76,9 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
   const [dialog, setDialog] = useState<DialogState>(null);
   // Sube con cada cambio hecho aquí, para que la previsión y el ensayo recalculen
   const [changeKey, setChangeKey] = useState(0);
+  const [view, setView] = useState<View>('ciclo');
+  // Lo que el usuario ha abierto o cerrado a mano; el resto sigue a «atencion»
+  const [opened, setOpened] = useState<Partial<Record<SectionId, boolean>>>({});
 
   const load = useCallback(async () => {
     try {
@@ -186,348 +213,425 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
   const incomeItems = items.filter(i => i.tipo === 'ingreso');
   const billItems = items.filter(i => i.tipo === 'factura');
 
+  const renderSection = ({ id, title, resumen, tono, atencion = false, action, children }: SectionProps) => {
+    const open = opened[id] ?? atencion;
+    const bodyId = `budget-section-${id}`;
+    return (
+      <section className="budget__card" aria-label={title}>
+        <div className="budget__header">
+          <h3 className="budget__title budget__title--toggle">
+            <button
+              type="button"
+              className="budget__toggle"
+              aria-expanded={open}
+              aria-controls={bodyId}
+              onClick={() => setOpened(prev => ({ ...prev, [id]: !open }))}
+            >
+              <span className="budget__toggle-text">
+                <span className="budget__toggle-title">{title}</span>
+                <span className={`budget__toggle-summary ${tono ? `budget__toggle-summary--${tono}` : ''}`}>{resumen}</span>
+              </span>
+              <ChevronRightIcon className={`budget__toggle-chevron ${open ? 'budget__toggle-chevron--open' : ''}`} />
+            </button>
+          </h3>
+          {action}
+        </div>
+        {open && <div id={bodyId} className="budget__section-body">{children}</div>}
+      </section>
+    );
+  };
+
+  const limites = summary.limitesCategoria ?? [];
+  const limitesPasados = limites.filter(l => l.restante < 0).length;
+  const limitesCerca = limites.filter(l => l.restante >= 0 && l.porcentaje >= 80).length;
+  const facturasPendientes = summary.facturas.lineas.filter(l => l.estado === 'pendiente');
+  const ingresosPrevistos = summary.ingresos.lineas.filter(l => l.estado === 'previsto');
+
   return (
     <div className="budget">
-      <nav className="budget__cycle" aria-label="Cambiar de ciclo">
-        <button type="button" className="budget__icon-button" onClick={() => setOffset(o => o - 1)} aria-label="Ciclo anterior">
-          <ChevronLeftIcon />
-        </button>
-        <span className="budget__cycle-text">
-          <span className="budget__cycle-title">{label.title}</span>
-          {label.range && <span className="budget__cycle-range">{label.range}</span>}
-        </span>
-        <button type="button" className="budget__icon-button" onClick={() => setOffset(o => o + 1)} aria-label="Ciclo siguiente">
-          <ChevronRightIcon />
-        </button>
-      </nav>
-      {!isCurrent && (
-        <button type="button" className="budget__today" onClick={() => setOffset(0)}>Volver al ciclo actual</button>
-      )}
+      <div className="budget__views" role="group" aria-label="Partes del presupuesto">
+        {VIEWS.map(v => (
+          <button
+            key={v.id}
+            type="button"
+            className={`budget__view ${view === v.id ? 'budget__view--active' : ''}`}
+            aria-pressed={view === v.id}
+            onClick={() => setView(v.id)}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
 
       {error && <p className="budget__error" role="alert">{error}</p>}
 
-      <section className={`budget__hero ${negative ? 'budget__hero--negative' : ''}`} aria-label="Lo que puedes gastar">
-        <span className="budget__hero-label">{heroLabel}</span>
-        <span className="budget__hero-amount">{formatEuros(Math.abs(summary.disponible))}</span>
-        <span className="budget__hero-sub">
-          Llevas {formatEuros(summary.gastado)} de {formatEuros(summary.presupuestoGastable)} para el día a día
-        </span>
-        <div
-          className="budget__progress"
-          role="progressbar"
-          aria-label="Gastado del presupuesto"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(spentRatio * 100)}
-        >
-          <span className="budget__progress-bar" style={{ width: `${spentRatio * 100}%` }} />
-        </div>
-        {summary.porDia !== null && summary.porSemana !== null && (
-          <dl className="budget__rates">
-            <div className="budget__rate">
-              <dt className="budget__rate-label">{summary.ciclo.diasRestantes >= 7 ? 'Por semana' : 'Hasta fin de ciclo'}</dt>
-              <dd className="budget__rate-value">{formatEuros(Math.max(0, summary.porSemana))}</dd>
-            </div>
-            <div className="budget__rate">
-              <dt className="budget__rate-label">Al día</dt>
-              <dd className="budget__rate-value">{formatEuros(Math.max(0, summary.porDia))}</dd>
-            </div>
-            <div className="budget__rate">
-              <dt className="budget__rate-label">Quedan</dt>
-              <dd className="budget__rate-value">{summary.ciclo.diasRestantes} {summary.ciclo.diasRestantes === 1 ? 'día' : 'días'}</dd>
-            </div>
-          </dl>
-        )}
-        {summary.ritmo && Math.abs(summary.ritmo.desviacion) >= 1 && (
-          <p className={`budget__pace ${summary.ritmo.desviacion > 0 ? 'budget__pace--over' : 'budget__pace--under'}`}>
-            {summary.ritmo.desviacion > 0
-              ? `Vas ${formatEuros(summary.ritmo.desviacion)} por encima de lo previsto a estas alturas.`
-              : `Vas ${formatEuros(-summary.ritmo.desviacion)} por debajo de lo previsto. ¡Bien!`}
-          </p>
-        )}
-      </section>
-
-      {isCurrent && reminders.length > 0 && (
-        <section className="budget__card" aria-label="Por hacer en el banco">
-          <h3 className="budget__title">
-            Por hacer en el banco <span className="budget__badge">{reminders.length}</span>
-          </h3>
-          <ul className="budget__lines">
-            {reminders.map(reminder => (
-              <li key={reminder.clave} className="budget__line">
-                <span className="budget__line-text">
-                  <span className="budget__line-name budget__line-name--wrap">{reminder.titulo}</span>
-                  <span className="budget__line-meta budget__line-meta--wrap">{reminder.detalle}</span>
-                </span>
-                <button
-                  type="button"
-                  className="budget__line-action"
-                  onClick={() => markDone(reminder)}
-                  aria-label={`Hecho: ${reminder.titulo}`}
-                >
-                  Hecho
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {isEmpty && (
-        <section className="budget__card budget__card--intro">
-          <h3 className="budget__title">Empieza por aquí</h3>
-          <p className="budget__text">
-            Añade tu nómina y tus facturas fijas (alquiler, luz, suscripciones…). Con eso calculo cuánto te queda para
-            el día a día cada ciclo, que empieza el día que cobras.
-          </p>
-          <div className="budget__intro-actions">
-            <button type="button" className="budget__button budget__button--primary" onClick={() => setDialog({ kind: 'item', tipo: 'ingreso' })}>
-              Añadir nómina
+      {view === 'ciclo' && (
+        <>
+          <nav className="budget__cycle" aria-label="Cambiar de ciclo">
+            <button type="button" className="budget__icon-button" onClick={() => setOffset(o => o - 1)} aria-label="Ciclo anterior">
+              <ChevronLeftIcon />
             </button>
-            <button type="button" className="budget__button budget__button--secondary" onClick={() => setDialog({ kind: 'item', tipo: 'factura' })}>
-              Añadir factura
+            <span className="budget__cycle-text">
+              <span className="budget__cycle-title">{label.title}</span>
+              {label.range && <span className="budget__cycle-range">{label.range}</span>}
+            </span>
+            <button type="button" className="budget__icon-button" onClick={() => setOffset(o => o + 1)} aria-label="Ciclo siguiente">
+              <ChevronRightIcon />
             </button>
-          </div>
-        </section>
-      )}
-
-      <section className="budget__card">
-        <h3 className="budget__title">Cómo sale la cuenta</h3>
-        <dl className="budget__breakdown">
-          <div className="budget__breakdown-row">
-            <dt>Ingresos{summary.ingresos.previstos > 0 ? ' (con previstos)' : ''}</dt>
-            <dd className="budget__breakdown-amount budget__breakdown-amount--positive">+{formatEuros(summary.ingresos.total)}</dd>
-          </div>
-          <div className="budget__breakdown-row">
-            <dt>
-              Facturas{summary.facturas.pendientes > 0 ? ' (con pendientes)' : ''}
-              {summary.facturas.deHucha > 0 ? ', sin lo que paga la hucha' : ''}
-            </dt>
-            <dd className="budget__breakdown-amount">−{formatEuros(summary.facturas.total)}</dd>
-          </div>
-          {summary.reservas.total > 0 && (
-            <div className="budget__breakdown-row">
-              <dt>Apartado en huchas</dt>
-              <dd className="budget__breakdown-amount">−{formatEuros(summary.reservas.total)}</dd>
-            </div>
+          </nav>
+          {!isCurrent && (
+            <button type="button" className="budget__today" onClick={() => setOffset(0)}>Volver al ciclo actual</button>
           )}
-          {summary.ahorroObjetivo > 0 && (
-            <div className="budget__breakdown-row">
-              <dt>Ahorro</dt>
-              <dd className="budget__breakdown-amount">−{formatEuros(summary.ahorroObjetivo)}</dd>
-            </div>
-          )}
-          <div className="budget__breakdown-row">
-            <dt>Gastos del día a día</dt>
-            <dd className="budget__breakdown-amount">−{formatEuros(summary.gastosVariables)}</dd>
-          </div>
-          {summary.otrosGrupos && (
-            <div className="budget__breakdown-row">
-              <dt>Tu parte en otros grupos</dt>
-              <dd className="budget__breakdown-amount">−{formatEuros(summary.otrosGrupos.total)}</dd>
-            </div>
-          )}
-          <div className="budget__breakdown-row budget__breakdown-row--total">
-            <dt>{summary.disponible < 0 ? 'Te has pasado' : 'Disponible'}</dt>
-            <dd className={`budget__breakdown-amount ${negative ? 'budget__breakdown-amount--negative' : ''}`}>
-              {formatEuros(summary.disponible)}
-            </dd>
-          </div>
-        </dl>
-      </section>
 
-      {summary.limitesCategoria && summary.limitesCategoria.length > 0 && (
-        <section className="budget__card">
-          <h3 className="budget__title">Límites por categoría</h3>
-          <ul className="budget__limits">
-            {summary.limitesCategoria.map(l => {
-              const level = l.restante < 0 ? 'over' : l.porcentaje >= 80 ? 'warning' : 'ok';
-              return (
-                <li key={l.categoria} className="budget__limit">
-                  <div className="budget__limit-header">
-                    <span className="budget__limit-name">{l.categoria}</span>
-                    <span className={`budget__limit-left budget__limit-left--${level}`}>
-                      {l.restante < 0 ? `Te pasas ${formatEuros(-l.restante)}` : `Quedan ${formatEuros(l.restante)}`}
-                    </span>
-                  </div>
-                  <div
-                    className="budget__limit-track"
-                    role="progressbar"
-                    aria-label={`Gastado en ${l.categoria}`}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.min(100, l.porcentaje)}
-                  >
-                    <span className={`budget__limit-bar budget__limit-bar--${level}`} style={{ width: `${Math.min(100, l.porcentaje)}%` }} />
-                  </div>
-                  <span className="budget__limit-detail">
-                    {formatEuros(l.gastado)} de {formatEuros(l.limite)} · {l.porcentaje} %
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      <section className="budget__card">
-        <div className="budget__header">
-          <h3 className="budget__title">
-            Facturas
-            {summary.facturas.pendientes > 0 && (
-              <span className="budget__badge">{formatEuros(summary.facturas.pendientes)} pendientes</span>
+          <section className={`budget__hero ${negative ? 'budget__hero--negative' : ''}`} aria-label="Lo que puedes gastar">
+            <span className="budget__hero-label">{heroLabel}</span>
+            <span className="budget__hero-amount">{formatEuros(Math.abs(summary.disponible))}</span>
+            <span className="budget__hero-sub">
+              Llevas {formatEuros(summary.gastado)} de {formatEuros(summary.presupuestoGastable)} para el día a día
+            </span>
+            <div
+              className="budget__progress"
+              role="progressbar"
+              aria-label="Gastado del presupuesto"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(spentRatio * 100)}
+            >
+              <span className="budget__progress-bar" style={{ width: `${spentRatio * 100}%` }} />
+            </div>
+            {summary.porDia !== null && summary.porSemana !== null && (
+              <dl className="budget__rates">
+                <div className="budget__rate">
+                  <dt className="budget__rate-label">{summary.ciclo.diasRestantes >= 7 ? 'Por semana' : 'Hasta fin de ciclo'}</dt>
+                  <dd className="budget__rate-value">{formatEuros(Math.max(0, summary.porSemana))}</dd>
+                </div>
+                <div className="budget__rate">
+                  <dt className="budget__rate-label">Al día</dt>
+                  <dd className="budget__rate-value">{formatEuros(Math.max(0, summary.porDia))}</dd>
+                </div>
+                <div className="budget__rate">
+                  <dt className="budget__rate-label">Quedan</dt>
+                  <dd className="budget__rate-value">{summary.ciclo.diasRestantes} {summary.ciclo.diasRestantes === 1 ? 'día' : 'días'}</dd>
+                </div>
+              </dl>
             )}
-          </h3>
-        </div>
-        {summary.facturas.lineas.length > 0 ? (
-          <ul className="budget__lines">{summary.facturas.lineas.map(line => renderLine(line, 'factura'))}</ul>
-        ) : (
-          <p className="budget__text">No hay facturas en este ciclo.</p>
-        )}
-      </section>
+            {summary.ritmo && Math.abs(summary.ritmo.desviacion) >= 1 && (
+              <p className={`budget__pace ${summary.ritmo.desviacion > 0 ? 'budget__pace--over' : 'budget__pace--under'}`}>
+                {summary.ritmo.desviacion > 0
+                  ? `Vas ${formatEuros(summary.ritmo.desviacion)} por encima de lo previsto a estas alturas.`
+                  : `Vas ${formatEuros(-summary.ritmo.desviacion)} por debajo de lo previsto. ¡Bien!`}
+              </p>
+            )}
+          </section>
 
-      {summary.reservas.lineas.length > 0 && (
-        <section className="budget__card">
-          <h3 className="budget__title">Huchas</h3>
-          <ul className="budget__limits">
-            {summary.reservas.lineas.map(r => {
-              const pago = r.proximoPago;
-              const porcentaje = pago ? Math.round(pago.cubierto / pago.importe * 100) : 100;
-              return (
-                <li key={r.recurrente_id} className="budget__limit">
-                  <div className="budget__limit-header">
-                    <span className="budget__limit-name">{r.nombre}</span>
-                    <span className="budget__limit-left budget__limit-left--ok">
-                      {r.cuota > 0 ? `Apartas ${formatEuros(r.cuota)}` : 'Nada que apartar'}
+          {isCurrent && reminders.length > 0 && (
+            <section className="budget__card" aria-label="Por hacer en el banco">
+              <h3 className="budget__title">
+                Por hacer en el banco <span className="budget__badge">{reminders.length}</span>
+              </h3>
+              <ul className="budget__lines">
+                {reminders.map(reminder => (
+                  <li key={reminder.clave} className="budget__line">
+                    <span className="budget__line-text">
+                      <span className="budget__line-name budget__line-name--wrap">{reminder.titulo}</span>
+                      <span className="budget__line-meta budget__line-meta--wrap">{reminder.detalle}</span>
                     </span>
-                  </div>
-                  {pago && (
-                    <div
-                      className="budget__limit-track"
-                      role="progressbar"
-                      aria-label={`Apartado para ${r.nombre}`}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={porcentaje}
+                    <button
+                      type="button"
+                      className="budget__line-action"
+                      onClick={() => markDone(reminder)}
+                      aria-label={`Hecho: ${reminder.titulo}`}
                     >
-                      <span className="budget__limit-bar budget__limit-bar--ok" style={{ width: `${porcentaje}%` }} />
-                    </div>
-                  )}
-                  <span className="budget__limit-detail">
-                    {pago
-                      ? `${formatEuros(pago.cubierto)} de ${formatEuros(pago.importe)} para el ${formatShortDate(pago.fecha)}`
-                      : `Sin más pagos · quedan ${formatEuros(r.saldo)} en la hucha`}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+                      Hecho
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {isEmpty && (
+            <section className="budget__card budget__card--intro">
+              <h3 className="budget__title">Empieza por aquí</h3>
+              <p className="budget__text">
+                Añade tu nómina y tus facturas fijas (alquiler, luz, suscripciones…). Con eso calculo cuánto te queda para
+                el día a día cada ciclo, que empieza el día que cobras.
+              </p>
+              <div className="budget__intro-actions">
+                <button type="button" className="budget__button budget__button--primary" onClick={() => setDialog({ kind: 'item', tipo: 'ingreso' })}>
+                  Añadir nómina
+                </button>
+                <button type="button" className="budget__button budget__button--secondary" onClick={() => setDialog({ kind: 'item', tipo: 'factura' })}>
+                  Añadir factura
+                </button>
+              </div>
+            </section>
+          )}
+
+          {renderSection({
+            id: 'cuenta',
+            title: 'Cómo sale la cuenta',
+            resumen: `Ingresos ${formatEuros(summary.ingresos.total)} · facturas ${formatEuros(summary.facturas.total)}`,
+            children: (
+              <dl className="budget__breakdown">
+                <div className="budget__breakdown-row">
+                  <dt>Ingresos{summary.ingresos.previstos > 0 ? ' (con previstos)' : ''}</dt>
+                  <dd className="budget__breakdown-amount budget__breakdown-amount--positive">+{formatEuros(summary.ingresos.total)}</dd>
+                </div>
+                <div className="budget__breakdown-row">
+                  <dt>
+                    Facturas{summary.facturas.pendientes > 0 ? ' (con pendientes)' : ''}
+                    {summary.facturas.deHucha > 0 ? ', sin lo que paga la hucha' : ''}
+                  </dt>
+                  <dd className="budget__breakdown-amount">−{formatEuros(summary.facturas.total)}</dd>
+                </div>
+                {summary.reservas.total > 0 && (
+                  <div className="budget__breakdown-row">
+                    <dt>Apartado en huchas</dt>
+                    <dd className="budget__breakdown-amount">−{formatEuros(summary.reservas.total)}</dd>
+                  </div>
+                )}
+                {summary.ahorroObjetivo > 0 && (
+                  <div className="budget__breakdown-row">
+                    <dt>Ahorro</dt>
+                    <dd className="budget__breakdown-amount">−{formatEuros(summary.ahorroObjetivo)}</dd>
+                  </div>
+                )}
+                <div className="budget__breakdown-row">
+                  <dt>Gastos del día a día</dt>
+                  <dd className="budget__breakdown-amount">−{formatEuros(summary.gastosVariables)}</dd>
+                </div>
+                {summary.otrosGrupos && (
+                  <div className="budget__breakdown-row">
+                    <dt>Tu parte en otros grupos</dt>
+                    <dd className="budget__breakdown-amount">−{formatEuros(summary.otrosGrupos.total)}</dd>
+                  </div>
+                )}
+                <div className="budget__breakdown-row budget__breakdown-row--total">
+                  <dt>{summary.disponible < 0 ? 'Te has pasado' : 'Disponible'}</dt>
+                  <dd className={`budget__breakdown-amount ${negative ? 'budget__breakdown-amount--negative' : ''}`}>
+                    {formatEuros(summary.disponible)}
+                  </dd>
+                </div>
+              </dl>
+            )
+          })}
+
+          {limites.length > 0 && renderSection({
+            id: 'limites',
+            title: 'Límites por categoría',
+            resumen: limitesPasados + limitesCerca === 0
+              ? 'Todo dentro del límite'
+              : [
+                limitesPasados > 0 ? `${limitesPasados} ${limitesPasados === 1 ? 'pasado' : 'pasados'}` : '',
+                limitesCerca > 0 ? `${limitesCerca} cerca del límite` : ''
+              ].filter(Boolean).join(' · '),
+            tono: limitesPasados > 0 ? 'negative' : limitesCerca > 0 ? 'warning' : undefined,
+            atencion: limitesPasados + limitesCerca > 0,
+            children: (
+              <ul className="budget__limits">
+                {limites.map(l => {
+                  const level = l.restante < 0 ? 'over' : l.porcentaje >= 80 ? 'warning' : 'ok';
+                  return (
+                    <li key={l.categoria} className="budget__limit">
+                      <div className="budget__limit-header">
+                        <span className="budget__limit-name">{l.categoria}</span>
+                        <span className={`budget__limit-left budget__limit-left--${level}`}>
+                          {l.restante < 0 ? `Te pasas ${formatEuros(-l.restante)}` : `Quedan ${formatEuros(l.restante)}`}
+                        </span>
+                      </div>
+                      <div
+                        className="budget__limit-track"
+                        role="progressbar"
+                        aria-label={`Gastado en ${l.categoria}`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.min(100, l.porcentaje)}
+                      >
+                        <span className={`budget__limit-bar budget__limit-bar--${level}`} style={{ width: `${Math.min(100, l.porcentaje)}%` }} />
+                      </div>
+                      <span className="budget__limit-detail">
+                        {formatEuros(l.gastado)} de {formatEuros(l.limite)} · {l.porcentaje} %
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+          })}
+
+          {renderSection({
+            id: 'facturas',
+            title: 'Facturas',
+            resumen: summary.facturas.pendientes > 0
+              ? `${formatEuros(summary.facturas.pendientes)} pendientes`
+              : summary.facturas.lineas.length > 0 ? 'Todas pagadas' : 'Ninguna en este ciclo',
+            tono: facturasPendientes.some(l => l.fecha < today) ? 'warning' : undefined,
+            atencion: facturasPendientes.length > 0,
+            children: summary.facturas.lineas.length > 0 ? (
+              <ul className="budget__lines">{summary.facturas.lineas.map(line => renderLine(line, 'factura'))}</ul>
+            ) : (
+              <p className="budget__text">No hay facturas en este ciclo.</p>
+            )
+          })}
+
+          {summary.reservas.lineas.length > 0 && renderSection({
+            id: 'huchas',
+            title: 'Huchas',
+            resumen: summary.reservas.total > 0 ? `Apartas ${formatEuros(summary.reservas.total)}` : 'Nada que apartar',
+            children: (
+              <ul className="budget__limits">
+                {summary.reservas.lineas.map(r => {
+                  const pago = r.proximoPago;
+                  const porcentaje = pago ? Math.round(pago.cubierto / pago.importe * 100) : 100;
+                  return (
+                    <li key={r.recurrente_id} className="budget__limit">
+                      <div className="budget__limit-header">
+                        <span className="budget__limit-name">{r.nombre}</span>
+                        <span className="budget__limit-left budget__limit-left--ok">
+                          {r.cuota > 0 ? `Apartas ${formatEuros(r.cuota)}` : 'Nada que apartar'}
+                        </span>
+                      </div>
+                      {pago && (
+                        <div
+                          className="budget__limit-track"
+                          role="progressbar"
+                          aria-label={`Apartado para ${r.nombre}`}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={porcentaje}
+                        >
+                          <span className="budget__limit-bar budget__limit-bar--ok" style={{ width: `${porcentaje}%` }} />
+                        </div>
+                      )}
+                      <span className="budget__limit-detail">
+                        {pago
+                          ? `${formatEuros(pago.cubierto)} de ${formatEuros(pago.importe)} para el ${formatShortDate(pago.fecha)}`
+                          : `Sin más pagos · quedan ${formatEuros(r.saldo)} en la hucha`}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+          })}
+
+          {renderSection({
+            id: 'ingresos',
+            title: 'Ingresos',
+            resumen: summary.ingresos.previstos > 0
+              ? `${formatEuros(summary.ingresos.previstos)} por cobrar`
+              : summary.ingresos.lineas.length > 0 ? `${formatEuros(summary.ingresos.recibidos)} cobrados` : 'Ninguno en este ciclo',
+            tono: ingresosPrevistos.some(l => l.fecha < today) ? 'warning' : undefined,
+            atencion: ingresosPrevistos.length > 0,
+            action: (
+              <button
+                type="button"
+                className="budget__icon-button"
+                onClick={() => setDialog({ kind: 'income' })}
+                aria-label="Añadir ingreso suelto"
+                title="Añadir ingreso suelto"
+              >
+                <PlusIcon />
+              </button>
+            ),
+            children: summary.ingresos.lineas.length > 0 ? (
+              <ul className="budget__lines">{summary.ingresos.lineas.map(line => renderLine(line, 'ingreso'))}</ul>
+            ) : (
+              <p className="budget__text">No hay ingresos en este ciclo.</p>
+            )
+          })}
+
+          {summary.otrosGrupos && renderSection({
+            id: 'otros',
+            title: 'Tu parte en otros grupos',
+            resumen: formatEuros(summary.otrosGrupos.total),
+            children: summary.otrosGrupos.grupos.length > 0 ? (
+              <ul className="budget__lines">
+                {summary.otrosGrupos.grupos.map(g => (
+                  <li key={g._id} className="budget__line">
+                    <span className="budget__line-text">
+                      <span className="budget__line-name">{g.nombre}</span>
+                    </span>
+                    <span className="budget__line-amount">{formatEuros(g.total)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="budget__text">No tienes gastos en otros grupos en este ciclo.</p>
+            )
+          })}
+        </>
       )}
 
-      <section className="budget__card">
-        <div className="budget__header">
-          <h3 className="budget__title">Ingresos</h3>
-          <button
-            type="button"
-            className="budget__icon-button"
-            onClick={() => setDialog({ kind: 'income' })}
-            aria-label="Añadir ingreso suelto"
-            title="Añadir ingreso suelto"
-          >
-            <PlusIcon />
-          </button>
-        </div>
-        {summary.ingresos.lineas.length > 0 ? (
-          <ul className="budget__lines">{summary.ingresos.lineas.map(line => renderLine(line, 'ingreso'))}</ul>
-        ) : (
-          <p className="budget__text">No hay ingresos en este ciclo.</p>
-        )}
-      </section>
+      {view === 'futuro' && (
+        <>
+          <BudgetForecast groupId={groupId} token={token} refreshKey={refreshKey + changeKey} />
+          <BudgetScenario
+            groupId={groupId}
+            token={token}
+            items={items}
+            refreshKey={refreshKey + changeKey}
+            onApplied={() => afterChange(() => Promise.resolve())}
+          />
+        </>
+      )}
 
-      {summary.otrosGrupos && (
+      {view === 'historial' && <BudgetHistory groupId={groupId} token={token} refreshKey={refreshKey} />}
+
+      {view === 'partidas' && (
         <section className="budget__card">
-          <h3 className="budget__title">Tu parte en otros grupos</h3>
-          {summary.otrosGrupos.grupos.length > 0 ? (
-            <ul className="budget__lines">
-              {summary.otrosGrupos.grupos.map(g => (
-                <li key={g._id} className="budget__line">
-                  <span className="budget__line-text">
-                    <span className="budget__line-name">{g.nombre}</span>
-                  </span>
-                  <span className="budget__line-amount">{formatEuros(g.total)}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="budget__header">
+            <h3 className="budget__title">Partidas fijas</h3>
+            <button
+              type="button"
+              className="budget__icon-button"
+              onClick={() => setDialog({ kind: 'item', tipo: 'factura' })}
+              aria-label="Añadir partida fija"
+              title="Añadir partida fija"
+            >
+              <PlusIcon />
+            </button>
+          </div>
+          {items.length === 0 ? (
+            <p className="budget__text">Aún no tienes partidas fijas.</p>
           ) : (
-            <p className="budget__text">No tienes gastos en otros grupos en este ciclo.</p>
+            [{ title: 'Ingresos', list: incomeItems }, { title: 'Facturas y gastos fijos', list: billItems }]
+              .filter(group => group.list.length > 0)
+              .map(group => (
+                <div key={group.title} className="budget__items">
+                  <h4 className="budget__subtitle">{group.title}</h4>
+                  <ul className="budget__lines">
+                    {group.list.map(item => (
+                      <li key={item._id} className={`budget__line ${item.activo ? '' : 'budget__line--inactive'}`}>
+                        <button
+                          type="button"
+                          className="budget__item-button"
+                          onClick={() => setDialog({ kind: 'item', item, tipo: item.tipo })}
+                          aria-label={`Editar ${item.nombre}`}
+                        >
+                          <span className="budget__line-text">
+                            <span className="budget__line-name">{item.nombre}</span>
+                            <span className="budget__line-meta">
+                              {FRECUENCIA_LABELS[item.frecuencia]} · día {Number(item.fechaInicio.slice(8, 10))}
+                              {item.prorratear ? huchaLabel(item.prorrateoDesde) : ''}
+                              {item.pagosEspeciales?.length
+                                ? ` · ${item.pagosEspeciales.length} ${item.pagosEspeciales.length === 1 ? 'pago especial' : 'pagos especiales'}`
+                                : ''}
+                              {item.activo ? '' : ' · desactivada'}
+                            </span>
+                          </span>
+                          <span className="budget__line-amount">{formatEuros(item.importe)}</span>
+                          <ChevronRightIcon className="budget__chevron" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
           )}
         </section>
       )}
-
-      <BudgetForecast groupId={groupId} token={token} refreshKey={refreshKey + changeKey} />
-
-      <BudgetScenario
-        groupId={groupId}
-        token={token}
-        items={items}
-        refreshKey={refreshKey + changeKey}
-        onApplied={() => afterChange(() => Promise.resolve())}
-      />
-
-      <BudgetHistory groupId={groupId} token={token} refreshKey={refreshKey} />
-
-      <section className="budget__card">
-        <div className="budget__header">
-          <h3 className="budget__title">Partidas fijas</h3>
-          <button
-            type="button"
-            className="budget__icon-button"
-            onClick={() => setDialog({ kind: 'item', tipo: 'factura' })}
-            aria-label="Añadir partida fija"
-            title="Añadir partida fija"
-          >
-            <PlusIcon />
-          </button>
-        </div>
-        {items.length === 0 ? (
-          <p className="budget__text">Aún no tienes partidas fijas.</p>
-        ) : (
-          [{ title: 'Ingresos', list: incomeItems }, { title: 'Facturas y gastos fijos', list: billItems }]
-            .filter(group => group.list.length > 0)
-            .map(group => (
-              <div key={group.title} className="budget__items">
-                <h4 className="budget__subtitle">{group.title}</h4>
-                <ul className="budget__lines">
-                  {group.list.map(item => (
-                    <li key={item._id} className={`budget__line ${item.activo ? '' : 'budget__line--inactive'}`}>
-                      <button
-                        type="button"
-                        className="budget__item-button"
-                        onClick={() => setDialog({ kind: 'item', item, tipo: item.tipo })}
-                        aria-label={`Editar ${item.nombre}`}
-                      >
-                        <span className="budget__line-text">
-                          <span className="budget__line-name">{item.nombre}</span>
-                          <span className="budget__line-meta">
-                            {FRECUENCIA_LABELS[item.frecuencia]} · día {Number(item.fechaInicio.slice(8, 10))}
-                            {item.prorratear ? huchaLabel(item.prorrateoDesde) : ''}
-                            {item.pagosEspeciales?.length
-                              ? ` · ${item.pagosEspeciales.length} ${item.pagosEspeciales.length === 1 ? 'pago especial' : 'pagos especiales'}`
-                              : ''}
-                            {item.activo ? '' : ' · desactivada'}
-                          </span>
-                        </span>
-                        <span className="budget__line-amount">{formatEuros(item.importe)}</span>
-                        <ChevronRightIcon className="budget__chevron" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
-        )}
-      </section>
 
       {dialog?.kind === 'confirm' && (
         <BudgetMovementDialog

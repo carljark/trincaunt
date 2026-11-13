@@ -80,6 +80,12 @@ describe('BudgetTab', () => {
   const renderTab = (props: Partial<React.ComponentProps<typeof BudgetTab>> = {}) =>
     render(<BudgetTab groupId="g1" token="tok" {...props} />);
 
+  // Las secciones plegables se abren por su cabecera, que empieza por el título
+  const openSection = (title: string) =>
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${title}`), expanded: false }));
+
+  const showItems = async () => fireEvent.click(await screen.findByRole('button', { name: 'Partidas' }));
+
   it('shows what is left, per week, per day and the pace', async () => {
     renderTab();
     const hero = await screen.findByRole('region', { name: 'Lo que puedes gastar' });
@@ -143,7 +149,9 @@ describe('BudgetTab', () => {
 
   it('deletes a received income', async () => {
     renderTab();
-    fireEvent.click(await screen.findByRole('button', { name: 'Deshacer Nómina' }));
+    await screen.findByText('Ciclo actual');
+    openSection('Ingresos');
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer Nómina' }));
     fireEvent.click(screen.getByRole('button', { name: 'Borrar' }));
 
     await waitFor(() => expect(api.deleteIncome).toHaveBeenCalledWith('tok', 'inc-1'));
@@ -203,7 +211,8 @@ describe('BudgetTab', () => {
 
   it('edits and deletes a recurring item', async () => {
     renderTab();
-    fireEvent.click(await screen.findByRole('button', { name: 'Editar Luz' }));
+    await showItems();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Luz' }));
     const dialog = screen.getByRole('dialog', { name: 'Editar partida fija' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Borrar' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Sí, borrar' }));
@@ -228,6 +237,8 @@ describe('BudgetTab', () => {
     renderTab();
 
     expect(normalize((await screen.findByText(/de la hucha/)).textContent)).toBe('20 nov · Pendiente · 600,00 € de la hucha');
+    openSection('Cómo sale la cuenta');
+    openSection('Huchas');
     expect(screen.getByText('Apartado en huchas').nextElementSibling).toHaveTextContent('−250,00 €');
     expect(screen.getByText(/, sin lo que paga la hucha/)).toBeInTheDocument();
 
@@ -239,7 +250,8 @@ describe('BudgetTab', () => {
 
   it('offers a sinking fund for bills that are not monthly', async () => {
     renderTab();
-    fireEvent.click(await screen.findByRole('button', { name: 'Editar Luz' }));
+    await showItems();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Luz' }));
     const dialog = screen.getByRole('dialog', { name: 'Editar partida fija' });
     expect(within(dialog).queryByRole('checkbox', { name: /hucha/ })).not.toBeInTheDocument();
 
@@ -259,6 +271,7 @@ describe('BudgetTab', () => {
     };
     api.listRecurringItems.mockResolvedValue([...items, seguro]);
     renderTab();
+    await showItems();
     expect(normalize((await screen.findByText(/hucha desde/)).textContent)).toBe('Cada año · día 15 · hucha desde el 1 feb');
 
     fireEvent.click(screen.getByRole('button', { name: 'Editar Luz' }));
@@ -291,7 +304,8 @@ describe('BudgetTab', () => {
 
   it('saves a reminder for a bill paid by hand', async () => {
     renderTab();
-    fireEvent.click(await screen.findByRole('button', { name: 'Editar Luz' }));
+    await showItems();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Luz' }));
     const dialog = screen.getByRole('dialog', { name: 'Editar partida fija' });
     fireEvent.change(within(dialog).getByLabelText('Recordatorio (opcional)'), { target: { value: 'Pagar en la oficina' } });
     fireEvent.change(within(dialog).getByLabelText('Días antes'), { target: { value: '5' } });
@@ -304,7 +318,8 @@ describe('BudgetTab', () => {
 
   it('offers a sinking fund for a monthly bill once it has an end date', async () => {
     renderTab();
-    fireEvent.click(await screen.findByRole('button', { name: 'Editar Luz' }));
+    await showItems();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Luz' }));
     const dialog = screen.getByRole('dialog', { name: 'Editar partida fija' });
 
     fireEvent.change(within(dialog).getByLabelText('Hasta (opcional)'), { target: { value: '2027-05-20' } });
@@ -336,6 +351,58 @@ describe('BudgetTab', () => {
     expect(normalize(screen.getByText(/95,00 € de 80,00 €/).textContent)).toBe('95,00 € de 80,00 € · 119 %');
   });
 
+  it('shows each section folded with its summary, and opens the ones that need something', async () => {
+    renderTab();
+    await screen.findByText('Ciclo actual');
+    // La luz está pendiente: Facturas empieza abierta
+    expect(screen.getByRole('button', { name: /^Facturas 60,00\s€ pendientes$/, expanded: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pagar Luz' })).toBeInTheDocument();
+    // Lo demás, cerrado con su resumen
+    expect(screen.getByRole('button', { name: /^Ingresos 2050,00\s€ cobrados$/, expanded: false })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Cómo sale la cuenta Ingresos 2050,00\s€ · facturas 760,00\s€$/, expanded: false })).toBeInTheDocument();
+    expect(screen.queryByText('Gastos del día a día')).not.toBeInTheDocument();
+
+    openSection('Cómo sale la cuenta');
+    expect(screen.getByText('Gastos del día a día')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Facturas/, expanded: true }));
+    expect(screen.queryByRole('button', { name: 'Pagar Luz' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the bills folded when they are all paid', async () => {
+    api.getSummary.mockResolvedValue(summary({
+      facturas: {
+        pagadas: 700, pendientes: 0, total: 700, deHucha: 0,
+        lineas: [{ recurrente_id: 'alquiler', nombre: 'Alquiler', fecha: '2026-11-01', importe: 700, estado: 'pagada', movimiento_id: 'exp-1' }]
+      }
+    }));
+    renderTab();
+    expect(await screen.findByRole('button', { name: 'Facturas Todas pagadas', expanded: false })).toBeInTheDocument();
+  });
+
+  it('summarises the category limits in the folded header', async () => {
+    api.getSummary.mockResolvedValue(summary({
+      limitesCategoria: [{ categoria: 'Ocio', limite: 100, gastado: 40, restante: 60, porcentaje: 40 }]
+    }));
+    renderTab();
+    expect(await screen.findByRole('button', { name: 'Límites por categoría Todo dentro del límite', expanded: false })).toBeInTheDocument();
+  });
+
+  it('splits the tab into views and keeps the cycle controls in the first one', async () => {
+    renderTab();
+    await screen.findByText('Ciclo actual');
+    expect(screen.getByRole('button', { name: 'Ciclo' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('Partidas fijas')).not.toBeInTheDocument();
+
+    await showItems();
+    expect(screen.getByRole('button', { name: 'Partidas' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Partidas fijas')).toBeInTheDocument();
+    expect(screen.queryByText('Ciclo actual')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Lo que puedes gastar' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ciclo' }));
+    expect(screen.getByText('Ciclo actual')).toBeInTheDocument();
+  });
+
   it('hides the limits card when there are none', async () => {
     renderTab();
     await screen.findByRole('region', { name: 'Lo que puedes gastar' });
@@ -345,7 +412,11 @@ describe('BudgetTab', () => {
   it('shows my share of other groups when enabled', async () => {
     api.getSummary.mockResolvedValue(summary({ otrosGrupos: { total: 30, grupos: [{ _id: 'piso', nombre: 'Piso', total: 30 }] } }));
     renderTab();
-    expect(await screen.findByText('Piso')).toBeInTheDocument();
+    await screen.findByText('Ciclo actual');
+    expect(screen.getByRole('button', { name: /^Tu parte en otros grupos 30,00\s€$/ })).toBeInTheDocument();
+    openSection('Tu parte en otros grupos');
+    openSection('Cómo sale la cuenta');
+    expect(screen.getByText('Piso')).toBeInTheDocument();
     expect(screen.getAllByText('Tu parte en otros grupos')).toHaveLength(2); // desglose y tarjeta
   });
 

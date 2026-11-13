@@ -28,6 +28,41 @@
     border-radius: $border-radius;
   }
 
+  // ---- Vistas: Ciclo / Futuro / Historial / Partidas ----
+  &__views {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 2px;
+    background: $color-gray-100;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-pill;
+  }
+
+  &__view {
+    @include truncate;
+    min-height: 2.5rem;
+    padding: 0 map.get($spacing-scale, 2);
+    font-family: inherit;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, medium);
+    color: $color-text-muted;
+    background: transparent;
+    border: 0;
+    border-radius: $border-radius-pill;
+    cursor: pointer;
+
+    &--active {
+      color: $color-gray-900;
+      background: $color-surface;
+      box-shadow: $box-shadow-sm;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+    }
+  }
+
   // ---- Navegación entre ciclos ----
   &__cycle {
     display: flex;
@@ -184,6 +219,80 @@
     flex-wrap: wrap;
     align-items: center;
     gap: map.get($spacing-scale, 2);
+  }
+
+  // Cabecera de una sección plegable: título, resumen y flecha
+  &__title--toggle {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__toggle {
+    display: flex;
+    align-items: center;
+    gap: map.get($spacing-scale, 2);
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+      border-radius: $border-radius;
+    }
+  }
+
+  &__toggle-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__toggle-title {
+    @include truncate;
+  }
+
+  &__toggle-summary {
+    @include truncate;
+    font-size: map.get($font-sizes, sm);
+    font-weight: map.get($font-weights, regular);
+    font-variant-numeric: tabular-nums;
+    color: $color-text-muted;
+
+    &--warning {
+      font-weight: map.get($font-weights, medium);
+      color: $color-warning-dark;
+    }
+
+    &--negative {
+      font-weight: map.get($font-weights, medium);
+      color: $color-negative;
+    }
+  }
+
+  &__toggle-chevron {
+    flex-shrink: 0;
+    font-size: 1.125rem;
+    color: $color-gray-400;
+    transition: transform 0.2s ease;
+
+    &--open {
+      transform: rotate(90deg);
+    }
+  }
+
+  &__section-body {
+    display: flex;
+    flex-direction: column;
+    gap: map.get($spacing-scale, 3);
   }
 
   &__subtitle {
