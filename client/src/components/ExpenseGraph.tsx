@@ -100,7 +100,8 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/categories`, {
+        // Solo las categorías de este grupo
+        const res = await fetch(`${apiHost}${apiBaseUrl}/expenses/categories?groupId=${groupId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -115,7 +116,7 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
       }
     };
     fetchCategories();
-  }, [token]);
+  }, [groupId, token]);
 
   const handleDatePreset = (preset: string) => {
     if (datePreset === preset) {
@@ -161,14 +162,15 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
     setLoading(true);
     setError('');
     try {
-      let url = `${apiHost}${apiBaseUrl}/groups/${groupId}/expenses/chart?`;
-      if (startDate) url += `startDate=${startDate}&`;
-      if (endDate) url += `endDate=${endDate}&`;
-      if (selectedWeekdays.length > 0) url += `weekdays=${selectedWeekdays.join(',')}&`;
-      if (selectedCategories.length > 0) url += `categories=${selectedCategories.join(',')}&`;
-      if (localizationFilter) url += `localization=${localizationFilter}&`;
+      // Codificados: una categoría o un lugar con «&», «#» o «+» no debe romper la consulta
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      if (selectedWeekdays.length > 0) params.set('weekdays', selectedWeekdays.join(','));
+      if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
+      if (localizationFilter) params.set('localization', localizationFilter);
 
-      const res = await fetch(url, {
+      const res = await fetch(`${apiHost}${apiBaseUrl}/groups/${groupId}/expenses/chart?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 

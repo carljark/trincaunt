@@ -101,7 +101,7 @@ describe('ExpenseGraph', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiHost}${apiBaseUrl}/groups/${mockGroupId}/expenses/chart?startDate=2023-01-01&`,
+        `${apiHost}${apiBaseUrl}/groups/${mockGroupId}/expenses/chart?startDate=2023-01-01`,
         { headers: { Authorization: `Bearer ${mockToken}` } }
       );
     });
@@ -122,7 +122,7 @@ describe('ExpenseGraph', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiHost}${apiBaseUrl}/groups/${mockGroupId}/expenses/chart?endDate=2023-01-31&`,
+        `${apiHost}${apiBaseUrl}/groups/${mockGroupId}/expenses/chart?endDate=2023-01-31`,
         { headers: { Authorization: `Bearer ${mockToken}` } }
       );
     });
@@ -141,7 +141,7 @@ describe('ExpenseGraph', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiHost}${apiBaseUrl}/groups/${mockGroupId}/expenses/chart?weekdays=1&`,
+        `${apiHost}${apiBaseUrl}/groups/${mockGroupId}/expenses/chart?weekdays=1`,
         { headers: { Authorization: `Bearer ${mockToken}` } }
       );
     });
@@ -161,7 +161,7 @@ describe('ExpenseGraph', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        `${apiHost}${apiBaseUrl}/groups/${mockGroupId}/expenses/chart?weekdays=1,2&`,
+        `${apiHost}${apiBaseUrl}/groups/${mockGroupId}/expenses/chart?weekdays=1%2C2`,
         { headers: { Authorization: `Bearer ${mockToken}` } }
       );
     });
@@ -223,7 +223,7 @@ describe('ExpenseGraph', () => {
     fireEvent.click(month);
     expect(month).toHaveAttribute('aria-pressed', 'true');
     await waitFor(() => expect(global.fetch).toHaveBeenLastCalledWith(
-      expect.stringMatching(/startDate=\d{4}-\d{2}-01&endDate=\d{4}-\d{2}-\d{2}&$/),
+      expect.stringMatching(/startDate=\d{4}-\d{2}-01&endDate=\d{4}-\d{2}-\d{2}$/),
       expect.anything()
     ));
 
@@ -252,5 +252,22 @@ describe('ExpenseGraph', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Quitar Food' }));
     await waitFor(() => expect(colorOf('Food')).toBeUndefined());
     expect(colorOf('Rent')).toBe(rentColor);
+  });
+
+  it('encodes the place and asks only for the group categories', async () => {
+    render(<ExpenseGraph groupId={mockGroupId} token={mockToken} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Más filtros' }));
+    fireEvent.change(screen.getByPlaceholderText('Filtrar por lugar…'), { target: { value: 'Bar & Co (centro)' } });
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${apiHost}${apiBaseUrl}/groups/${mockGroupId}/expenses/chart?localization=Bar+%26+Co+%28centro%29`,
+        expect.anything()
+      );
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${apiHost}${apiBaseUrl}/expenses/categories?groupId=${mockGroupId}`,
+      expect.anything()
+    );
   });
 });
