@@ -238,13 +238,16 @@ export class AssistantService {
       datos.balances = balances.map(b => ({ nombre: b.nombre, balance: b.balance }));
     }
 
+    const instructions = input.kind === 'media' && input.voice
+      ? input.text ? 'una nota de voz y un mensaje escrito' : 'una nota de voz'
+      : 'un mensaje escrito';
     const source = input.kind === 'text'
       ? 'El usuario te escribe un mensaje.'
-      : input.text
-        ? 'El usuario te manda un archivo (una foto, normalmente un ticket o factura, o una nota de voz) y un mensaje escrito sobre él. '
-          + 'El mensaje manda: sigue sus instrucciones al leer el archivo (p. ej. "apunta la mitad de todo excepto la carne": '
+      : input.text || input.voice
+        ? `El usuario te manda un archivo (una foto o un PDF, normalmente un ticket o factura, o una nota de voz) y ${instructions} sobre él. `
+          + 'Sus instrucciones mandan: síguelas al leer el archivo (p. ej. "apunta la mitad de todo excepto la carne": '
           + 'suma cada parte del ticket con lo que le toca al usuario y explica en la respuesta cómo has hecho la cuenta).'
-        : 'El usuario te manda un archivo: una foto (normalmente un ticket o factura) o una nota de voz con lo que quiere.';
+        : 'El usuario te manda un archivo: una foto o un PDF (normalmente un ticket o factura) o una nota de voz con lo que quiere.';
     const conversation = history.length
       ? `\nConversación reciente (de más antigua a más nueva), por si el mensaje la continúa:\n${history.map(t => `${t.rol === 'usuario' ? 'Usuario' : 'Asistente'}: ${t.texto}`).join('\n')}\n`
       : '';

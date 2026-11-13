@@ -161,6 +161,31 @@ describe('ExpenseService Filtering', () => {
     });
   });
 
+  describe('getChartExpenses with categories', () => {
+    it('adds a day total that counts each expense once', async () => {
+      CategoryAliasMock.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) } as any);
+      ExpenseMock.aggregate
+        .mockResolvedValueOnce([
+          { date: '2026-11-01', category: 'Cervezas', totalAmount: 30 },
+          { date: '2026-11-01', category: 'Comida', totalAmount: 30 }
+        ] as any)
+        .mockResolvedValueOnce([{ date: '2026-11-01', totalAmount: 30 }] as any);
+      const groupId = new mongoose.Types.ObjectId().toString();
+
+      const result = await expenseService.getChartExpenses(groupId, undefined, undefined, undefined, ['Cervezas', 'Comida']);
+
+      expect(result).toEqual([
+        { date: '2026-11-01', category: 'Cervezas', totalAmount: 30 },
+        { date: '2026-11-01', category: 'Comida', totalAmount: 30 },
+        { date: '2026-11-01', totalAmount: 30 }
+      ]);
+      // El total del día filtra por las mismas categorías, sin desdoblar los gastos
+      const [dayTotals] = (Expense.aggregate as vi.Mock).mock.calls[1];
+      expect(dayTotals[0].$match.categoria).toEqual({ $in: ['Cervezas', 'Comida'] });
+      expect(dayTotals.some((stage: object) => '$unwind' in stage)).toBe(false);
+    });
+  });
+
   describe('bulkUpdate', () => {
     it('should update multiple expenses with allowed fields', async () => {
       const expenseIds = ['exp-1', 'exp-2'];

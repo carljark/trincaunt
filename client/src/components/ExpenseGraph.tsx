@@ -280,7 +280,9 @@ const ExpenseGraph: React.FC<ExpenseGraphProps> = ({ groupId, token }) => {
         }),
       };
 
-  const totalFilteredAmount = chartData.reduce((sum, item) => sum + item.totalAmount, 0);
+  // Las filas sin categoría son el total del día con cada gasto una vez (con categorías, un gasto
+  // en dos de ellas sale en las dos líneas pero no suma dos veces)
+  const totalFilteredAmount = chartData.reduce((sum, item) => sum + (item.category ? 0 : item.totalAmount), 0);
   const averagePerDay = dates.length > 0 ? totalFilteredAmount / dates.length : 0;
   const showPoints = dates.length <= 31;
 

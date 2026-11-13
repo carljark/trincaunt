@@ -43,11 +43,14 @@ interface HistoryTurn {
 
 type SentMessage =
   | { kind: 'text'; text: string }
-  | { kind: 'photo'; text?: string }
+  | { kind: 'photo'; text?: string; voiceSeconds?: number }
   | { kind: 'audio'; seconds: number }
-  | { kind: 'file'; name: string; text?: string };
+  | { kind: 'file'; name: string; text?: string; voiceSeconds?: number };
 
-/** Foto o archivo elegido que espera en la barra a que se escriba (o no) un mensaje y se envíe */
+/**
+ * Foto o archivo (imagen, PDF o audio) elegido que espera en la barra a que se escriba un mensaje
+ * o se grabe una nota de voz (o nada) y se envíe
+ */
 interface Attachment {
   file: File;
   kind: 'photo' | 'file';
@@ -72,16 +75,22 @@ const MAX_HISTORY = 6;
 const parseAmount = (value: string) => Number.parseFloat(value.replace(',', '.'));
 const isNewExpense = (action: EditableAction) => action.tipo === 'crear_gasto';
 
-const withText = (label: string, text?: string) => (text ? `${label}\n${text}` : label);
+const voiceLabel = (seconds: number) => `🎤 Nota de voz (${formatRecordingTime(seconds)})`;
+
+const withExtras = (label: string, text?: string, voiceSeconds?: number) =>
+  [label, voiceSeconds !== undefined && voiceLabel(voiceSeconds), text].filter(Boolean).join('\n');
 
 const sentLabel = (sent: SentMessage) => {
   switch (sent.kind) {
     case 'text': return sent.text;
-    case 'photo': return withText('📷 Foto', sent.text);
-    case 'audio': return `🎤 Nota de voz (${formatRecordingTime(sent.seconds)})`;
-    case 'file': return withText(`📎 ${sent.name}`, sent.text);
+    case 'photo': return withExtras('📷 Foto', sent.text, sent.voiceSeconds);
+    case 'audio': return voiceLabel(sent.seconds);
+    case 'file': return withExtras(`📎 ${sent.name}`, sent.text, sent.voiceSeconds);
   }
 };
+
+// Una nota de voz se puede añadir a una foto o a un archivo que no sea ya un audio
+const acceptsVoice = (attachment: Attachment | null) => !!attachment && !attachment.file.type.startsWith('audio/');
 
 const previewOf = (file: File) => {
   if (!file.type.startsWith('image/')) return undefined;
@@ -144,7 +153,7 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
     historyRef.current = [...historyRef.current, ...turns].slice(-MAX_HISTORY);
   };
 
-  const send = async (sent: SentMessage, media?: File) => {
+  const send = async (sent: SentMessage, media?: File, voice?: File) => {
     const requestId = ++requestIdRef.current;
     setIsEditing(false);
     setExchange({ sent, status: 'thinking', acciones: [] });
@@ -153,6 +162,7 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
 
     const formData = new FormData();
     if (media) formData.append('media', media);
+    if (voice) formData.append('voz', voice);
     if (sent.kind !== 'audio' && sent.text) formData.append('texto', sent.text);
     formData.append('historial', JSON.stringify(historyRef.current));
 
@@ -221,7 +231,18 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
   const handleStopRecording = async () => {
     const seconds = recorder.seconds;
     const file = await recorder.stop();
-    if (file) send({ kind: 'audio', seconds }, file);
+    if (!file) return;
+    if (!acceptsVoice(attachment)) {
+      send({ kind: 'audio', seconds }, file);
+      return;
+    }
+    // Nota de voz sobre la foto o el archivo adjunto, con el mensaje escrito si lo hay
+    const { file: media, kind } = attachment!;
+    const message = text.trim();
+    const extra = { ...(message && { text: message }), voiceSeconds: seconds };
+    setText('');
+    removeAttachment();
+    send(kind === 'photo' ? { kind: 'photo', ...extra } : { kind: 'file', name: media.name, ...extra }, media, file);
   };
 
   const close = () => {
@@ -391,6 +412,20 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
     );
   };
 
+  const attachmentChip = attachment && (
+    <div className="ai-chat-bar__attachment">
+      {attachment.previewUrl
+        ? <img className="ai-chat-bar__attachment-preview" src={attachment.previewUrl} alt="" />
+        : <PaperclipIcon className="ai-chat-bar__attachment-icon" />}
+      <span className="ai-chat-bar__attachment-name">
+        {attachment.kind === 'photo' ? 'Foto' : attachment.file.name}
+      </span>
+      <button type="button" className="ai-chat-bar__attachment-remove" onClick={removeAttachment} aria-label="Quitar adjunto">
+        <CloseIcon />
+      </button>
+    </div>
+  );
+
   return (
     <div className="ai-chat-bar">
       {exchange && (
@@ -414,7 +449,7 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
       />
       <input
         type="file"
-        accept="image/*,audio/*"
+        accept="image/*,audio/*,application/pdf"
         className="ai-chat-bar__hidden-input"
         ref={fileInputRef}
         onChange={e => handleFileSelected(e, 'file')}
@@ -422,33 +457,24 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
       />
 
       {recorder.isRecording ? (
-        <div className="ai-chat-bar__bar">
-          <button type="button" className="ai-chat-bar__icon" onClick={recorder.cancel} aria-label="Cancelar grabación">
-            <TrashIcon />
-          </button>
-          <span className="ai-chat-bar__recording" role="timer">
-            <span className="ai-chat-bar__recording-dot" aria-hidden="true" />
-            {formatRecordingTime(recorder.seconds)} Grabando…
-          </span>
-          <button type="button" className="ai-chat-bar__send" onClick={handleStopRecording} aria-label="Enviar nota de voz">
-            <SendIcon />
-          </button>
+        <div className="ai-chat-bar__composer">
+          {attachmentChip}
+          <div className="ai-chat-bar__bar">
+            <button type="button" className="ai-chat-bar__icon" onClick={recorder.cancel} aria-label="Cancelar grabación">
+              <TrashIcon />
+            </button>
+            <span className="ai-chat-bar__recording" role="timer">
+              <span className="ai-chat-bar__recording-dot" aria-hidden="true" />
+              {formatRecordingTime(recorder.seconds)} Grabando…
+            </span>
+            <button type="button" className="ai-chat-bar__send" onClick={handleStopRecording} aria-label="Enviar nota de voz">
+              <SendIcon />
+            </button>
+          </div>
         </div>
       ) : (
         <form className="ai-chat-bar__composer" onSubmit={handleSubmitText}>
-          {attachment && (
-            <div className="ai-chat-bar__attachment">
-              {attachment.previewUrl
-                ? <img className="ai-chat-bar__attachment-preview" src={attachment.previewUrl} alt="" />
-                : <PaperclipIcon className="ai-chat-bar__attachment-icon" />}
-              <span className="ai-chat-bar__attachment-name">
-                {attachment.kind === 'photo' ? 'Foto' : attachment.file.name}
-              </span>
-              <button type="button" className="ai-chat-bar__attachment-remove" onClick={removeAttachment} aria-label="Quitar adjunto">
-                <CloseIcon />
-              </button>
-            </div>
-          )}
+          {attachmentChip}
           <div className="ai-chat-bar__bar">
             <button type="button" className="ai-chat-bar__icon" onClick={() => fileInputRef.current?.click()} aria-label="Adjuntar archivo" disabled={isBusy}>
               <PaperclipIcon />
@@ -466,6 +492,11 @@ const AiChatBar: React.FC<AiChatBarProps> = ({ groupId, token, onExpensesAdded }
             {!text.trim() && !attachment && (
               <button type="button" className="ai-chat-bar__icon" onClick={handleCamera} aria-label="Hacer foto" disabled={isBusy}>
                 <CameraIcon />
+              </button>
+            )}
+            {acceptsVoice(attachment) && (
+              <button type="button" className="ai-chat-bar__icon" onClick={recorder.start} aria-label="Añadir nota de voz" disabled={isBusy}>
+                <MicIcon />
               </button>
             )}
             {text.trim() || attachment ? (

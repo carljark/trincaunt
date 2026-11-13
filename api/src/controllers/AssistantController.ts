@@ -17,18 +17,26 @@ const assistantUser = (req: Request) => {
 };
 
 /**
- * Lee un mensaje, una foto o un audio (con un mensaje que lo acompañe, si hay) y devuelve la respuesta del asistente y las acciones
+ * Lee un mensaje, una foto, un PDF o un audio (con un mensaje y/o una nota de voz que lo acompañen, si hay) y devuelve la respuesta del asistente y las acciones
  * que propone, SIN aplicarlas: el usuario las confirma con POST .../assistant/apply.
  */
 export const askAssistant = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = assistantUser(req);
     const texto = typeof req.body?.texto === 'string' ? req.body.texto.trim() : '';
-    if (!req.file && !texto) throw new AppError('Escribe un mensaje o adjunta una foto o un audio', 400);
+    // `media`: foto, PDF o audio; `voz`: nota de voz que acompaña al archivo
+    const files = (req.files ?? {}) as Record<string, Express.Multer.File[] | undefined>;
+    const media = files.media?.[0];
+    const voz = files.voz?.[0];
+    if (!media && !texto) throw new AppError('Escribe un mensaje o adjunta una foto, un PDF o un audio', 400);
     if (texto.length > MAX_TEXT_LENGTH) throw new AppError(`El mensaje no puede pasar de ${MAX_TEXT_LENGTH} caracteres`, 400);
 
-    const input = req.file
-      ? { kind: 'media' as const, buffer: req.file.buffer, mimeType: req.file.mimetype, ...(texto && { text: texto }) }
+    const input = media
+      ? {
+        kind: 'media' as const, buffer: media.buffer, mimeType: media.mimetype,
+        ...(texto && { text: texto }),
+        ...(voz && { voice: { buffer: voz.buffer, mimeType: voz.mimetype } })
+      }
       : { kind: 'text' as const, text: texto };
     const reply = await assistant.draft(req.params.groupId, user, input, req.body?.historial);
 

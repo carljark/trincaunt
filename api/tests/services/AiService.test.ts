@@ -218,4 +218,52 @@ describe('AiService - foto con mensaje', () => {
     expect(media.inlineData.mimeType).toBe('image/jpeg');
     expect(message).toBe('Mensaje que acompaña al archivo: la mitad');
   });
+
+describe('AiService - nota de voz y PDF', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('debería mandar a Gemini el archivo, la nota de voz que lo acompaña y el mensaje', async () => {
+    const { GoogleGenAI } = await import('@google/genai');
+    const aiInstance = new GoogleGenAI({});
+    const generateContent = vi.fn().mockResolvedValue({ text: '[]' });
+    aiInstance.models.generateContent = generateContent;
+    vi.spyOn(AiService as any, 'ai', 'get').mockReturnValue(aiInstance);
+
+    await AiService.askWithFallback('prompt', {
+      kind: 'media', buffer: Buffer.from('%PDF'), mimeType: 'application/pdf', text: 'solo la luz',
+      voice: { buffer: Buffer.from('aud'), mimeType: 'audio/webm' }
+    }, t => t);
+
+    const [, pdf, voiceLabel, voice, message] = generateContent.mock.calls[0][0].contents;
+    expect(pdf.inlineData.mimeType).toBe('application/pdf');
+    expect(voiceLabel).toBe('Nota de voz que acompaña al archivo:');
+    expect(voice.inlineData.mimeType).toBe('audio/webm');
+    expect(message).toBe('Mensaje que acompaña al archivo: solo la luz');
+  });
+
+  it('debería mandar a OpenRouter el PDF como archivo y la nota de voz como audio', async () => {
+    const { GoogleGenAI } = await import('@google/genai');
+    const aiInstance = new GoogleGenAI({});
+    aiInstance.models.generateContent = vi.fn().mockRejectedValue(new Error('Gemini caído'));
+    vi.spyOn(AiService as any, 'ai', 'get').mockReturnValue(aiInstance);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '[]' } }] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await AiService.askWithFallback('prompt', {
+      kind: 'media', buffer: Buffer.from('%PDF'), mimeType: 'application/pdf',
+      voice: { buffer: Buffer.from('aud'), mimeType: 'audio/webm' }
+    }, t => t);
+
+    const content = JSON.parse(fetchMock.mock.calls[0][1].body).messages[0].content;
+    expect(content.map((c: any) => c.type)).toEqual(['text', 'file', 'text', 'input_audio']);
+    expect(content[1].file.file_data).toBe(`data:application/pdf;base64,${Buffer.from('%PDF').toString('base64')}`);
+    expect(content[3].input_audio.format).toBe('webm');
+    vi.unstubAllEnvs();
+  });
+});
 });

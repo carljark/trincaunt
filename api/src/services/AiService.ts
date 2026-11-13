@@ -27,12 +27,17 @@ export interface GroupMemberRef {
   nombre: string;
 }
 
+export interface MediaPart {
+  buffer: Buffer;
+  mimeType: string;
+}
+
 /**
- * Lo que manda el usuario: un archivo (foto de ticket o nota de voz), con un mensaje escrito
- * opcional que lo acompaña ("apunta la mitad"), o solo un mensaje escrito
+ * Lo que manda el usuario: un archivo (foto o PDF de un ticket, o nota de voz), con un mensaje
+ * escrito ("apunta la mitad") y/o una nota de voz que lo acompañan, o solo un mensaje escrito
  */
 export type ExpenseInput =
-  | { kind: 'media'; buffer: Buffer; mimeType: string; text?: string }
+  | { kind: 'media'; buffer: Buffer; mimeType: string; text?: string; voice?: MediaPart }
   | { kind: 'text'; text: string };
 
 class AiService {
@@ -99,7 +104,7 @@ class AiService {
   private buildPrompt(kind: ExpenseInput['kind'], members: GroupMemberRef[]): string {
     const source = kind === 'text'
       ? 'Te voy a pasar un mensaje escrito por mí en el que te cuento uno o varios gastos.'
-      : 'Te voy a pasar un archivo (puede ser una imagen de un ticket/factura, o una grabación de voz mía diciéndote gastos).';
+      : 'Te voy a pasar un archivo (puede ser una imagen o un PDF de un ticket/factura, o una grabación de voz mía diciéndote gastos).';
     const payer = members.length > 0
       ? `
 Estos son los miembros del grupo (id y nombre): ${JSON.stringify(members)}.
@@ -143,6 +148,10 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
       ? [`Mensaje: ${input.text}`]
       : [
         { inlineData: { data: input.buffer.toString('base64'), mimeType: input.mimeType } },
+        ...(input.voice ? [
+          'Nota de voz que acompaña al archivo:',
+          { inlineData: { data: input.voice.buffer.toString('base64'), mimeType: input.voice.mimeType } }
+        ] : []),
         ...(input.text ? [`Mensaje que acompaña al archivo: ${input.text}`] : [])
       ];
     const response = await this.ai.models.generateContent({
@@ -160,6 +169,10 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
       ? [{ type: 'text', text: `Mensaje: ${input.text}` }]
       : [
         this.toOpenRouterMedia(input.buffer.toString('base64'), input.mimeType),
+        ...(input.voice ? [
+          { type: 'text', text: 'Nota de voz que acompaña al archivo:' },
+          this.toOpenRouterMedia(input.voice.buffer.toString('base64'), input.voice.mimeType)
+        ] : []),
         ...(input.text ? [{ type: 'text', text: `Mensaje que acompaña al archivo: ${input.text}` }] : [])
       ];
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -187,6 +200,9 @@ Si la imagen es un recibo con múltiples productos o ítems, agrúpalos si es l�
     if (mimeType.startsWith('audio/')) {
       const format = AUDIO_FORMATS[mimeType] || mimeType.slice('audio/'.length);
       return { type: 'input_audio', input_audio: { data, format } };
+    }
+    if (mimeType === 'application/pdf') {
+      return { type: 'file', file: { filename: 'documento.pdf', file_data: `data:${mimeType};base64,${data}` } };
     }
     return { type: 'image_url', image_url: { url: `data:${mimeType};base64,${data}` } };
   }

@@ -175,6 +175,15 @@ describe('AssistantService', () => {
       expect(promptSent()).not.toContain('un mensaje escrito sobre él');
     });
 
+    it('follows a voice note that comes with a PDF', async () => {
+      aiReplies({ respuesta: 'Ok', acciones: [] });
+      await service.draft(groupId, user, {
+        kind: 'media', buffer: Buffer.from('%PDF'), mimeType: 'application/pdf',
+        voice: { buffer: Buffer.from('aud'), mimeType: 'audio/webm' }
+      });
+      expect(promptSent()).toContain('una nota de voz sobre él');
+    });
+
     it('describes budget setting changes', async () => {
       aiReplies({ respuesta: 'Listo.', acciones: [{ tipo: 'configurar_presupuesto', datos: { ahorroObjetivo: 0, limitesCategoria: [{ categoria: 'Ocio', limite: 100 }] } }] });
       const reply = await service.draft(groupId, user, { kind: 'text', text: 'sin ahorro y 100 € de ocio' });
