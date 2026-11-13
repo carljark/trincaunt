@@ -20,12 +20,28 @@ const renderModal = (overrides = {}) => {
 };
 
 describe('AdvancedFiltersModal', () => {
-  it('treats no selection as all categories and narrows down from there', () => {
+  it('treats no selection as all categories and picks only the clicked one', () => {
     const props = renderModal();
     expect(screen.getByText('Categorías · todas')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'comida' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'comida' })).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(screen.getByRole('button', { name: 'comida' }));
-    expect(props.onCategoryChange).toHaveBeenCalledWith(['bebidas', 'transporte']);
+    expect(props.onCategoryChange).toHaveBeenCalledWith(['comida']);
+  });
+
+  it('treats every category checked as all', () => {
+    const props = renderModal({ categoryFilter: [...allCategories] });
+    expect(screen.getByText('Categorías · todas')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'bebidas' }));
+    expect(props.onCategoryChange).toHaveBeenCalledWith(['bebidas']);
+  });
+
+  it('adds and removes categories from the selection', () => {
+    const props = renderModal({ categoryFilter: ['comida'] });
+    expect(screen.getByText('Categorías · 1 de 3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'comida' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'bebidas' })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'bebidas' }));
+    expect(props.onCategoryChange).toHaveBeenLastCalledWith(['comida', 'bebidas']);
   });
 
   it('goes back to "all" when every category ends up selected', () => {
@@ -35,12 +51,12 @@ describe('AdvancedFiltersModal', () => {
     expect(props.onCategoryChange).toHaveBeenCalledWith([]);
   });
 
-  it('does not deselect the last category and offers a shortcut to all', () => {
+  it('goes back to "all" when the last category is deselected, and offers a shortcut to all', () => {
     const props = renderModal({ categoryFilter: ['comida'] });
     fireEvent.click(screen.getByRole('button', { name: 'comida' }));
-    expect(props.onCategoryChange).not.toHaveBeenCalled();
+    expect(props.onCategoryChange).toHaveBeenLastCalledWith([]);
     fireEvent.click(screen.getByRole('button', { name: 'Todas' }));
-    expect(props.onCategoryChange).toHaveBeenCalledWith([]);
+    expect(props.onCategoryChange).toHaveBeenCalledTimes(2);
   });
 
   it('changes place, payer and dates, and clears a date', () => {

@@ -110,9 +110,6 @@ const GroupDetailPage: React.FC = () => {
     return () => window.removeEventListener('resize', checkTabScroll);
   }, [group, activeTab]);
 
-  // Usamos useRef para controlar si ya hemos inicializado las categorías
-  const hasInitializedCategories = useRef(false);
-
   const handleRenameGroup = async (nombre: string): Promise<boolean> => {
     if (!token || !groupId || !nombre) return false;
 
@@ -185,17 +182,12 @@ const GroupDetailPage: React.FC = () => {
 
       setCategoryAliases(aliasesMap);
       const allCategoriesArray = Array.from(allCats).sort();
+      // Sin categorías marcadas = todas (así no se ocultan los gastos sin categoría)
       setAllCategories(allCategoriesArray);
-
-      // Inicializar categorías SOLO en la primera carga y si no hay filtros guardados
-      if (initialFiltersLoaded && allCategoriesArray.length > 0 && !hasInitializedCategories.current && categoryFilter.length === 0) {
-        setCategoryFilter(allCategoriesArray);
-        hasInitializedCategories.current = true;
-      }
     } catch (err) {
       console.error('Error fetching categories:', err);
     }
-  }, [token, initialFiltersLoaded, categoryFilter]);
+  }, [token, isGlobal, groupId]);
 
   const setDatePreset = useCallback((preset: string | null) => {
     if (!preset) {
@@ -272,11 +264,9 @@ const GroupDetailPage: React.FC = () => {
         setDescriptionFilter(filters.description || '');
         setLocalizationFilter(filters.localization || '');
         setPayerFilter(filters.payer || 'all');
-        hasInitializedCategories.current = true;
       }
     } catch {
       // It's okay if it fails, it means the user has no saved preferences
-      hasInitializedCategories.current = true;
     } finally {
       setInitialFiltersLoaded(true);
     }
@@ -293,10 +283,12 @@ const GroupDetailPage: React.FC = () => {
   });
 
   // CORREGIDO: La condición de filtrado ahora está dentro de la función filter
+  // El texto se busca literal: «(» o «+» no deben romper la página
+  const textMatcher = (text: string) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
   const filteredExpenses = sortedExpenses.filter((expense: IExpensePopulated) => {
     // Búsqueda global por descripción y/o categoría
     if (searchFilter) {
-      const searchRegex = new RegExp(searchFilter, 'i');
+      const searchRegex = textMatcher(searchFilter);
       const matchesDescription = searchRegex.test(expense.descripcion);
       const matchesCategory = expense.categoria?.some(cat => searchRegex.test(cat)) ?? false;
       if (!matchesDescription && !matchesCategory) return false;
@@ -316,10 +308,10 @@ const GroupDetailPage: React.FC = () => {
       if (!matchesCategory) return false;
     }
 
-    if (descriptionFilter && !new RegExp(descriptionFilter, 'i').test(expense.descripcion)) {
+    if (descriptionFilter && !textMatcher(descriptionFilter).test(expense.descripcion)) {
       return false;
     }
-    if (localizationFilter && !new RegExp(localizationFilter, 'i').test(expense.localization || '')) {
+    if (localizationFilter && !textMatcher(localizationFilter).test(expense.localization || '')) {
       return false;
     }
     const expenseDate = new Date(expense.fecha);

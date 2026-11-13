@@ -42,23 +42,24 @@ const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
   onSave,
   onClose,
 }) => {
-  // Lista vacía = sin filtro; tener todas marcadas equivale a lo mismo
+  // Lista vacía = sin filtro (todas); tener todas marcadas equivale a lo mismo
   const allSelected = categoryFilter.length === 0 || allCategories.every(c => categoryFilter.includes(c));
-  const isSelected = (category: string) => allSelected || categoryFilter.includes(category);
+  const isSelected = (category: string) => !allSelected && categoryFilter.includes(category);
 
+  // Pulsar una categoría la añade a la selección; desde «todas» se queda solo con ella
   const toggleCategory = (category: string) => {
-    const current = allSelected ? allCategories : categoryFilter;
-    if (current.includes(category)) {
-      const next = current.filter(c => c !== category);
-      // Quitar la última equivaldría a «todas» (lista vacía): no se permite
-      if (next.length > 0) onCategoryChange(next);
-    } else {
-      const next = [...current, category];
-      onCategoryChange(allCategories.every(c => next.includes(c)) ? [] : next);
+    if (allSelected) {
+      onCategoryChange(allCategories.length > 1 ? [category] : []);
+      return;
     }
+    const next = categoryFilter.includes(category)
+      ? categoryFilter.filter(c => c !== category)
+      : [...categoryFilter, category];
+    // Sin ninguna marcada o con todas marcadas se vuelve a «todas»
+    onCategoryChange(allCategories.every(c => next.includes(c)) ? [] : next);
   };
 
-  const selectedCount = allSelected ? allCategories.length : categoryFilter.length;
+  const selectedCount = categoryFilter.filter(c => allCategories.includes(c)).length;
 
   return (
     <Dialog
@@ -93,7 +94,7 @@ const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
                 <button
                   key={category}
                   type="button"
-                  className={`advanced-filters__category ${isSelected(category) && !allSelected ? 'advanced-filters__category--selected' : ''}`}
+                  className={`advanced-filters__category ${isSelected(category) ? 'advanced-filters__category--selected' : ''}`}
                   aria-pressed={isSelected(category)}
                   onClick={() => toggleCategory(category)}
                 >
