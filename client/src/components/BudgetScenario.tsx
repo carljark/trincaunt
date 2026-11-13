@@ -251,7 +251,7 @@ const BudgetScenario: React.FC<BudgetScenarioProps> = ({ groupId, token, items, 
   return (
     <section className="budget-scenario">
       <div className="budget-scenario__header">
-        <h3 className="budget-scenario__title">¿Y si…?</h3>
+        <h3 className="budget-scenario__title">El juego de las pelotas: ¿Y si…?</h3>
         <button
           type="button"
           className="budget-scenario__icon-button"
