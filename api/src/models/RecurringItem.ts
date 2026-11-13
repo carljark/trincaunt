@@ -4,14 +4,14 @@ import { Frecuencia, FRECUENCIAS, PAGO_ESPECIAL_TIPOS, PagoEspecialTipo } from '
 export type RecurringTipo = 'ingreso' | 'factura';
 
 // Un tramo de fechas en que la partida se paga distinto: otra cuota (sustituye al importe,
-// como cuando sube la cuota de la tarjeta) o un pago extra que se suma (una amortización
-// anticipada del préstamo). Puede llevar su propio aviso para esas fechas.
+// como cuando sube la cuota de la tarjeta), un pago extra que se suma (una amortización
+// anticipada del préstamo) o sin pago (se salta, importe 0). Puede llevar su propio aviso.
 export interface IPagoEspecial {
   _id?: mongoose.Types.ObjectId;
   tipo: PagoEspecialTipo;
   desde: Date;             // Primera fecha del tramo (incluida)
   hasta: Date;             // Última fecha del tramo (incluida); un solo pago: la misma
-  importe: number;
+  importe: number;         // 0 en los «sin pago»
   aviso?: string;
   avisoDiasAntes?: number;
 }
@@ -40,7 +40,7 @@ const PagoEspecialSchema = new Schema({
   tipo: { type: String, enum: PAGO_ESPECIAL_TIPOS, required: true },
   desde: { type: Date, required: true },
   hasta: { type: Date, required: true },
-  importe: { type: Number, required: true, min: [0.01, 'El importe debe ser mayor a 0'] },
+  importe: { type: Number, required: true, min: [0, 'El importe no puede ser negativo'] },
   aviso: { type: String, trim: true, maxlength: 200 },
   avisoDiasAntes: { type: Number, min: 0, max: 31 }
 });

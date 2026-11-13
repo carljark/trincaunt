@@ -23,7 +23,8 @@ interface SpecialPaymentsEditorProps {
 
 const TIPOS: { id: PagoEspecialTipo; label: string }[] = [
   { id: 'cuota', label: 'Otra cuota' },
-  { id: 'extra', label: 'Pago extra' }
+  { id: 'extra', label: 'Pago extra' },
+  { id: 'salto', label: 'Sin pago' }
 ];
 
 let nextKey = 0;
@@ -33,7 +34,7 @@ export const toRows = (list: IPagoEspecial[] = []): SpecialRow[] => list.map(p =
   tipo: p.tipo,
   desde: p.desde.slice(0, 10),
   hasta: p.hasta.slice(0, 10),
-  importe: String(p.importe),
+  importe: p.tipo === 'salto' ? '' : String(p.importe),
   aviso: p.aviso ?? '',
   avisoDias: String(p.avisoDiasAntes ?? 3)
 }));
@@ -43,12 +44,14 @@ export const parseRows = (rows: SpecialRow[], conAvisos: boolean): { data: IPago
   const data: IPagoEspecial[] = [];
   for (const [i, row] of rows.entries()) {
     const n = rows.length > 1 ? ` ${i + 1}` : '';
-    const importe = Number(row.importe.replace(',', '.'));
+    // Un «sin pago» no lleva importe ni aviso: esos días no hay nada que pagar
+    const salto = row.tipo === 'salto';
+    const importe = salto ? 0 : Number(row.importe.replace(',', '.'));
     if (!row.desde) return { error: `Pago especial${n}: falta la fecha.` };
     const hasta = row.hasta || row.desde;
     if (hasta < row.desde) return { error: `Pago especial${n}: la fecha final no puede ser anterior a la inicial.` };
-    if (!(importe > 0)) return { error: `Pago especial${n}: el importe debe ser mayor que 0.` };
-    const aviso = conAvisos ? row.aviso.trim() : '';
+    if (!salto && !(importe > 0)) return { error: `Pago especial${n}: el importe debe ser mayor que 0.` };
+    const aviso = conAvisos && !salto ? row.aviso.trim() : '';
     const dias = Number(row.avisoDias);
     if (aviso && !(Number.isInteger(dias) && dias >= 0 && dias <= 31)) return { error: `Pago especial${n}: los días de antelación van de 0 a 31.` };
     data.push({
@@ -120,7 +123,11 @@ const SpecialPaymentsEditor: React.FC<SpecialPaymentsEditorProps> = ({ rows, onC
             </label>
           </div>
 
-          <label className="special-payments__field">
+          {row.tipo === 'salto' && (
+            <p className="special-payments__hint">Esas fechas no se pagan: no salen en la previsión ni en las facturas del ciclo.</p>
+          )}
+
+          {row.tipo !== 'salto' && <label className="special-payments__field">
             <span className="special-payments__label">{row.tipo === 'cuota' ? 'Cuota en esas fechas' : 'Extra en cada una de esas fechas'}</span>
             <span className="special-payments__amount">
               <input
@@ -132,9 +139,9 @@ const SpecialPaymentsEditor: React.FC<SpecialPaymentsEditorProps> = ({ rows, onC
               />
               <span className="special-payments__currency" aria-hidden="true">€</span>
             </span>
-          </label>
+          </label>}
 
-          {conAvisos && (
+          {conAvisos && row.tipo !== 'salto' && (
             <div className="special-payments__row special-payments__row--reminder">
               <label className="special-payments__field">
                 <span className="special-payments__label">Aviso (opcional)</span>
@@ -168,7 +175,7 @@ const SpecialPaymentsEditor: React.FC<SpecialPaymentsEditorProps> = ({ rows, onC
       </button>
       <p className="special-payments__hint">
         «Otra cuota» cambia el importe en esas fechas; «Pago extra» se paga además de la cuota (por ejemplo, una amortización
-        anticipada). Su aviso sustituye al de la partida en esas fechas.
+        anticipada); «Sin pago» se salta esas fechas (una carencia, un mes de vacaciones). Su aviso sustituye al de la partida en esas fechas.
       </p>
     </div>
   );

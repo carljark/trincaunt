@@ -745,7 +745,8 @@ export class BudgetService {
 
   /**
    * Pagos especiales: la lista entera (null o [] los quita). Cada tramo dice si cambia la
-   * cuota o suma un extra, entre qué fechas (incluidas), cuánto y, si hace falta, su aviso.
+   * cuota, suma un extra o se salta el pago, entre qué fechas (incluidas), cuánto y, si hace
+   * falta, su aviso.
    */
   private validateSpecials(value: unknown) {
     if (value === null) return [];
@@ -754,13 +755,15 @@ export class BudgetService {
     return value.map((raw, i) => {
       const p = (raw ?? {}) as Record<string, unknown>;
       const n = i + 1;
-      if (!PAGO_ESPECIAL_TIPOS.includes(p.tipo as any)) throw new AppError(`Pago especial ${n}: el tipo debe ser cuota o extra`, 400);
+      if (!PAGO_ESPECIAL_TIPOS.includes(p.tipo as any)) throw new AppError(`Pago especial ${n}: el tipo debe ser cuota, extra o salto`, 400);
       const desde = new Date(p.desde as string);
       const hasta = new Date((p.hasta ?? p.desde) as string);
       if (Number.isNaN(desde.getTime()) || Number.isNaN(hasta.getTime())) throw new AppError(`Pago especial ${n}: fecha no válida`, 400);
       if (hasta < desde) throw new AppError(`Pago especial ${n}: la fecha final no puede ser anterior a la inicial`, 400);
-      if (!(Number(p.importe) > 0)) throw new AppError(`Pago especial ${n}: el importe debe ser mayor a 0`, 400);
-      const aviso = typeof p.aviso === 'string' ? p.aviso.trim() : '';
+      // Un «sin pago» no tiene importe ni aviso: ese día no hay nada que pagar ni recordar
+      const salto = p.tipo === 'salto';
+      if (!salto && !(Number(p.importe) > 0)) throw new AppError(`Pago especial ${n}: el importe debe ser mayor a 0`, 400);
+      const aviso = !salto && typeof p.aviso === 'string' ? p.aviso.trim() : '';
       if (aviso.length > 200) throw new AppError(`Pago especial ${n}: el aviso no puede pasar de 200 caracteres`, 400);
       const dias = p.avisoDiasAntes === undefined || p.avisoDiasAntes === null ? undefined : Number(p.avisoDiasAntes);
       if (dias !== undefined && (!Number.isInteger(dias) || dias < 0 || dias > 31)) {
@@ -770,7 +773,7 @@ export class BudgetService {
         tipo: p.tipo,
         desde: toCalendarDate(p.desde as string),
         hasta: toCalendarDate((p.hasta ?? p.desde) as string),
-        importe: round2(Number(p.importe)),
+        importe: salto ? 0 : round2(Number(p.importe)),
         ...(aviso ? { aviso, ...(dias !== undefined ? { avisoDiasAntes: dias } : {}) } : {})
       };
     }).sort((a, b) => a.desde.getTime() - b.desde.getTime());

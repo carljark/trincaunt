@@ -20,9 +20,9 @@ export interface ICategoryLimitStatus extends ILimiteCategoria {
   porcentaje: number;
 }
 
-// Tramo de fechas en que una partida se paga distinto: otra cuota (sustituye al importe)
-// o un pago extra que se suma (una amortización anticipada)
-export type PagoEspecialTipo = 'cuota' | 'extra';
+// Tramo de fechas en que una partida se paga distinto: otra cuota (sustituye al importe),
+// un pago extra que se suma (una amortización anticipada) o sin pago (se salta; importe 0)
+export type PagoEspecialTipo = 'cuota' | 'extra' | 'salto';
 
 export interface IPagoEspecial {
   tipo: PagoEspecialTipo;

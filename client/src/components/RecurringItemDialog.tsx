@@ -242,7 +242,7 @@ const RecurringItemDialog: React.FC<RecurringItemDialogProps> = ({ token, item, 
               }
             }}
           />
-          <span>Pagos especiales (otra cuota o pagos extra en fechas concretas)</span>
+          <span>Pagos especiales (otra cuota, pagos extra o sin pago en fechas concretas)</span>
         </label>
         {conEspeciales && (
           <SpecialPaymentsEditor

@@ -45,6 +45,22 @@ describe('RecurringItemDialog special payments', () => {
     });
   });
 
+  it('saves a skipped payment without amount nor reminder', async () => {
+    const onSave = vi.fn<[RecurringItemInput], Promise<void>>(async () => {});
+    render(<RecurringItemDialog token="tok" item={prestamo} onSave={onSave} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Añadir pago especial/ }));
+    const second = screen.getAllByRole('group', { name: /Pago especial/ })[1];
+    fireEvent.click(within(second).getByRole('radio', { name: 'Sin pago' }));
+    expect(within(second).queryByLabelText(/^Extra en cada una|^Cuota en esas/)).not.toBeInTheDocument();
+    expect(within(second).queryByLabelText(/^Aviso/)).not.toBeInTheDocument();
+    fireEvent.change(within(second).getByLabelText(/^Desde/), { target: { value: '2027-09-01' } });
+    save();
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0].pagosEspeciales?.[1]).toEqual({ tipo: 'salto', desde: '2027-09-01', hasta: '2027-09-01', importe: 0 });
+  });
+
   it('removes them all when the switch is turned off', async () => {
     const onSave = vi.fn<[RecurringItemInput], Promise<void>>(async () => {});
     render(<RecurringItemDialog token="tok" item={prestamo} onSave={onSave} onClose={vi.fn()} />);
