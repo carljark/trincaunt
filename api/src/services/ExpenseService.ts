@@ -441,7 +441,9 @@ export class ExpenseService {
       }
 
       if (localization) {
-        match.localization = { $regex: localization, $options: 'i' }; // Case-insensitive search
+        // Texto literal, sin distinguir mayúsculas: «(» no debe dar un error de regex
+        const escaped = localization.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        match.localization = { $regex: escaped, $options: 'i' };
       }
 
       if (categories && categories.length > 0) {

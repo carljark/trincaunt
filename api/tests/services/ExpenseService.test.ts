@@ -148,6 +148,19 @@ describe('ExpenseService Filtering', () => {
     });
   });
 
+  describe('getChartExpenses', () => {
+    it('matches the place literally, so regex characters do not fail', async () => {
+      ExpenseMock.aggregate.mockResolvedValue([]);
+      const groupId = new mongoose.Types.ObjectId().toString();
+
+      await expenseService.getChartExpenses(groupId, undefined, undefined, undefined, undefined, 'Bar (centro)+');
+
+      const [{ $match }] = (Expense.aggregate as vi.Mock).mock.calls[0][0];
+      expect($match.localization).toEqual({ $regex: 'Bar \\(centro\\)\\+', $options: 'i' });
+      expect(new RegExp($match.localization.$regex, 'i').test('bar (Centro)+')).toBe(true);
+    });
+  });
+
   describe('bulkUpdate', () => {
     it('should update multiple expenses with allowed fields', async () => {
       const expenseIds = ['exp-1', 'exp-2'];
