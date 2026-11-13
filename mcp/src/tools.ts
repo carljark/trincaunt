@@ -351,7 +351,7 @@ export const tools: ToolDef[] = [
     name: 'simulate_budget_forecast',
     title: 'Simular un escenario',
     description:
-      '«¿Y si…?»: la misma previsión que get_budget_forecast quitando unas partidas fijas, añadiendo otras ' +
+      '«El juego de las pelotas: ¿Y si…?»: la misma previsión que get_budget_forecast quitando unas partidas fijas, añadiendo otras ' +
       'inventadas (p. ej. «si me compro un coche de 300 €/mes desde marzo») o retocando las que hay (más caras, ' +
       'más baratas o con las fechas movidas). No guarda nada; las partidas inventadas salen con simulada: true.',
     input: {
