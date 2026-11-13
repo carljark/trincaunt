@@ -51,11 +51,11 @@ const categories = z.array(z.string().min(1)).describe('Categorías, p. ej. ["Co
 
 // Tramos en que una partida se paga distinto (la lista entera sustituye a la anterior)
 const specials = z.array(z.object({
-  tipo: z.enum(['cuota', 'extra']).describe('cuota: en esas fechas se paga este importe en vez del normal (sube la cuota de la tarjeta); extra: se paga además de la cuota (amortización anticipada)'),
+  tipo: z.enum(['cuota', 'extra', 'salto']).describe('cuota: en esas fechas se paga este importe en vez del normal (sube la cuota de la tarjeta); extra: se paga además de la cuota (amortización anticipada); salto: en esas fechas no se paga (carencia, un mes que se salta)'),
   desde: ymd.describe('Primera fecha de pago del tramo (incluida)'),
   hasta: ymd.optional().describe('Última fecha de pago del tramo (incluida); sin ella, solo la de desde'),
-  importe: amount,
-  aviso: z.string().max(200).optional().describe('Algo que hacer a mano antes de esas fechas; manda sobre el aviso de la partida'),
+  importe: amount.optional().describe('Obligatorio salvo en salto'),
+  aviso: z.string().max(200).optional().describe('Algo que hacer a mano antes de esas fechas; manda sobre el aviso de la partida (no en salto)'),
   avisoDiasAntes: z.number().int().min(0).max(31).optional()
 })).max(50)
 
@@ -438,7 +438,7 @@ export const tools: ToolDef[] = [
       prorrateoDesde: ymd.optional().describe('Con prorratear: desde cuándo empieza a apartar (hoy o después; por defecto hoy)'),
       aviso: z.string().max(200).optional().describe('Algo que hacer a mano antes de cada fecha (p. ej. pedir al banco la amortización anticipada); se recuerda en la app y por push'),
       avisoDiasAntes: z.number().int().min(0).max(31).optional().describe('Con cuántos días de antelación se recuerda el aviso (por defecto 3)'),
-      pagosEspeciales: specials.optional().describe('Tramos de fechas con otra cuota o con un pago extra (y su aviso), dentro de la misma partida')
+      pagosEspeciales: specials.optional().describe('Tramos de fechas con otra cuota, con un pago extra (y su aviso) o sin pago, dentro de la misma partida')
     },
     kind: 'write',
     run: (api, { groupId, ...data }) => api.post(`/groups/${groupId}/recurring-items`, defined(data))

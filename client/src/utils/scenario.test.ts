@@ -23,6 +23,9 @@ describe('scenario utils', () => {
     const prestamo = { frecuencia: 'mensual' as const, fechaInicio: '2026-01-05', fechaFin: '2027-02-05' };
     expect(paysInMonth(prestamo, monthIndex('2027-03-01'))).toBe(false);
     expect(paysInMonth(prestamo, monthIndex('2027-03-01'), 1)).toBe(true);
+    const gym = { frecuencia: 'mensual' as const, fechaInicio: '2026-01-05', pagosEspeciales: [{ tipo: 'salto' as const, desde: '2026-08-05', hasta: '2026-08-05', importe: 0 }] };
+    expect(paysInMonth(gym, monthIndex('2026-08-01'))).toBe(false);
+    expect(paysInMonth(gym, monthIndex('2026-09-01'), 1)).toBe(false);
   });
 
   it('builds the fields to save: amount, dates and special payments', () => {

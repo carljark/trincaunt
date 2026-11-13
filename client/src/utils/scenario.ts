@@ -41,6 +41,7 @@ interface Payable {
   frecuencia: Frecuencia;
   fechaInicio: string;
   fechaFin?: string;
+  pagosEspeciales?: IPagoEspecial[];
 }
 
 /** Si la partida, movida `meses`, toca en el mes `month` (ver monthIndex). */
@@ -48,8 +49,12 @@ export const paysInMonth = (item: Payable, month: number, meses = 0) => {
   const inicio = shiftMonths(item.fechaInicio, meses);
   const diff = month - monthIndex(inicio);
   if (diff < 0 || diff % MESES[item.frecuencia] !== 0) return false;
-  if (!item.fechaFin) return true;
-  return shiftMonths(item.fechaInicio, meses + diff) <= shiftMonths(item.fechaFin, meses);
+  const fecha = shiftMonths(item.fechaInicio, meses + diff);
+  // Los «sin pago» se mueven con la partida
+  const saltada = item.pagosEspeciales?.some(p =>
+    p.tipo === 'salto' && shiftMonths(p.desde, meses) <= fecha && fecha <= shiftMonths(p.hasta, meses));
+  if (saltada) return false;
+  return !item.fechaFin || fecha <= shiftMonths(item.fechaFin, meses);
 };
 
 /** Una partida inventada con el retoque ya aplicado (el servidor solo retoca las guardadas). */
@@ -62,7 +67,6 @@ export const tweakScenarioItem = (item: IScenarioItem, t: Tweak): IScenarioItem 
 
 interface Stored extends Payable {
   importe: number;
-  pagosEspeciales?: IPagoEspecial[];
 }
 
 /** Lo que hay que guardar para que una partida quede como en el ensayo. */

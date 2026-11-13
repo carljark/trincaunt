@@ -8,7 +8,8 @@ export const FRECUENCIAS = ['mensual', 'bimestral', 'trimestral', 'semestral', '
 export type Frecuencia = typeof FRECUENCIAS[number];
 
 // Pagos especiales de una partida: otra cuota en esas fechas, o un extra que se suma
-export const PAGO_ESPECIAL_TIPOS = ['cuota', 'extra'] as const;
+// cuota: otro importe; extra: se suma; salto: ese pago no se hace (una carencia, un mes que se salta)
+export const PAGO_ESPECIAL_TIPOS = ['cuota', 'extra', 'salto'] as const;
 export type PagoEspecialTipo = typeof PAGO_ESPECIAL_TIPOS[number];
 
 export const MESES_POR_FRECUENCIA: Record<Frecuencia, number> = {
@@ -86,9 +87,16 @@ export const cycleAt = (index: number, diaInicio: number): Cycle => ({
   fin: dateOn(BASE_YEAR, index + 1, diaInicio)
 });
 
-/** Fechas en que toca una partida recurrente dentro de [inicio, fin). */
+/** Si un tramo de «sin pago» cubre esa fecha: ese pago no se hace. */
+export const isSkipped = (item: { pagosEspeciales?: SpecialPayment[] | null }, date: Date): boolean => {
+  const day = toCalendarDate(date).getTime();
+  return (item.pagosEspeciales ?? []).some(p =>
+    p.tipo === 'salto' && toCalendarDate(p.desde).getTime() <= day && day <= toCalendarDate(p.hasta).getTime());
+};
+
+/** Fechas en que toca una partida recurrente dentro de [inicio, fin), sin las que se saltan. */
 export const occurrencesInRange = (
-  item: { fechaInicio: Date; frecuencia: Frecuencia; fechaFin?: Date | null },
+  item: { fechaInicio: Date; frecuencia: Frecuencia; fechaFin?: Date | null; pagosEspeciales?: SpecialPayment[] | null },
   { inicio, fin }: Cycle
 ): Date[] => {
   const step = MESES_POR_FRECUENCIA[item.frecuencia] ?? 1;
@@ -104,7 +112,7 @@ export const occurrencesInRange = (
   for (let k = Math.max(0, Math.floor(monthsToCycle / step) - 1); ; k++) {
     const occurrence = dateOn(ay, am + k * step, day);
     if (occurrence >= fin || (end && occurrence > end)) break;
-    if (occurrence >= inicio) result.push(occurrence);
+    if (occurrence >= inicio && !isSkipped(item, occurrence)) result.push(occurrence);
   }
   return result;
 };
@@ -128,13 +136,14 @@ export interface PaymentOn {
 
 /**
  * Lo que toca pagar en una fecha de la partida según sus pagos especiales: un tramo de
- * cuota sustituye al importe normal y los extras se suman. Los avisos de los tramos de ese
+ * cuota sustituye al importe normal, los extras se suman y un «sin pago» lo deja en 0. Los avisos de los tramos de ese
  * día mandan sobre el de la partida.
  */
 export const paymentOn = (
   item: { importe: number; aviso?: string | null; avisoDiasAntes?: number | null; pagosEspeciales?: SpecialPayment[] | null },
   date: Date
 ): PaymentOn => {
+  if (isSkipped(item, date)) return { importe: 0, cuota: 0, extra: 0 };
   const day = toCalendarDate(date).getTime();
   const tramos = (item.pagosEspeciales ?? []).filter(p =>
     toCalendarDate(p.desde).getTime() <= day && day <= toCalendarDate(p.hasta).getTime());

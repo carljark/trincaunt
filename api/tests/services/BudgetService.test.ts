@@ -360,6 +360,16 @@ describe('BudgetService', () => {
       expect(forecast.ciclos[2].facturas).toBe(760 + 310);
     });
 
+    it('leaves out the payments that are skipped', async () => {
+      const luzSaltada = { ...items.find(i => i._id === luzId)!, pagosEspeciales: [{ tipo: 'salto', desde: d('2026-12-05'), hasta: d('2026-12-05'), importe: 0 }] };
+      (RecurringItem.find as vi.Mock).mockImplementation(async (q: any) => (q.fechaFin ? [] : [...items.filter(i => i._id !== luzId), luzSaltada]));
+
+      const forecast = await service.getForecast(groupId, userId, 3);
+      expect(forecast.ciclos[1].partidas.find(p => p.nombre === 'Luz')).toBeUndefined();
+      expect(forecast.ciclos[1].facturas).toBe(700);
+      expect(forecast.ciclos[2].partidas.find(p => p.nombre === 'Luz')).toMatchObject({ fecha: '2027-01-05', importe: 60 });
+    });
+
     describe('scenarios', () => {
       it('drops removed items from the next cycles but keeps what was already paid', async () => {
         const forecast = await service.getForecast(groupId, userId, 2, { quitar: [alquilerId.toString(), luzId.toString()] });
@@ -709,6 +719,17 @@ describe('BudgetService', () => {
       expect((RecurringItem.create as vi.Mock).mock.calls[0][0].pagosEspeciales).toEqual([
         { tipo: 'extra', desde: d('2027-08-01'), hasta: d('2027-08-01'), importe: 466.89, aviso: 'Pide la amortización', avisoDiasAntes: 5 },
         { tipo: 'extra', desde: d('2027-09-01'), hasta: d('2027-10-01'), importe: 630 }
+      ]);
+    });
+
+    it('stores a skipped payment with no amount nor reminder', async () => {
+      await service.createRecurringItem(groupId, userId, {
+        tipo: 'factura', nombre: 'Gimnasio', importe: 40, fechaInicio: '2026-11-05',
+        pagosEspeciales: [{ tipo: 'salto', desde: '2027-08-05', importe: 12, aviso: 'Nada' }]
+      });
+
+      expect((RecurringItem.create as vi.Mock).mock.calls[0][0].pagosEspeciales).toEqual([
+        { tipo: 'salto', desde: d('2027-08-05'), hasta: d('2027-08-05'), importe: 0 }
       ]);
     });
 

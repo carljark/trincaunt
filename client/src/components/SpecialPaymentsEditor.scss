@@ -41,7 +41,7 @@
   &__types {
     display: grid;
     flex: 1;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: map.get($spacing-scale, 1);
     padding: map.get($spacing-scale, 1);
     background: $color-gray-100;

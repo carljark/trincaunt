@@ -141,4 +141,23 @@ describe('budgetCycle', () => {
       expect(paymentOn(prestamo, u('2027-11-01'))).toEqual({ importe: 50, cuota: 50, extra: 0, aviso: 'Última cuota' });
     });
   });
+
+  describe('skipped payments («salto»)', () => {
+    const gym = {
+      importe: 40, frecuencia: 'mensual' as const, fechaInicio: d('2026-01-05'), aviso: 'Revisa',
+      pagosEspeciales: [
+        { tipo: 'salto' as const, desde: d('2026-07-05'), hasta: d('2026-08-05'), importe: 0 },
+        { tipo: 'extra' as const, desde: d('2026-08-05'), hasta: d('2026-08-05'), importe: 10 }
+      ]
+    };
+
+    it('leaves the skipped dates out of the occurrences', () => {
+      expect(occurrencesInRange(gym, { inicio: d('2026-06-01'), fin: d('2026-10-01') }).map(ymd)).toEqual(['2026-06-05', '2026-09-05']);
+    });
+
+    it('pays nothing, not even extras, on a skipped date', () => {
+      expect(paymentOn(gym, d('2026-08-05'))).toEqual({ importe: 0, cuota: 0, extra: 0 });
+      expect(paymentOn(gym, d('2026-09-05'))).toMatchObject({ importe: 40 });
+    });
+  });
 });
