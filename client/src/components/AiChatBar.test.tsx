@@ -241,7 +241,7 @@ describe('AiChatBar', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('graba una nota de voz al pulsar el micrófono y la manda al pulsar enviar', async () => {
+  const fakeMicrophone = () => {
     const stopTrack = vi.fn();
     class FakeRecorder {
       state = 'inactive';
@@ -260,6 +260,11 @@ describe('AiChatBar', () => {
       value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop: stopTrack }] })) }
     });
     vi.stubGlobal('MediaRecorder', FakeRecorder);
+    return stopTrack;
+  };
+
+  it('graba una nota de voz al pulsar el micrófono y la manda al pulsar enviar', async () => {
+    const stopTrack = fakeMicrophone();
     fetchMock.mockResolvedValueOnce(draftsResponse([cena]));
 
     renderBar();
@@ -274,8 +279,44 @@ describe('AiChatBar', () => {
 
     const body = fetchMock.mock.calls[0][1].body as FormData;
     expect((body.get('media') as File).type).toBe('audio/webm');
+    expect(body.get('voz')).toBeNull();
     expect(stopTrack).toHaveBeenCalled();
     expect(screen.getByText(/Nota de voz/)).toBeInTheDocument();
     vi.unstubAllGlobals();
+  });
+
+  it('acepta PDF y les añade una nota de voz junto al mensaje escrito', async () => {
+    fakeMicrophone();
+    fetchMock.mockResolvedValueOnce(draftsResponse([cena]));
+    renderBar();
+    expect(screen.getByTestId('ai-file-input')).toHaveAttribute('accept', expect.stringContaining('application/pdf'));
+
+    const pdf = new File(['%PDF'], 'factura.pdf', { type: 'application/pdf' });
+    fireEvent.change(screen.getByTestId('ai-file-input'), { target: { files: [pdf] } });
+    fireEvent.change(screen.getByLabelText('Escribe a la IA'), { target: { value: 'solo la luz' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Añadir nota de voz' }));
+    });
+    // Mientras graba, el adjunto sigue a la vista
+    expect(screen.getByRole('timer')).toHaveTextContent('Grabando');
+    expect(screen.getByText('factura.pdf')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Enviar nota de voz' }));
+    });
+
+    const body = fetchMock.mock.calls[0][1].body as FormData;
+    expect(body.get('media')).toBe(pdf);
+    expect((body.get('voz') as File).type).toBe('audio/webm');
+    expect(body.get('texto')).toBe('solo la luz');
+    expect(screen.getByText(/📎 factura\.pdf/)).toHaveTextContent(/📎 factura\.pdf 🎤 Nota de voz \(0:00\) solo la luz/);
+    expect(screen.queryByText('factura.pdf')).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('no ofrece nota de voz si el adjunto ya es un audio', () => {
+    renderBar();
+    fireEvent.change(screen.getByTestId('ai-file-input'), { target: { files: [new File(['a'], 'nota.m4a', { type: 'audio/mp4' })] } });
+    expect(screen.queryByRole('button', { name: 'Añadir nota de voz' })).not.toBeInTheDocument();
   });
 });

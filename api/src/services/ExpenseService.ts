@@ -446,6 +446,8 @@ export class ExpenseService {
         match.localization = { $regex: escaped, $options: 'i' };
       }
 
+      // Con categorías: una serie por categoría elegida (sus alias incluidos)
+      let seriesPipeline: any[] | null = null;
       if (categories && categories.length > 0) {
         // Fetch all aliases that belong to the selected main categories
         const aliases = await CategoryAlias.find({ mainCategories: { $in: categories } }).lean();
@@ -469,7 +471,7 @@ export class ExpenseService {
         const allRelevantCategories = Object.keys(catToSelected);
         match.categoria = { $in: allRelevantCategories };
 
-        const pipeline: any[] = [
+        seriesPipeline = [
           { $match: match },
           // Create a field 'matchedSelected' which is an array of unique selected main categories this expense belongs to
           {
@@ -517,27 +519,32 @@ export class ExpenseService {
             }
           }
         ];
-        return Expense.aggregate(pipeline);
-      } else {
-        const pipeline: any[] = [
-          { $match: match },
-          {
-            $group: {
-              _id: { $dateToString: { format: "%Y-%m-%d", date: "$fecha" } },
-              totalAmount: { $sum: "$monto" }
-            }
-          },
-          { $sort: { _id: 1 } },
-          {
-            $project: {
-              _id: 0,
-              date: "$_id",
-              totalAmount: "$totalAmount"
-            }
-          }
-        ];
-        return Expense.aggregate(pipeline);
       }
+
+      const dayTotalsPipeline: any[] = [
+        { $match: match },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$fecha" } },
+            totalAmount: { $sum: "$monto" }
+          }
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            date: "$_id",
+            totalAmount: "$totalAmount"
+          }
+        }
+      ];
+
+      if (!seriesPipeline) return Expense.aggregate(dayTotalsPipeline);
+
+      // Además, el total por día con cada gasto una sola vez (filas sin `category`): un gasto en dos
+      // de las categorías elegidas sale en las dos líneas, pero no debe sumar dos veces en el total
+      const [series, dayTotals] = await Promise.all([Expense.aggregate(seriesPipeline), Expense.aggregate(dayTotalsPipeline)]);
+      return [...series, ...dayTotals];
     }
 
 

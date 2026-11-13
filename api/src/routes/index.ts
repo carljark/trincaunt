@@ -73,11 +73,11 @@ import multer from 'multer';
 // Expense Routes (Protected)
 const expenseMember = requireMemberOfDoc(Expense, 'expenseId', 'grupo_id', 'Gasto');
 // multer va antes: el grupo llega en el cuerpo multipart
-// Audio o foto de hasta 15 MB; el texto llega como campo `texto`
+// Audio, foto o PDF de hasta 15 MB cada uno; el texto llega como campo `texto`
 const uploadMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 router.post('/expenses/ai-draft', protect, uploadMedia.single('media'), requireGroupMember('body', 'grupo_id'), ExpenseController.draftExpensesWithAI);
 // Asistente de la barra: propone (sin aplicar) y aplica lo confirmado
-router.post('/groups/:groupId/assistant', protect, uploadMedia.single('media'), groupMember, AssistantController.askAssistant);
+router.post('/groups/:groupId/assistant', protect, uploadMedia.fields([{ name: 'media', maxCount: 1 }, { name: 'voz', maxCount: 1 }]), groupMember, AssistantController.askAssistant);
 router.post('/groups/:groupId/assistant/apply', protect, groupMember, AssistantController.applyAssistantActions);
 
 // Pantalla de permiso del conector (OAuth)

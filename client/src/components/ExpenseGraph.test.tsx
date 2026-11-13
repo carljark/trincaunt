@@ -270,4 +270,31 @@ describe('ExpenseGraph', () => {
       expect.anything()
     );
   });
+
+  it('counts an expense in two chosen categories only once in the total', async () => {
+    (global.fetch as Mock).mockImplementation((url: RequestInfo | URL) => {
+      const urlString = url.toString();
+      const data = urlString.includes('categories=')
+        // 30 € en Food y Rent a la vez: sale en las dos líneas, pero el día suma 30 €
+        ? [
+          { date: '2023-01-01', category: 'Food', totalAmount: 30 },
+          { date: '2023-01-01', category: 'Rent', totalAmount: 30 },
+          { date: '2023-01-01', totalAmount: 30 },
+        ]
+        : [{ date: '2023-01-01', totalAmount: 100 }];
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ status: 'success', data }) });
+    });
+    render(<ExpenseGraph groupId={mockGroupId} token={mockToken} />);
+    await screen.findByText(/^100,00\s€$/);
+    fireEvent.click(screen.getByRole('button', { name: 'Más filtros' }));
+    const input = screen.getByLabelText('Categorías');
+    for (const cat of ['Food', 'Rent']) {
+      fireEvent.change(input, { target: { value: cat } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+    }
+
+    expect(await screen.findByText(/^30,00\s€$/)).toBeInTheDocument();
+    const { data } = (Line as Mock).mock.calls.at(-1)![0];
+    expect(data.datasets.map((d: { data: number[] }) => d.data)).toEqual([[30], [30]]);
+  });
 });
