@@ -4,6 +4,8 @@
 
 **Qué se aprende:** autenticación de servidor a servidor con un token personal, idempotencia, reintentos con espera creciente y clasificar los errores de otra API.
 
+**Estado:** implementada, pendiente de desplegar. Trincaunt: carljark/trincaunt#71. cgsshoppings: carljark/cgsshoppings#1. Las diferencias con el diseño original están en [Implementación](#implementación).
+
 ## Resumen del flujo
 
 ```
@@ -134,7 +136,7 @@ interface IIntegrationDb {
     email: string;         // de GET /users/me, para enseñar con qué cuenta está conectado
     groupId: string | null;
     groupName: string | null;
-    categoria: string;     // por defecto 'Supermercado'
+    categoria: string;     // por defecto 'Supermercado'; la de cada compra puede cambiarse en el diálogo
     status: 'ok' | 'desconectada';
     lastError: string | null;
     connectedAt: Date;
@@ -154,6 +156,7 @@ interface IPurchaseDb {
   amountCents: number | null;                  // total del ticket en céntimos
   date: string;                                // AAAA-MM-DD
   store: string | null;
+  categoria: string;        // la de la integración, salvo que se cambie al guardar la compra
   createdAt: Date;
   trincaunt: {
     status: 'no-enviar' | 'pendiente' | 'enviada' | 'error';
@@ -173,14 +176,15 @@ Siguen la convención de cgsshoppings: errores como `{ error }` con HTTP 200.
 
 | Ruta | Qué hace |
 |---|---|
-| `GET /api/integrations/trincaunt` | `{ connected, email, tokenPrefix, groupId, groupName, categoria, status, lastError }`, nunca el token |
+| `GET /api/integrations/trincaunt` | `{ enabled, connected, url, email, tokenPrefix, groupId, groupName, categoria, status, lastError }`, nunca el token. `enabled: false` si el servidor no tiene `INTEGRATION_KEY`; `url` sirve para enlazar a Preferencias de Trincaunt |
 | `POST /api/integrations/trincaunt` `{ token }` | Comprueba el token con `GET /users/me` y `GET /groups` y lo guarda cifrado. Devuelve los grupos personales `[{ _id, nombre }]`. Si solo hay uno, lo deja elegido |
+| `GET /api/integrations/trincaunt/groups` | Los grupos personales, para el selector cuando ya está conectado |
 | `PUT /api/integrations/trincaunt` `{ groupId, categoria }` | Guarda la elección. Comprueba otra vez en Trincaunt que el grupo es suyo y es personal |
 | `GET /api/integrations/trincaunt/categories` | Pasa las categorías del grupo elegido (`GET /expenses/categories`) para el selector |
 | `DELETE /api/integrations/trincaunt` | Olvida el token. El cliente recuerda que también conviene borrarlo en Preferencias de Trincaunt |
-| `POST /api/purchases` `{ amount?, date?, store?, send }` | Ver abajo |
+| `POST /api/purchases` `{ amount?, date?, store?, categoria?, send }` | Ver abajo |
 | `GET /api/purchases?limit=20` | Historial con el estado de cada envío |
-| `POST /api/purchases/:id/retry` | Reintenta ya una compra en `pendiente` o `error` |
+| `POST /api/purchases/:id/retry` | Envía ya una compra en `pendiente`, `error` o `no-enviar` (si tiene importe), con los cinco reintentos de nuevo |
 
 `POST /api/purchases`:
 
@@ -244,8 +248,24 @@ Si se desplegara cgsshoppings antes, un Trincaunt viejo ignoraría `origen` y un
 - [ ] Los avisos de presupuesto de Trincaunt (80 % y 100 %) saltan con los gastos que llegan de cgsshoppings.
 - [ ] El token no aparece en ninguna respuesta de la API de cgsshoppings ni en sus logs.
 
-## Preguntas abiertas
+## Decisiones tomadas
 
-- ¿«Compra hecha» debe quitar de la lista lo marcado? La propuesta dice que sí: ya está comprado, y queda guardado en la compra.
-- ¿Permitir enviar sin artículos marcados (solo el importe), por ejemplo para una compra rápida que no pasó por la lista?
-- ¿Una categoría fija por usuario o elegirla en cada compra? La propuesta: fija en la configuración, cambiable en el diálogo.
+- «Compra hecha» **quita de la lista** lo marcado: ya está comprado y queda guardado en la compra.
+- Hace falta **al menos un artículo marcado**. Una compra que no pasó por la lista se apunta directamente en Trincaunt.
+- La **categoría** es una por usuario en la configuración, y se puede cambiar en el diálogo de cada compra.
+
+## Implementación
+
+Lo que cambió o se concretó al programarla:
+
+- **Trincaunt.** `ExpenseService.createOrFindExpense` es lo único que mira si el gasto está duplicado. `createExpense` valida `origen`, y los lotes (`/expenses/batch`) no lo aceptan. El índice se crea solo al arrancar (autoIndex de Mongoose).
+- **Compras pausadas.** Las compras que esperan a que el usuario arregle la conexión (`401`, `403`, `404`, o integración sin grupo) quedan en `pendiente` con `nextAttemptAt: null` y no gastan intentos. Al conectar de nuevo o elegir grupo, `resumePending` las pone en marcha.
+- **Clave cambiada.** Si cambia `INTEGRATION_KEY`, el token guardado no se puede descifrar. Se trata igual que un `401`: integración desconectada.
+- **Reserva.** Antes de cada envío la compra se reserva con `findOneAndUpdate`, moviendo `nextAttemptAt` 16 s hacia delante (dos veces el tiempo máximo de una petición). Así no la mandan a la vez el temporizador y un «Reintentar».
+- **Datos.** cgsshoppings guarda la `categoria` en cada compra. `tokenPrefix` son los 10 primeros caracteres, los mismos que enseña Preferencias de Trincaunt.
+- **Base de datos en cgsshoppings.** Se añadió `getCollection` en `src/db.ts` para usar el driver con `async/await` en el código nuevo.
+- **Pruebas.** El servidor de cgsshoppings estrena Vitest (`test/`, en la CI). La prueba de extremo a extremo se hizo con las dos apps y un Mongo temporal en Docker:
+  - envío correcto;
+  - Trincaunt caído, con reintento manual y automático;
+  - token revocado y reconexión;
+  - el token no aparece en ningún log.

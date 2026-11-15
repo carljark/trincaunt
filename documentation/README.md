@@ -23,7 +23,7 @@ Las dos están detrás del nginx del EC2, cada una con su `docker compose` y su 
 
 | # | Documento | Qué se consigue | Qué se aprende | Estado |
 |---|---|---|---|---|
-| 1 | [Gasto desde la compra](01-gasto-desde-la-compra.md) | «Compra hecha» en cgsshoppings crea el gasto en Trincaunt | Token de servidor a servidor, idempotencia, reintentos, clasificar errores | Diseñado |
+| 1 | [Gasto desde la compra](01-gasto-desde-la-compra.md) | «Compra hecha» en cgsshoppings crea el gasto en Trincaunt | Token de servidor a servidor, idempotencia, reintentos, clasificar errores | Implementada ([trincaunt#71](https://github.com/carljark/trincaunt/pull/71), [cgsshoppings#1](https://github.com/carljark/cgsshoppings/pull/1)), sin desplegar |
 | 2 | [Conectar con OAuth](02-conectar-con-oauth.md) | Botón «Conectar con Trincaunt» en vez de pegar un token, con permisos limitados | Authorization code + PKCE, `state`, scopes | Esbozo |
 | 3 | [Presupuesto en la lista](03-presupuesto-en-la-lista.md) | cgsshoppings enseña cuánto queda del presupuesto de compra | Consumir una API ajena, caché, degradar con elegancia | Esbozo |
 | 4 | [Precios desde los tickets](04-precios-desde-tickets.md) | Precio estimado de cada artículo y de la lista entera | Webhooks firmados (HMAC), emparejar datos de dos sistemas | Esbozo |
