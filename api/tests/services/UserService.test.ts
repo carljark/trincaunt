@@ -79,6 +79,14 @@ describe('UserService', () => {
     });
   });
 
+  describe('login', () => {
+    it('only accepts string credentials', async () => {
+      await expect(userService.login({ $ne: null }, 'x')).rejects.toMatchObject({ statusCode: 401 });
+      await expect(userService.login('a@example.com', { $ne: null })).rejects.toMatchObject({ statusCode: 401 });
+      expect(UserMock.findOne).not.toHaveBeenCalled();
+    });
+  });
+
   describe('changePassword', () => {
     const withUser = (user: any) => (UserMock.findById as vi.Mock).mockReturnValue({ select: vi.fn().mockResolvedValue(user) });
 
@@ -129,10 +137,10 @@ describe('UserService', () => {
     });
 
     it('sets the new password and invalidates the token', async () => {
-      UserMock.findOne.mockResolvedValue({ _id: 'u1' } as any);
       (UserMock.updateOne as vi.Mock).mockResolvedValue({});
       (bcryptMock.hash as vi.Mock).mockResolvedValue('new-hash');
-      await userService.resetPassword('abc', 'nueva-segura');
+      UserMock.findOne.mockResolvedValue({ _id: 'u1', email: 'ana@example.com' } as any);
+      expect(await userService.resetPassword('abc', 'nueva-segura')).toBe('ana@example.com');
 
       const query = (UserMock.findOne as vi.Mock).mock.calls[0][0];
       expect(query.resetTokenHash).toBe(sha256('abc'));

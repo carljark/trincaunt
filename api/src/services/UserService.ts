@@ -31,7 +31,11 @@ export class UserService {
     return user;
   }
   
-  async login(email: string, password: string):Promise<{ token: string; user: IUser }> {
+  async login(email: unknown, password: unknown):Promise<{ token: string; user: IUser }> {
+    // Solo texto: un objeto ({ $ne: null }) llegaría como operador a la consulta
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      throw new AppError('Credenciales incorrectas', 401);
+    }
     const user = await User.findOne({ email }).select('+password');
     if (!user || !user.password) {
       throw new AppError('Credenciales incorrectas', 401);
@@ -92,8 +96,8 @@ export class UserService {
     );
   }
 
-  /** Cambia la contraseña con el token del enlace del correo, que deja de valer. */
-  async resetPassword(token: unknown, password: unknown): Promise<void> {
+  /** Cambia la contraseña con el token del enlace del correo, que deja de valer. Devuelve el email de la cuenta. */
+  async resetPassword(token: unknown, password: unknown): Promise<string> {
     if (typeof token !== 'string' || !token) throw new AppError(INVALID_RESET_LINK, 400);
     if (typeof password !== 'string' || password.length < MIN_PASSWORD) {
       throw new AppError(`La contraseña debe tener al menos ${MIN_PASSWORD} caracteres`, 400);
@@ -104,6 +108,7 @@ export class UserService {
       { _id: user._id },
       { $set: { password: await bcrypt.hash(password, 10) }, $unset: { resetTokenHash: '', resetExpires: '' } }
     );
+    return user.email;
   }
 
   async findByEmail(email: string): Promise<IUser | null> {
