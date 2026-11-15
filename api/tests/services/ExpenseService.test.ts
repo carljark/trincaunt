@@ -219,4 +219,61 @@ describe('ExpenseService Filtering', () => {
       await expect(expenseService.bulkUpdate(expenseIds, updateData)).rejects.toThrow('No hay datos válidos para actualizar.');
     });
   });
+
+  describe('origen (gastos de otra aplicación)', () => {
+    const groupId = new mongoose.Types.ObjectId().toString();
+    const userId = new mongoose.Types.ObjectId().toString();
+    const data = {
+      grupo_id: groupId,
+      descripcion: 'Compra (3 artículos)',
+      monto: 12.5,
+      origen: { app: 'cgsshoppings', ref: 'compra-1' }
+    } as any;
+    const filter = { grupo_id: groupId, 'origen.app': 'cgsshoppings', 'origen.ref': 'compra-1' };
+
+    beforeEach(() => {
+      GroupMock.findById.mockResolvedValue({ miembros: [userId] } as any);
+    });
+
+    it('creates the expense with its origin the first time', async () => {
+      ExpenseMock.findOne.mockResolvedValue(null);
+      ExpenseMock.create.mockImplementation(async (doc: any) => doc);
+      const { expense, duplicado } = await expenseService.createOrFindExpense(data, userId);
+      expect(duplicado).toBe(false);
+      expect(ExpenseMock.findOne).toHaveBeenCalledWith(filter);
+      expect(ExpenseMock.create).toHaveBeenCalledWith(expect.objectContaining({ origen: { app: 'cgsshoppings', ref: 'compra-1' } }));
+      expect((expense as any).monto).toBe(12.5);
+    });
+
+    it('returns the existing expense when the same origin comes again', async () => {
+      const existing = { _id: 'e1', monto: 10 };
+      ExpenseMock.findOne.mockResolvedValue(existing as any);
+      const result = await expenseService.createOrFindExpense(data, userId);
+      expect(result).toEqual({ expense: existing, duplicado: true });
+      expect(ExpenseMock.create).not.toHaveBeenCalled();
+    });
+
+    it('returns the winner of a race caught by the unique index', async () => {
+      const winner = { _id: 'e2' };
+      ExpenseMock.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(winner as any);
+      ExpenseMock.create.mockRejectedValue(Object.assign(new Error('E11000 duplicate key'), { code: 11000 }));
+      const result = await expenseService.createOrFindExpense(data, userId);
+      expect(result).toEqual({ expense: winner, duplicado: true });
+    });
+
+    it('without an origin it just creates the expense', async () => {
+      ExpenseMock.create.mockImplementation(async (doc: any) => doc);
+      const { duplicado } = await expenseService.createOrFindExpense({ ...data, origen: undefined }, userId);
+      expect(duplicado).toBe(false);
+      expect(ExpenseMock.findOne).not.toHaveBeenCalled();
+    });
+
+    it('rejects a malformed origin', async () => {
+      for (const origen of ['cgsshoppings', { app: 'CGS Shoppings', ref: 'x' }, { app: 'cgsshoppings', ref: '' }, { app: 'cgsshoppings', ref: 'x'.repeat(101) }]) {
+        await expect(expenseService.createOrFindExpense({ ...data, origen }, userId)).rejects.toMatchObject({ statusCode: 400 });
+        await expect(expenseService.createExpense({ ...data, origen }, userId)).rejects.toMatchObject({ statusCode: 400 });
+      }
+      expect(ExpenseMock.create).not.toHaveBeenCalled();
+    });
+  });
 });

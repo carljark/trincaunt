@@ -11,6 +11,9 @@ export interface IExpense extends Document {
   categoria: string[];
   localization?: string;
   recurrente_id?: mongoose.Types.ObjectId; // Factura recurrente que este gasto paga
+  // Gasto creado por otra aplicación: cuál y con qué id suyo (p. ej. una compra de cgsshoppings).
+  // Es único por grupo, así repetir la petición no lo duplica.
+  origen?: { app: string; ref: string };
 }
 
 const ExpenseSchema: Schema = new Schema({
@@ -23,9 +26,17 @@ const ExpenseSchema: Schema = new Schema({
   asume_gasto: { type: Boolean, default: false },
   categoria: { type: [String], required: false },
   localization: { type: String, required: false },
-  recurrente_id: { type: Schema.Types.ObjectId, ref: 'RecurringItem', required: false }
+  recurrente_id: { type: Schema.Types.ObjectId, ref: 'RecurringItem', required: false },
+  origen: {
+    type: new Schema({ app: { type: String, required: true }, ref: { type: String, required: true } }, { _id: false }),
+    required: false
+  }
 });
 
 ExpenseSchema.index({ grupo_id: 1, fecha: 1 });
+ExpenseSchema.index(
+  { grupo_id: 1, 'origen.app': 1, 'origen.ref': 1 },
+  { unique: true, partialFilterExpression: { 'origen.ref': { $exists: true } } }
+);
 
 export default mongoose.model<IExpense>('Expense', ExpenseSchema);
