@@ -38,6 +38,8 @@ router.post('/db/import', protect, sessionOnly, DbController.importDB);
 // User Routes
 router.post('/users/register', UserController.register);
 router.post('/users/login', UserController.login);
+router.post('/users/forgot-password', UserController.forgotPassword);
+router.post('/users/reset-password', UserController.resetPassword);
 router.get('/users/me', protect, UserController.getMe);
 router.put('/users/me/password', protect, sessionOnly, UserController.changePassword);
 

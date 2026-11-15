@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-
-import './LoginPage.scss'; // Import the new SCSS file
+import AuthCard from '../components/AuthCard';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 
@@ -39,32 +38,41 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="login-page">
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit} className="login-form">
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
-        <button type="submit">Login</button>
-      </form>
-      {error && <p className="error-message">{error}</p>}
-      <p>
-        ¿No tienes cuenta? <Link to="/register" className="register-link">Regístrate</Link>
-      </p>
-    </div>
+    <AuthCard
+      title="Login"
+      onSubmit={handleSubmit}
+      footer={
+        <p className="auth-card__text">
+          ¿No tienes cuenta? <Link to="/register" className="auth-card__link">Regístrate</Link>
+        </p>
+      }
+    >
+      <input
+        className="auth-card__input"
+        type="email"
+        name="email"
+        placeholder="Email"
+        autoComplete="email"
+        value={formData.email}
+        onChange={handleChange}
+        required
+      />
+      <input
+        className="auth-card__input"
+        type="password"
+        name="password"
+        placeholder="Password"
+        autoComplete="current-password"
+        value={formData.password}
+        onChange={handleChange}
+        required
+      />
+      <Link to="/forgot-password" className="auth-card__link auth-card__link--inline">
+        ¿Has olvidado tu contraseña?
+      </Link>
+      {error && <p className="auth-card__message auth-card__message--error" role="alert">{error}</p>}
+      <button type="submit" className="auth-card__button">Login</button>
+    </AuthCard>
   );
 };
 
