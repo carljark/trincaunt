@@ -4,7 +4,7 @@
 
 **Qué se aprende:** autenticación de servidor a servidor con un token personal, idempotencia, reintentos con espera creciente y clasificar los errores de otra API.
 
-**Estado:** implementada, pendiente de desplegar. Trincaunt: carljark/trincaunt#71. cgsshoppings: carljark/cgsshoppings#1. Las diferencias con el diseño original están en [Implementación](#implementación).
+**Estado:** desplegada el 2026-11-15. Trincaunt: carljark/trincaunt#71. cgsshoppings: carljark/cgsshoppings#1. En producción hace falta `INTEGRATION_KEY` en el `.env` de cgsshoppings. Las diferencias con el diseño original están en [Implementación](#implementación).
 
 ## Resumen del flujo
 
