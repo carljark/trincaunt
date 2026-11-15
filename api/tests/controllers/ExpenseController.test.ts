@@ -137,6 +137,37 @@ describe('ExpenseController (TDD)', () => {
     });
   });
 
+  describe('createExpense', () => {
+    it('answers 200 without notifying when the origin was already sent', async () => {
+      const { ExpenseService } = await import('../../src/services/ExpenseService');
+      vi.spyOn(ExpenseService.prototype, 'createOrFindExpense').mockResolvedValue({ expense: { _id: 'e1' } as any, duplicado: true });
+      const req = mockRequest();
+      req.body = { grupo_id: 'group123', descripcion: 'Compra', monto: 10, origen: { app: 'cgsshoppings', ref: 'p1' } };
+      const res = mockResponse();
+
+      await ExpenseController.createExpense(req, res, mockNext());
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ status: 'success', data: { _id: 'e1' }, duplicado: true });
+      expect(PushService.notifyGroupMembers).not.toHaveBeenCalled();
+      expect(BudgetAlertService.checkAfterExpenseChange).not.toHaveBeenCalled();
+    });
+
+    it('answers 201 and notifies a new expense', async () => {
+      const { ExpenseService } = await import('../../src/services/ExpenseService');
+      vi.spyOn(ExpenseService.prototype, 'createOrFindExpense').mockResolvedValue({ expense: { _id: 'e2' } as any, duplicado: false });
+      const req = mockRequest();
+      req.body = { grupo_id: 'group123', descripcion: 'Compra', monto: 10 };
+      const res = mockResponse();
+
+      await ExpenseController.createExpense(req, res, mockNext());
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(PushService.notifyGroupMembers).toHaveBeenCalled();
+      expect(BudgetAlertService.checkAfterExpenseChange).toHaveBeenCalledWith(['group123']);
+    });
+  });
+
   describe('createExpensesBatch', () => {
     it('debería guardar todos los gastos con un único aviso push', async () => {
       const req = mockRequest();

@@ -13,7 +13,12 @@ const aliasService = new CategoryAliasService();
 export const createExpense = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;
-    const expense = await expenseService.createExpense(req.body, userId);
+    const { expense, duplicado } = await expenseService.createOrFindExpense(req.body, userId);
+    // Repetición de una petición de otra aplicación (mismo `origen`): ya se avisó la primera vez
+    if (duplicado) {
+      res.status(200).json({ status: 'success', data: expense, duplicado: true });
+      return;
+    }
     getIO().to(`group_${req.body.grupo_id}`).emit('expenses_updated', { message: 'Gasto registrado' });
     void PushService.notifyGroupMembers(req.body.grupo_id, userId, (groupName) => ({
       title: `Nuevo gasto en ${groupName}`,

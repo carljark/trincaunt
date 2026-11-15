@@ -6,8 +6,26 @@ import CategoryAlias from '../models/CategoryAlias';
 import { AppError } from '../utils/AppError';
 import mongoose from 'mongoose'; // Import mongoose
 
+// Gastos creados por otra aplicación (documentation/01-gasto-desde-la-compra.md)
+const ORIGEN_APP_RE = /^[a-z0-9-]{1,30}$/;
+export const MAX_ORIGEN_REF = 100;
+
+/** Valida el `origen` de un gasto: ausente, o `{ app, ref }`. */
+export const parseOrigen = (origen: unknown): { app: string; ref: string } | undefined => {
+  if (origen === undefined || origen === null) return undefined;
+  const { app, ref } = (typeof origen === 'object' ? origen : {}) as Record<string, unknown>;
+  if (typeof app !== 'string' || !ORIGEN_APP_RE.test(app) || typeof ref !== 'string' || !ref || ref.length > MAX_ORIGEN_REF) {
+    throw new AppError(
+      `origen debe ser { app, ref }: app con minúsculas, números o guiones (hasta 30) y ref de hasta ${MAX_ORIGEN_REF} caracteres`,
+      400
+    );
+  }
+  return { app, ref };
+};
+
 export class ExpenseService {
   async createExpense(data: Partial<IExpense> & { assumeExpense?: boolean }, userId: string): Promise<IExpense> {
+    const origen = parseOrigen(data.origen);
     const group = await Group.findById(data.grupo_id);
     if (!group) throw new AppError('Grupo no encontrado', 404);
 
@@ -41,10 +59,37 @@ export class ExpenseService {
       ...data,
       pagado_por: payerIds,
       participantes,
-      asume_gasto: data.assumeExpense || false
+      asume_gasto: data.assumeExpense || false,
+      origen
     });
 
     return expense;
+  }
+
+  /**
+   * Crea el gasto, o con un `origen` que ya está en el grupo devuelve el que había (`duplicado`):
+   * otra aplicación puede reintentar la misma petición sin duplicarlo. La primera versión gana.
+   */
+  async createOrFindExpense(
+    data: Partial<IExpense> & { assumeExpense?: boolean },
+    userId: string
+  ): Promise<{ expense: IExpense; duplicado: boolean }> {
+    const origen = parseOrigen(data.origen);
+    if (!origen) return { expense: await this.createExpense(data, userId), duplicado: false };
+
+    const filter = { grupo_id: data.grupo_id, 'origen.app': origen.app, 'origen.ref': origen.ref };
+    const existing = await Expense.findOne(filter);
+    if (existing) return { expense: existing, duplicado: true };
+    try {
+      return { expense: await this.createExpense(data, userId), duplicado: false };
+    } catch (error) {
+      // Dos peticiones iguales a la vez: el índice único deja pasar una y se devuelve esa
+      if ((error as { code?: number }).code === 11000) {
+        const winner = await Expense.findOne(filter);
+        if (winner) return { expense: winner, duplicado: true };
+      }
+      throw error;
+    }
   }
 
   async getExpensesByGroup(groupId: string, categories?: string[]): Promise<IExpense[]> {
