@@ -10,6 +10,18 @@ import Expense from '../models/Expense';
 const expenseService = new ExpenseService();
 const aliasService = new CategoryAliasService();
 
+// Socket, aviso push a los demás miembros y avisos de presupuesto de un gasto nuevo
+const announceNewExpense = (req: Request, grupoId: string, descripcion: string, monto: number) => {
+  const userId = (req as any).user.id;
+  getIO().to(`group_${grupoId}`).emit('expenses_updated', { message: 'Gasto registrado' });
+  void PushService.notifyGroupMembers(grupoId, userId, (groupName) => ({
+    title: `Nuevo gasto en ${groupName}`,
+    body: `${(req as any).user.nombre} añadió «${descripcion}»: ${formatAmount(monto)}`,
+    url: `/group/${grupoId}`
+  }));
+  void BudgetAlertService.checkAfterExpenseChange([grupoId]);
+};
+
 export const createExpense = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;
@@ -19,13 +31,7 @@ export const createExpense = async (req: Request, res: Response, next: NextFunct
       res.status(200).json({ status: 'success', data: expense, duplicado: true });
       return;
     }
-    getIO().to(`group_${req.body.grupo_id}`).emit('expenses_updated', { message: 'Gasto registrado' });
-    void PushService.notifyGroupMembers(req.body.grupo_id, userId, (groupName) => ({
-      title: `Nuevo gasto en ${groupName}`,
-      body: `${(req as any).user.nombre} añadió «${req.body.descripcion}»: ${formatAmount(Number(req.body.monto))}`,
-      url: `/group/${req.body.grupo_id}`
-    }));
-    void BudgetAlertService.checkAfterExpenseChange([req.body.grupo_id]);
+    announceNewExpense(req, req.body.grupo_id, req.body.descripcion, Number(req.body.monto));
     res.status(201).json({ status: 'success', data: expense });
   } catch (error) {
     next(error);
@@ -183,6 +189,8 @@ export const getChartExpenses = async (req: Request, res: Response, next: NextFu
 
 import AiService, { GroupMemberRef, ParsedExpense } from '../services/AiService';
 import { AppError } from '../utils/AppError';
+import { parseOrigen } from '../services/ExpenseService';
+import { buildReceiptExpense, IA_DESACTIVADA, parseParte, TICKET_ILEGIBLE } from '../services/ReceiptService';
 import User from '../models/User';
 
 const MAX_AI_TEXT_LENGTH = 2000;
@@ -288,6 +296,87 @@ export const createExpensesBatch = async (req: Request, res: Response, next: Nex
     void BudgetAlertService.checkAfterExpenseChange([grupo_id]);
 
     res.status(201).json({ status: 'success', data: createdExpenses });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const RECEIPT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
+
+/**
+ * POST /expenses/from-receipt es multipart: el fichero `ticket` y un campo `datos` con el JSON del
+ * gasto. Esto pone `datos` en req.body para que el resto (requireGroupMember incluido) lo lea igual
+ * que un POST /expenses.
+ */
+export const parseReceiptForm = (req: Request, _res: Response, next: NextFunction) => {
+  try {
+    const datos = JSON.parse(typeof req.body?.datos === 'string' ? req.body.datos : '');
+    if (!datos || typeof datos !== 'object' || Array.isArray(datos)) throw new Error();
+    req.body = datos;
+    next();
+  } catch {
+    next(new AppError('Falta el campo datos (JSON con el gasto)', 400));
+  }
+};
+
+/**
+ * Crea un gasto a partir de la foto o el PDF de un ticket: la IA lee el total y las líneas, y el
+ * gasto se guarda con ellas (multiplicadas por `parte` si es a medias). La foto no se guarda.
+ * Con `origen` es idempotente, y un reintento de algo que ya existe no vuelve a llamar a la IA.
+ */
+export const createExpenseFromReceipt = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const userId = String(user.id);
+    const body = req.body ?? {};
+    const origen = parseOrigen(body.origen);
+    const parte = parseParte(body.parte);
+    const descripcion = typeof body.descripcion === 'string' ? body.descripcion.trim() : '';
+    if (!descripcion) throw new AppError('Falta la descripción', 400);
+    let montoUsuario: number | undefined;
+    if (body.monto !== undefined && body.monto !== null && body.monto !== '') {
+      montoUsuario = Number(body.monto);
+      if (!Number.isFinite(montoUsuario) || montoUsuario <= 0) throw new AppError('El monto debe ser mayor a 0', 400);
+    }
+    if (!req.file) throw new AppError('Falta el ticket', 400);
+    if (!RECEIPT_TYPES.includes(req.file.mimetype)) {
+      throw new AppError('El ticket debe ser una foto (JPEG, PNG, WebP o HEIC) o un PDF', 400);
+    }
+
+    if (origen) {
+      const existing = await expenseService.findByOrigen(body.grupo_id, origen);
+      if (existing) {
+        res.status(200).json({ status: 'success', data: existing, duplicado: true });
+        return;
+      }
+    }
+    if (user.role !== 'admin' && !user.aiEnabled) {
+      throw new AppError('Tu cuenta de Trincaunt no tiene la IA activada', 403, IA_DESACTIVADA);
+    }
+
+    const receipt = await AiService.parseReceipt(req.file.buffer, req.file.mimetype);
+    if (receipt.total <= 0) throw new AppError('No se ha podido leer el ticket', 422, TICKET_ILEGIBLE);
+    const { monto, lineas, lineasDescartadas } = buildReceiptExpense(receipt, parte, montoUsuario);
+
+    const { expense, duplicado } = await expenseService.createOrFindExpense({
+      grupo_id: body.grupo_id,
+      descripcion,
+      monto,
+      fecha: isIsoDay(body.fecha) ? new Date(body.fecha.slice(0, 10))
+        : isIsoDay(receipt.fecha) ? new Date(receipt.fecha.slice(0, 10)) : new Date(todayInSpain()),
+      categoria: Array.isArray(body.categoria) ? body.categoria.filter((c: unknown) => typeof c === 'string' && c) : [],
+      localization: typeof body.localization === 'string' && body.localization ? body.localization : receipt.tienda ?? '',
+      assumeExpense: body.assumeExpense === true,
+      origen,
+    } as any, userId, { lineas, parte: parte === 1 ? undefined : parte });
+    if (duplicado) {
+      res.status(200).json({ status: 'success', data: expense, duplicado: true });
+      return;
+    }
+
+    announceNewExpense(req, body.grupo_id, descripcion, monto);
+    // `ticket` son las líneas completas, sin la parte aplicada: lo que costó cada artículo
+    res.status(201).json({ status: 'success', data: expense, ticket: receipt, lineasDescartadas });
   } catch (error) {
     next(error);
   }

@@ -26,6 +26,7 @@ const payerNames = (pagadoPor: IExpensePopulated['pagado_por'] | IUserPopulated)
 const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({ expense, isGlobal, onEdit, onDelete }) => {
   const [offset, setOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
+  const [showTicket, setShowTicket] = useState(false);
   const startX = useRef(0);
   const currentX = useRef(0);
   const swipeThreshold = 80;
@@ -57,6 +58,8 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({ expense, is
     setOffset(0);
   };
 
+  const lineas = expense.lineas ?? [];
+  const ticketId = `ticket-${expense._id}`;
   const payers = payerNames(expense.pagado_por);
   const details = isGlobal
     ? [expense.grupo_nombre, expense.original_monto !== undefined ? `de ${formatEuros(expense.original_monto)}` : null]
@@ -87,6 +90,18 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({ expense, is
           {details.some(Boolean) && (
             <span className="expense-row__details">{details.filter(Boolean).join(' · ')}</span>
           )}
+          {lineas.length > 0 && (
+            <button
+              type="button"
+              className="expense-row__ticket-toggle"
+              onClick={() => setShowTicket(open => !open)}
+              aria-expanded={showTicket}
+              aria-controls={ticketId}
+            >
+              Ticket · {lineas.length} {lineas.length === 1 ? 'artículo' : 'artículos'}
+              {expense.parte === 0.5 ? ' · a medias' : ''} {showTicket ? '▴' : '▾'}
+            </button>
+          )}
         </div>
         <span className="expense-row__amount">{formatEuros(expense.monto)}</span>
 
@@ -102,6 +117,25 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({ expense, is
           </div>
         )}
       </div>
+
+      {showTicket && lineas.length > 0 && (
+        <div className="expense-row__ticket" id={ticketId}>
+          {expense.parte === 0.5 && (
+            <p className="expense-row__ticket-note">A medias: de cada artículo se apunta la mitad.</p>
+          )}
+          <ul className="expense-row__ticket-lines">
+            {lineas.map((linea, i) => (
+              <li key={i} className="expense-row__ticket-line">
+                <span className="expense-row__ticket-text">
+                  {linea.cantidad !== undefined && <span className="expense-row__ticket-qty">{linea.cantidad.toLocaleString('es-ES')} × </span>}
+                  {linea.texto}
+                </span>
+                <span className="expense-row__ticket-amount">{formatEuros(linea.importe)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
