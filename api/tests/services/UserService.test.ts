@@ -7,8 +7,12 @@ import User from '../../src/models/User';
 import bcrypt from 'bcrypt';
 import { AppError } from '../../src/utils/AppError';
 
+import crypto from 'crypto';
+import { sendMail } from '../../src/utils/mailer';
+
 vi.mock('../../src/models/User');
 vi.mock('bcrypt');
+vi.mock('../../src/utils/mailer');
 
 const UserMock = User as vi.Mocked<typeof User>;
 const bcryptMock = bcrypt as vi.Mocked<typeof bcrypt>;
@@ -75,6 +79,14 @@ describe('UserService', () => {
     });
   });
 
+  describe('login', () => {
+    it('only accepts string credentials', async () => {
+      await expect(userService.login({ $ne: null }, 'x')).rejects.toMatchObject({ statusCode: 401 });
+      await expect(userService.login('a@example.com', { $ne: null })).rejects.toMatchObject({ statusCode: 401 });
+      expect(UserMock.findOne).not.toHaveBeenCalled();
+    });
+  });
+
   describe('changePassword', () => {
     const withUser = (user: any) => (UserMock.findById as vi.Mock).mockReturnValue({ select: vi.fn().mockResolvedValue(user) });
 
@@ -95,6 +107,56 @@ describe('UserService', () => {
       await expect(userService.changePassword('u1', 'mal', 'nueva-segura')).rejects.toMatchObject({ statusCode: 400 });
       await expect(userService.changePassword('u1', 'vieja', 'corta')).rejects.toMatchObject({ statusCode: 400 });
       await expect(userService.changePassword('u1', '', 'nueva-segura')).rejects.toMatchObject({ statusCode: 400 });
+    });
+  });
+
+  describe('password reset', () => {
+    const sha256 = (text: string) => crypto.createHash('sha256').update(text).digest('hex');
+
+    it('mails a one-hour link and stores only the hash of its token', async () => {
+      UserMock.findOne.mockResolvedValue({ _id: 'u1', nombre: 'Ana', email: 'Ana@Example.com' } as any);
+      (UserMock.updateOne as vi.Mock).mockResolvedValue({});
+      await userService.requestPasswordReset(' ana@example.com ');
+
+      const query = (UserMock.findOne as vi.Mock).mock.calls[0][0];
+      expect(query.email.test('Ana@Example.com')).toBe(true);
+      expect(query.email.test('xana@example.com')).toBe(false);
+      const [to, , text] = (sendMail as vi.Mock).mock.calls[0];
+      expect(to).toBe('Ana@Example.com');
+      const token = text.match(/\/reset-password\?token=([0-9a-f]{64})/)[1];
+      const [, update] = (UserMock.updateOne as vi.Mock).mock.calls[0];
+      expect(update.$set.resetTokenHash).toBe(sha256(token));
+      expect(update.$set.resetExpires.getTime() - Date.now()).toBeGreaterThan(59 * 60 * 1000);
+    });
+
+    it('does nothing for an unknown email', async () => {
+      UserMock.findOne.mockResolvedValue(null);
+      await userService.requestPasswordReset('nadie@example.com');
+      expect(UserMock.updateOne).not.toHaveBeenCalled();
+      expect(sendMail).not.toHaveBeenCalled();
+    });
+
+    it('sets the new password and invalidates the token', async () => {
+      (UserMock.updateOne as vi.Mock).mockResolvedValue({});
+      (bcryptMock.hash as vi.Mock).mockResolvedValue('new-hash');
+      UserMock.findOne.mockResolvedValue({ _id: 'u1', email: 'ana@example.com' } as any);
+      expect(await userService.resetPassword('abc', 'nueva-segura')).toBe('ana@example.com');
+
+      const query = (UserMock.findOne as vi.Mock).mock.calls[0][0];
+      expect(query.resetTokenHash).toBe(sha256('abc'));
+      expect(query.resetExpires.$gt).toBeInstanceOf(Date);
+      expect(UserMock.updateOne).toHaveBeenCalledWith(
+        { _id: 'u1' },
+        { $set: { password: 'new-hash' }, $unset: { resetTokenHash: '', resetExpires: '' } }
+      );
+    });
+
+    it('refuses an invalid or expired token and a short password', async () => {
+      UserMock.findOne.mockResolvedValue(null);
+      await expect(userService.resetPassword('abc', 'nueva-segura')).rejects.toMatchObject({ statusCode: 400 });
+      await expect(userService.resetPassword('', 'nueva-segura')).rejects.toMatchObject({ statusCode: 400 });
+      await expect(userService.resetPassword('abc', 'corta')).rejects.toMatchObject({ statusCode: 400 });
+      expect(UserMock.updateOne).not.toHaveBeenCalled();
     });
   });
 });

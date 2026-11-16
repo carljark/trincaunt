@@ -7,6 +7,10 @@ import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
 
+// IP del cliente (límites de recuperar la contraseña) desde X-Forwarded-For solo si lo pone
+// un proxy de confianza: por defecto uno en la misma máquina
+app.set('trust proxy', process.env.TRUST_PROXY ?? 'loopback');
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 

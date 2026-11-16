@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-import './LoginPage.scss'; // Import the new SCSS file
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import AuthCard from '../components/AuthCard';
 
 const apiHost = import.meta.env.VITE_API_HOST;
 
@@ -36,40 +34,48 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="login-page">
-      <h2>Registro</h2>
-      <form onSubmit={handleSubmit} className="login-form">
-        <input
-          type="text"
-          name="nombre"
-          placeholder="Nombre"
-          value={formData.nombre}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
-        <button type="submit">Registrarse</button>
-      </form>
-      {error && <p className="error-message">{error}</p>}
-      <p>
-        ¿Ya tienes cuenta? <Link to="/login" className="register-link">Inicia sesión</Link>
-      </p>
-    </div>
+    <AuthCard
+      title="Registro"
+      onSubmit={handleSubmit}
+      footer={
+        <p className="auth-card__text">
+          ¿Ya tienes cuenta? <Link to="/login" className="auth-card__link">Inicia sesión</Link>
+        </p>
+      }
+    >
+      <input
+        className="auth-card__input"
+        type="text"
+        name="nombre"
+        placeholder="Nombre"
+        autoComplete="name"
+        value={formData.nombre}
+        onChange={handleChange}
+        required
+      />
+      <input
+        className="auth-card__input"
+        type="email"
+        name="email"
+        placeholder="Email"
+        autoComplete="email"
+        value={formData.email}
+        onChange={handleChange}
+        required
+      />
+      <input
+        className="auth-card__input"
+        type="password"
+        name="password"
+        placeholder="Password"
+        autoComplete="new-password"
+        value={formData.password}
+        onChange={handleChange}
+        required
+      />
+      {error && <p className="auth-card__message auth-card__message--error" role="alert">{error}</p>}
+      <button type="submit" className="auth-card__button">Registrarse</button>
+    </AuthCard>
   );
 };
 
