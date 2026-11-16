@@ -1,6 +1,6 @@
 # Fase 4: el ticket en la compra y precios desde los tickets
 
-**Estado:** parte A implementada, sin desplegar ([trincaunt#74](https://github.com/carljark/trincaunt/pull/74), [cgsshoppings#2](https://github.com/carljark/cgsshoppings/pull/2)); parte B esbozo.
+**Estado:** parte A desplegada el 2026-11-16 ([trincaunt#74](https://github.com/carljark/trincaunt/pull/74), [cgsshoppings#2](https://github.com/carljark/cgsshoppings/pull/2)); parte B esbozo.
 
 La fase tiene dos partes que se pueden desplegar por separado:
 
