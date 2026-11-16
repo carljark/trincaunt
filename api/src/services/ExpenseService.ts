@@ -23,8 +23,16 @@ export const parseOrigen = (origen: unknown): { app: string; ref: string } | und
   return { app, ref };
 };
 
+// Líneas de un ticket y parte que se apunta: solo las pone POST /expenses/from-receipt, que
+// garantiza que las líneas suman el monto. Lo que llegue con esos nombres en otro cuerpo se ignora.
+export type ReceiptFields = Pick<IExpense, 'lineas' | 'parte'>;
+
 export class ExpenseService {
-  async createExpense(data: Partial<IExpense> & { assumeExpense?: boolean }, userId: string): Promise<IExpense> {
+  async createExpense(
+    { lineas: _lineas, parte: _parte, ...data }: Partial<IExpense> & { assumeExpense?: boolean },
+    userId: string,
+    receipt?: ReceiptFields
+  ): Promise<IExpense> {
     const origen = parseOrigen(data.origen);
     const group = await Group.findById(data.grupo_id);
     if (!group) throw new AppError('Grupo no encontrado', 404);
@@ -60,7 +68,8 @@ export class ExpenseService {
       pagado_por: payerIds,
       participantes,
       asume_gasto: data.assumeExpense || false,
-      origen
+      origen,
+      ...receipt
     });
 
     return expense;
@@ -72,16 +81,17 @@ export class ExpenseService {
    */
   async createOrFindExpense(
     data: Partial<IExpense> & { assumeExpense?: boolean },
-    userId: string
+    userId: string,
+    receipt?: ReceiptFields
   ): Promise<{ expense: IExpense; duplicado: boolean }> {
     const origen = parseOrigen(data.origen);
-    if (!origen) return { expense: await this.createExpense(data, userId), duplicado: false };
+    if (!origen) return { expense: await this.createExpense(data, userId, receipt), duplicado: false };
 
     const filter = { grupo_id: data.grupo_id, 'origen.app': origen.app, 'origen.ref': origen.ref };
     const existing = await Expense.findOne(filter);
     if (existing) return { expense: existing, duplicado: true };
     try {
-      return { expense: await this.createExpense(data, userId), duplicado: false };
+      return { expense: await this.createExpense(data, userId, receipt), duplicado: false };
     } catch (error) {
       // Dos peticiones iguales a la vez: el índice único deja pasar una y se devuelve esa
       if ((error as { code?: number }).code === 11000) {
@@ -90,6 +100,11 @@ export class ExpenseService {
       }
       throw error;
     }
+  }
+
+  /** El gasto que otra aplicación ya creó con ese `origen` en el grupo, si existe. */
+  async findByOrigen(grupoId: IExpense['grupo_id'] | string, origen: { app: string; ref: string }): Promise<IExpense | null> {
+    return Expense.findOne({ grupo_id: grupoId, 'origen.app': origen.app, 'origen.ref': origen.ref });
   }
 
   async getExpensesByGroup(groupId: string, categories?: string[]): Promise<IExpense[]> {
@@ -357,6 +372,11 @@ export class ExpenseService {
     }
     if (data.monto !== undefined) {
       if (data.monto <= 0) throw new AppError('El monto debe ser mayor a 0', 400);
+      // Las líneas del ticket dejarían de sumar el monto
+      if (expense.lineas?.length && Number(data.monto) !== expense.monto) {
+        expense.lineas = undefined;
+        expense.parte = undefined;
+      }
       expense.monto = data.monto;
     }
     if (data.categoria !== undefined) { // Check for undefined to allow empty array

@@ -85,6 +85,8 @@ router.post('/groups/:groupId/assistant/apply', protect, groupMember, AssistantC
 // Pantalla de permiso del conector (OAuth)
 router.get('/oauth/authorize', protect, sessionOnly, OAuthController.describeAuthorization);
 router.post('/oauth/authorize', protect, sessionOnly, OAuthController.decideAuthorization);
+// Gasto desde la foto o el PDF de un ticket (cgsshoppings): fichero `ticket` + JSON en `datos`
+router.post('/expenses/from-receipt', protect, uploadMedia.single('ticket'), ExpenseController.parseReceiptForm, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpenseFromReceipt);
 router.post('/expenses/batch', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpensesBatch);
 router.post('/expenses', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpense);
 router.patch('/expenses/bulk-update', protect, requireMemberOfExpenses, ExpenseController.bulkUpdate);

@@ -9,7 +9,8 @@ vi.mock('../../src/services/AiService', () => {
   return {
     default: {
       parseExpenseFromMedia: vi.fn(),
-      parseExpenseFromText: vi.fn()
+      parseExpenseFromText: vi.fn(),
+      parseReceipt: vi.fn()
     }
   };
 });
@@ -165,6 +166,110 @@ describe('ExpenseController (TDD)', () => {
       expect(res.status).toHaveBeenCalledWith(201);
       expect(PushService.notifyGroupMembers).toHaveBeenCalled();
       expect(BudgetAlertService.checkAfterExpenseChange).toHaveBeenCalledWith(['group123']);
+    });
+  });
+
+  describe('createExpenseFromReceipt', () => {
+    const ticket = { buffer: Buffer.from('foto'), mimetype: 'image/jpeg' };
+    const body = {
+      grupo_id: 'group123', descripcion: 'Compra en Mercadona (3 artículos)', fecha: '2026-11-16',
+      categoria: ['Supermercado'], assumeExpense: true, origen: { app: 'cgsshoppings', ref: 'p1' },
+    };
+    const receipt = {
+      tienda: 'Mercadona', total: 10.01,
+      lineas: [{ texto: 'A', importe: 3.33 }, { texto: 'B', importe: 3.33 }, { texto: 'C', importe: 3.35 }],
+    };
+
+    const setup = async (extra: Record<string, unknown> = {}, user: Record<string, unknown> = {}) => {
+      const { ExpenseService } = await import('../../src/services/ExpenseService');
+      const findByOrigen = vi.spyOn(ExpenseService.prototype, 'findByOrigen').mockResolvedValue(null);
+      const createOrFind = vi.spyOn(ExpenseService.prototype, 'createOrFindExpense')
+        .mockImplementation(async (data: any, _userId, extraFields) => ({ expense: { ...data, ...extraFields } as any, duplicado: false }));
+      const req = mockRequest(ticket);
+      Object.assign((req as any).user, { nombre: 'Carlos' }, user);
+      req.body = { ...body, ...extra };
+      const res = mockResponse();
+      const next = mockNext();
+      return { req, res, next, findByOrigen, createOrFind };
+    };
+
+    it('parseReceiptForm moves the datos JSON into the body', () => {
+      const req = { body: { datos: JSON.stringify(body) } } as Request;
+      const next = mockNext();
+      ExpenseController.parseReceiptForm(req, mockResponse(), next);
+      expect(req.body).toEqual(body);
+      expect(next).toHaveBeenCalledWith();
+
+      const bad = { body: { datos: '[1]' } } as Request;
+      ExpenseController.parseReceiptForm(bad, mockResponse(), next);
+      expect(next).toHaveBeenLastCalledWith(expect.objectContaining({ statusCode: 400 }));
+    });
+
+    it('creates one expense with the lines and returns the full ticket', async () => {
+      vi.mocked(AiService.parseReceipt).mockResolvedValue(receipt);
+      const { req, res, createOrFind } = await setup();
+
+      await ExpenseController.createExpenseFromReceipt(req, res, mockNext());
+
+      expect(createOrFind).toHaveBeenCalledWith(
+        expect.objectContaining({ monto: 10.01, localization: 'Mercadona', origen: { app: 'cgsshoppings', ref: 'p1' }, assumeExpense: true }),
+        'user123',
+        { lineas: [{ texto: 'A', importe: 3.33 }, { texto: 'B', importe: 3.33 }, { texto: 'C', importe: 3.35 }], parte: undefined }
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ticket: receipt, lineasDescartadas: false }));
+      expect(BudgetAlertService.checkAfterExpenseChange).toHaveBeenCalledWith(['group123']);
+    });
+
+    it('half records half of the ticket', async () => {
+      vi.mocked(AiService.parseReceipt).mockResolvedValue(receipt);
+      const { req, res, createOrFind } = await setup({ parte: 0.5 });
+
+      await ExpenseController.createExpenseFromReceipt(req, res, mockNext());
+
+      const [data, , extra] = createOrFind.mock.calls[0];
+      expect(data.monto).toBe(5.01);
+      expect(extra!.parte).toBe(0.5);
+      expect(Math.round(extra!.lineas!.reduce((a, l) => a + l.importe * 100, 0))).toBe(501);
+    });
+
+    it('a repeated origin answers 200 without calling the AI', async () => {
+      const { req, res, findByOrigen } = await setup();
+      findByOrigen.mockResolvedValue({ _id: 'e1' } as any);
+
+      await ExpenseController.createExpenseFromReceipt(req, res, mockNext());
+
+      expect(AiService.parseReceipt).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ status: 'success', data: { _id: 'e1' }, duplicado: true });
+    });
+
+    it('without AI it is a 403 with its own code', async () => {
+      const { req, res, next } = await setup({}, { role: 'user', aiEnabled: false });
+
+      await ExpenseController.createExpenseFromReceipt(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403, codigo: 'ia_desactivada' }));
+      expect(AiService.parseReceipt).not.toHaveBeenCalled();
+    });
+
+    it('a ticket without a total is a 422', async () => {
+      vi.mocked(AiService.parseReceipt).mockResolvedValue({ total: 0, lineas: [] });
+      const { req, res, next, createOrFind } = await setup();
+
+      await ExpenseController.createExpenseFromReceipt(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 422, codigo: 'ticket_ilegible' }));
+      expect(createOrFind).not.toHaveBeenCalled();
+    });
+
+    it('rejects a missing ticket, other file types and a wrong share', async () => {
+      for (const [extra, file] of [[{}, undefined], [{}, { ...ticket, mimetype: 'audio/mpeg' }], [{ parte: 0.3 }, ticket]] as const) {
+        const { req, res, next } = await setup(extra);
+        (req as any).file = file;
+        await ExpenseController.createExpenseFromReceipt(req, res, next);
+        expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      }
     });
   });
 

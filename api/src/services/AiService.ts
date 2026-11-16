@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { AppError } from '../utils/AppError';
+import { ParsedReceipt, validateReceipt } from './ReceiptService';
 
 // Respaldo de Gemini cuando éste falla
 const OPENROUTER_MODEL = 'qwen/qwen3.8-omni-flash';
@@ -53,6 +54,38 @@ class AiService {
 
   public async parseExpenseFromText(text: string, members: GroupMemberRef[] = []): Promise<ParsedExpense[]> {
     return this.parseExpenses({ kind: 'text', text }, members);
+  }
+
+  /**
+   * Lee las líneas de un ticket de compra (foto o PDF). Lanza un error si no se puede leer un
+   * total; las líneas que no tengan texto e importe se descartan.
+   */
+  public async parseReceipt(buffer: Buffer, mimeType: string): Promise<ParsedReceipt> {
+    return this.askWithFallback(this.buildReceiptPrompt(), { kind: 'media', buffer, mimeType },
+      text => validateReceipt(this.parseJson(text)));
+  }
+
+  private buildReceiptPrompt(): string {
+    return `Eres un asistente que transcribe tickets de compra con total precisión.
+Te voy a pasar la foto o el PDF de un ticket de supermercado o tienda.
+Hoy es ${this.today()}. Úsalo para completar el año si el ticket no lo indica.
+Devuelve ESTRICTAMENTE un objeto JSON, sin texto adicional ni markdown, con esta estructura:
+{
+  "tienda": "Nombre del establecimiento, si aparece",
+  "fecha": "YYYY-MM-DD, si aparece",
+  "total": 0.00,
+  "lineas": [
+    { "texto": "Texto de la línea tal como aparece en el ticket", "cantidad": 1, "importe": 0.00 }
+  ]
+}
+Reglas:
+- "total" es el importe total pagado que figura en el ticket, en euros.
+- Una entrada en "lineas" por cada artículo del ticket, en el mismo orden. "importe" es el importe de esa línea (precio × cantidad), en euros.
+- "cantidad" son las unidades o los kilos/litros de la línea si el ticket los indica; si no, omítela.
+- Los descuentos, cupones y promociones van como líneas con importe negativo.
+- No incluyas como líneas el subtotal, el IVA, el total, la forma de pago ni el cambio.
+- No inventes líneas que no se lean. No devuelvas datos de la tarjeta, del cliente ni del pago.
+- Si no es un ticket o no se puede leer el total, devuelve {"total": 0, "lineas": []}.`;
   }
 
   private async parseExpenses(input: ExpenseInput, members: GroupMemberRef[]): Promise<ParsedExpense[]> {

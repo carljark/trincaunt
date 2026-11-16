@@ -276,4 +276,35 @@ describe('ExpenseService Filtering', () => {
       expect(ExpenseMock.create).not.toHaveBeenCalled();
     });
   });
+
+  describe('líneas de un ticket', () => {
+    const groupId = new mongoose.Types.ObjectId().toString();
+    const userId = new mongoose.Types.ObjectId().toString();
+    const lineas = [{ texto: 'LECHE', importe: 2.5 }, { texto: 'PAN', importe: 2.5 }];
+
+    beforeEach(() => {
+      GroupMock.findById.mockResolvedValue({ miembros: [userId] } as any);
+      ExpenseMock.create.mockImplementation(async (doc: any) => doc);
+    });
+
+    it('only from-receipt sets lines and share; a normal body cannot', async () => {
+      const data = { grupo_id: groupId, descripcion: 'Compra', monto: 5 } as any;
+      const fromBody = await expenseService.createExpense({ ...data, lineas, parte: 0.5 }, userId);
+      expect(fromBody).not.toHaveProperty('lineas');
+      expect(fromBody).not.toHaveProperty('parte');
+
+      const fromReceipt = await expenseService.createExpense(data, userId, { lineas, parte: 0.5 });
+      expect(fromReceipt).toMatchObject({ lineas, parte: 0.5 });
+    });
+
+    it('changing the amount drops the lines, which would no longer add up', async () => {
+      const expense: any = { monto: 5, lineas, parte: 0.5, save: vi.fn().mockImplementation(async function (this: any) { return this; }) };
+      ExpenseMock.findById.mockResolvedValue(expense);
+      await expenseService.updateExpense('e1', { monto: 5 } as any);
+      expect(expense.lineas).toEqual(lineas);
+      await expenseService.updateExpense('e1', { monto: 6 } as any);
+      expect(expense.lineas).toBeUndefined();
+      expect(expense.monto).toBe(6);
+    });
+  });
 });
