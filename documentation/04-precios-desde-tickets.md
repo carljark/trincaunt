@@ -1,10 +1,10 @@
 # Fase 4: el ticket en la compra y precios desde los tickets
 
-**Estado:** parte A desplegada el 2026-11-16 ([trincaunt#74](https://github.com/carljark/trincaunt/pull/74), [cgsshoppings#2](https://github.com/carljark/cgsshoppings/pull/2)); parte B esbozo.
+**Estado:** parte A desplegada el 2026-11-16 ([trincaunt#74](https://github.com/carljark/trincaunt/pull/74), [cgsshoppings#2](https://github.com/carljark/cgsshoppings/pull/2)) con un gasto con líneas; el 2026-11-17 se cambia a **un gasto por artículo** (sin desplegar). Parte B esbozo.
 
 La fase tiene dos partes que se pueden desplegar por separado:
 
-- **A. El ticket en «Compra hecha».** Se adjunta la foto (o el PDF) del ticket, Trincaunt la lee y apunta el gasto con cada artículo por separado. Una casilla «A medias» apunta solo la mitad.
+- **A. El ticket en «Compra hecha».** Se adjunta la foto (o el PDF) del ticket, Trincaunt la lee y apunta cada artículo como un gasto propio. Una casilla «A medias» apunta solo la mitad.
 - **B. Precios desde los tickets.** cgsshoppings aprende de las líneas de los tickets cuánto cuesta cada artículo, para estimar la lista antes de ir a comprar.
 
 **Qué se aprende:** enviar ficheros de servidor a servidor (`multipart/form-data`), operaciones lentas y caras dentro de un flujo con reintentos (la idempotencia evita pagar dos veces la IA), repartir céntimos sin perder ninguno y, en la parte B, webhooks firmados con HMAC.
@@ -24,8 +24,8 @@ La fase tiene dos partes que se pueden desplegar por separado:
     │◄── «Guardada» ─────┤                                               │
     │                    │ POST /expenses/from-receipt ─────────────────►│ ¿ya existe ese origen? → 200
     │                    │   (foto + datos + origen + parte)             │ lee el ticket con IA
-    │                    │                                               │ crea UN gasto con sus líneas
-    │                    │◄──────────── 201 { gasto, líneas } ───────────┤ (× parte si es a medias)
+    │                    │                                               │ crea un gasto por artículo
+    │                    │◄──────────── 201 { gastos, ticket } ──────────┤ (× parte si es a medias)
     │◄── «En Trincaunt» ─┤ purchase → enviada (por socket)               │
     │                    │                                               │
     │      (si falla: los mismos reintentos y errores que la fase 1)
@@ -37,7 +37,7 @@ A diferencia de la fase 1, la petición a Trincaunt se hace **después** de resp
 
 | Tema | Decisión | Alternativas descartadas |
 |---|---|---|
-| Cómo queda en Trincaunt | **Un gasto** («Compra en Mercadona») con el total y un campo nuevo `lineas` con cada artículo y su importe | Un gasto por artículo: un ticket de 25 artículos llenaría la lista de gastos con 25 entradas pequeñas. Un gasto por categoría: presupuesto por categoría exacto, pero el detalle de cada artículo se pierde |
+| Cómo queda en Trincaunt | **Un gasto por artículo** («Leche entera Hacendado 1 L», 1,08 €), cada uno con su categoría: es como el usuario ya apuntaba sus tickets a mano, y el presupuesto por categoría sale solo | Un gasto con el total y un campo `lineas` con los artículos (lo que se desplegó primero, el 2026-11-16): el detalle quedaba escondido dentro de un gasto y las categorías no se repartían. Un gasto por categoría: el detalle de cada artículo se pierde |
 | Dónde vive la foto | En **cgsshoppings**, con la compra. Trincaunt la lee y la descarta (no la guarda ni la escribe en el log) | En Trincaunt: el gasto llevaría el ticket adjunto, pero Trincaunt no guarda ficheros hoy. En ninguna: más simple y privado, pero no se puede volver a mirar el ticket |
 | Quién lee el ticket | **Trincaunt**, con su `AiService` (Gemini, con OpenRouter de respaldo) | cgsshoppings con su propia IA: duplicaría la clave, el prompt y el control de quién puede usar IA |
 | «A medias» | Se apunta **solo tu mitad** en tu presupuesto personal (`parte: 0.5`) | Mandar el ticket entero a un grupo compartido, pagado por ti y repartido: Trincaunt llevaría la cuenta de lo que te deben, pero obliga a tener ese grupo y elegirlo en cada compra. Se puede añadir más tarde como otra opción |
@@ -48,19 +48,7 @@ A diferencia de la fase 1, la petición a Trincaunt se hace **después** de resp
 
 #### Modelo `Expense`
 
-Dos campos opcionales; los gastos que ya existen no cambian.
-
-```ts
-lineas?: {
-  texto: string;        // tal como sale en el ticket: 'LECHE ENT. HACENDADO 1L'
-  cantidad?: number;    // 6 (unidades) o 0.734 (kilos), si el ticket lo dice
-  importe: number;      // lo que se apunta de esta línea, ya multiplicado por `parte`
-}[];
-parte?: number;         // 0.5 si es a medias. Si falta, 1
-```
-
-- `monto` sigue siendo lo que cuenta para el presupuesto: **ya es tu parte** (`total × parte`). Así nada del presupuesto, los avisos ni los informes tiene que saber que existen las líneas.
-- La suma de `lineas[].importe` es exactamente `monto`. Si el ticket no cuadra (ver abajo), no se guardan líneas.
+Sin cambios: cada artículo es un gasto normal. Lo que lo une a la compra es su `origen`: `{ app: 'cgsshoppings', ref: '<id de la compra>#<n>' }`, con `n` = 1, 2, 3… en el orden del ticket. El índice único de la fase 1 (`grupo_id` + `origen.app` + `origen.ref`) sigue impidiendo duplicados, sin migración.
 
 #### `POST /api/v1/expenses/from-receipt`
 
@@ -74,35 +62,37 @@ Campos del formulario:
 Pasos, en este orden:
 
 1. Validar `datos` y `origen` (como `parseOrigen`).
-2. **Buscar si ya existe un gasto con ese `origen`.** Si existe, devolver `200 { data, duplicado: true }` **sin llamar a la IA**. Es lo que hace barato reintentar: si la primera petición creó el gasto pero la respuesta se perdió, el reintento no paga otra lectura del ticket.
+2. **Buscar si ya existen gastos con ese `origen`** (el `ref` tal cual o `ref#n`, `ExpenseService.findByOrigen`). Si existen, devolver `200 { data: [...], duplicado: true }` **sin llamar a la IA**. Es lo que hace barato reintentar: si la primera petición creó el gasto pero la respuesta se perdió, el reintento no paga otra lectura del ticket.
 3. Comprobar que el usuario puede usar IA (`role === 'admin' || aiEnabled`, como en `ai-draft`). Si no: `403 { codigo: 'ia_desactivada' }`.
-4. Leer el ticket con un método nuevo, `AiService.parseReceipt(buffer, mimeType)`, que devuelve `{ tienda?, fecha?, total, lineas: [{ texto, cantidad?, importe }] }`. Prompt propio: líneas de un ticket de supermercado, descuentos como líneas negativas, sin inventar líneas que no se leen.
+4. Leer el ticket con un método nuevo, `AiService.parseReceipt(buffer, mimeType)`, que devuelve `{ tienda?, fecha?, total, lineas: [{ texto, nombre?, categoria?, cantidad?, importe }] }`. Prompt propio: líneas de un ticket de supermercado, descuentos como líneas negativas, sin inventar líneas que no se leen. `nombre` es el artículo legible («LECHE ENT. HACEND. 1L» → «Leche entera Hacendado 1 L») y `categoria` una o dos palabras (Comida, Bebidas, Limpieza, Higiene…).
 5. Si la IA contesta pero no hay total (no es un ticket o no se lee): `422 { codigo: 'ticket_ilegible' }`. Si la IA falla o su respuesta no es JSON (Gemini y OpenRouter), es un 500: un fallo pasajero que cgsshoppings reintenta.
 6. Calcular el total: el `monto` del usuario si lo mandó; si no, el `total` del ticket.
-7. **Cuadrar las líneas.** Si la suma de las líneas difiere del total del ticket en más de 2 céntimos (la IA se ha saltado o inventado algo), se crea el gasto **sin líneas** y la respuesta lo dice (`lineasDescartadas: true`). Mejor un gasto correcto sin detalle que un detalle que no suma.
-8. Aplicar `parte` (ver «Repartir los céntimos»), crear el gasto con `createOrFindExpense` (la carrera E11000 de la fase 1 sigue cubierta) y responder `201 { data, ticket, lineasDescartadas }`. `data.lineas` son las líneas guardadas (con la parte aplicada); `ticket` es lo que se leyó, entero, para la parte B.
+7. **Juntar los descuentos** con el artículo de encima (en los tickets el descuento va debajo de lo que rebaja; uno al principio se suma al primero): `foldDiscounts`.
+8. **Cuadrar.** Si la suma de las líneas difiere del total del ticket en más de 2 céntimos (la IA se ha saltado o inventado algo), si el importe del usuario no es el del ticket o si un descuento deja un artículo a 0 o menos, se crea **un solo gasto** con el total y la descripción de la compra, y la respuesta lo dice (`lineasDescartadas: true`). Mejor un gasto correcto sin detalle que un detalle que no suma.
+9. Aplicar `parte` (ver «Repartir los céntimos») y crear todos los gastos de una vez con `createOrFindExpenses` (`insertMany` en orden: si otra petición igual ganó la carrera, falla el primero por el índice único, no se guarda ninguno y se devuelven los suyos). Responder `201 { data: [gastos], ticket, lineasDescartadas }`; `ticket` es lo que se leyó, entero, para la parte B.
 
-La descripción la manda cgsshoppings, como en la fase 1 («Compra en Mercadona (3 artículos)»), y si es a medias termina en « · a medias». El número de artículos es el de la lista, no el de líneas del ticket.
+Cada artículo se apunta con:
 
-Solo este endpoint pone `lineas` y `parte`: `ExpenseService.createExpense` los ignora si llegan en el cuerpo de un `POST /expenses` normal, para que nadie guarde líneas que no suman el monto.
+- `descripcion`: el `nombre` (o el `texto` si la IA no lo dio), con las unidades delante si son varias («2 Pan de barra») y « · a medias» al final si lo es.
+- `monto`: su parte del total, en euros.
+- `categoria`: la de la IA y las de la compra sin repetir (`['Comida', 'Supermercado']`).
+- `fecha`, `localization` (la tienda), `assumeExpense`: los de la compra, iguales para todos.
+
+Se manda **un solo aviso** (push y socket) por ticket, con la descripción de la compra («Compra en Mercadona (3 artículos)») y el total.
 
 #### Repartir los céntimos
 
-Con `parte: 0.5`, un ticket de 10,01 € con tres líneas (3,33 + 3,33 + 3,35):
+Con `parte: 0.5`, un ticket de 10,01 € con tres artículos (3,33 + 3,33 + 3,35):
 
 1. Todo en céntimos enteros. `monto = ⌈1001 × 0,5⌉ = 501` (el céntimo suelto se redondea hacia arriba: lo pagas tú).
-2. Los 501 céntimos se reparten **en proporción** a cada línea: `501 × 333/1001 = 166,67`, `166,67` y `501 × 335/1001 = 167,67`. Se toma la parte entera (`166 / 166 / 167` = 499) y los 2 céntimos que faltan van a las líneas con mayor resto, en orden si empatan (método del mayor resto): `167 / 166 / 168` = 501.
+2. Los 501 céntimos se reparten **en proporción** a cada artículo: `501 × 333/1001 = 166,67`, `166,67` y `501 × 335/1001 = 167,67`. Se toma la parte entera (`166 / 166 / 167` = 499) y los 2 céntimos que faltan van a los artículos con mayor resto, en orden si empatan (método del mayor resto): `167 / 166 / 168` = 501.
 3. Se guarda en euros dividiendo entre 100 al final, nunca antes.
 
-Así la suma de las líneas es siempre exactamente `monto`, sin errores de coma flotante. Repartir en proporción (y no «cada línea a la mitad») sirve igual para cualquier `parte`, para los descuentos (líneas negativas) y para los tickets que descuadran 1 o 2 céntimos por redondeo. Está en `api/src/services/ReceiptService.ts` (`splitCents`, `buildReceiptExpense`).
+Así los gastos de un ticket suman siempre exactamente su parte del total, sin errores de coma flotante. Repartir en proporción (y no «cada artículo a la mitad») sirve igual para cualquier `parte` y para los tickets que descuadran 1 o 2 céntimos por redondeo. Si un artículo de 1 céntimo se queda en 0 al repartir, no se apunta (los demás siguen sumando el total). Está en `api/src/services/ReceiptService.ts` (`splitCents`, `foldDiscounts`, `buildReceiptItems`).
 
-#### Cliente
+#### Cliente y MCP
 
-No hay pantalla de detalle del gasto, así que va en la propia fila (`SwipeableExpenseItem`): si tiene `lineas`, un botón «Ticket · 12 artículos · a medias» despliega debajo cada artículo con su cantidad e importe, y la nota «A medias: de cada artículo se apunta la mitad» si `parte` es 0,5. Edición de líneas: fuera de esta fase (al editar el `monto` a mano, se borran las líneas para que no dejen de cuadrar).
-
-#### MCP
-
-`list_expenses` devuelve `lineas` y `parte` si existen, y su búsqueda por `texto` mira también los artículos, para que Claude pueda responder «¿cuánto me gasto en leche?».
+Sin cambios: los artículos son gastos normales, con su fila, su categoría y su búsqueda por texto en `list_expenses`.
 
 ### Cambios en cgsshoppings
 
@@ -116,8 +106,8 @@ shared?: boolean;     // «A medias»
 trincaunt: {
   // ...los de la fase 1, más:
   useTicket?: boolean;     // false tras «Enviar sin ticket»
-  lines?: number | null;   // líneas que guardó Trincaunt
-  linesDropped?: boolean;  // las leyó pero no cuadraban con el total
+  lines?: number | null;   // gastos que creó Trincaunt, uno por artículo
+  linesDropped?: boolean;  // los leyó pero no cuadraban: un solo gasto con el total
 }
 ```
 
@@ -137,7 +127,7 @@ La foto se guarda en un bucket de **GridFS** (`tickets`) del Mongo de cgsshoppin
 - Con ticket, `POST /api/purchases` responde **sin esperar** a Trincaunt: la compra vuelve «pendiente» y el resultado llega por el socket `purchase-updated`. Sin ticket sigue esperando, como en la fase 1.
 - Tiempo máximo de la petición: **60 s** para el ticket (los 8 s de la fase 1 se quedan cortos para la IA). La reserva de la compra (`nextAttemptAt` al reclamarla) dura el doble, 120 s, para que el bucle de reintentos no la mande otra vez mientras la IA lee.
 - «A medias» sin ticket manda la mitad del importe (céntimo suelto hacia arriba, igual que Trincaunt); con ticket manda el importe entero (si lo hay) y `parte: 0.5`.
-- `classifyResponse` aprende dos casos, los dos **finales** (no se reintentan, igual que el 400):
+- `classifyResponse` acepta `data` como lista (ticket: guarda el id del primero y cuántos son) o como un gasto (sin ticket), y aprende dos casos, los dos **finales** (no se reintentan, igual que el 400):
   - `403` con `codigo: 'ia_desactivada'` → «Tu cuenta de Trincaunt no tiene la IA activada». Hoy un 403 es «problema de grupo»; el `codigo` los distingue.
   - `422` con `codigo: 'ticket_ilegible'` → «Trincaunt no ha podido leer el ticket».
   En los dos casos la compra muestra un botón **«Enviar sin ticket»**, que la reenvía por `/expenses` con el importe que escriba el usuario. Mismo `origen`, así que no puede acabar duplicada.
@@ -150,32 +140,32 @@ En la ventana «Compra hecha»:
 - **A medias**: casilla, junto a «Enviar a Trincaunt». Si está marcada, el texto de ayuda dice qué se apuntará («la mitad del ticket y de cada artículo» o «la mitad del importe»).
 - **Importe**: deja de ser obligatorio si hay ticket. Si no hay ticket, sigue siéndolo para enviar.
 
-En **Compras**, cada compra con ticket tiene «Ver ticket» (despliega la foto o un enlace al PDF), la etiqueta «a medias» y, cuando vuelve de Trincaunt, el número de artículos leídos. Si se descartaron por no cuadrar, lo dice. Mientras Trincaunt lee, el estado es «Trincaunt está leyendo el ticket». Tras un error del ticket aparece un campo de importe con «Enviar sin ticket».
+En **Compras**, cada compra con ticket tiene «Ver ticket» (despliega la foto o un enlace al PDF), la etiqueta «a medias» y, cuando vuelve de Trincaunt, «Apuntada en 12 gastos, uno por artículo». Si se descartaron por no cuadrar, lo dice. Mientras Trincaunt lee, el estado es «Trincaunt está leyendo el ticket». Tras un error del ticket aparece un campo de importe con «Enviar sin ticket».
 
 ### Seguridad y privacidad
 
 - La foto viaja de servidor a servidor por HTTPS, nunca del navegador de cgsshoppings a Trincaunt.
-- Trincaunt no guarda la foto ni la escribe en el log; solo guarda las líneas en el gasto.
+- Trincaunt no guarda la foto ni la escribe en el log; solo guarda los artículos como gastos.
 - Los tickets pueden llevar los últimos dígitos de la tarjeta y la hora: la foto solo la ve su dueño en cgsshoppings, y el prompt pide **no** devolver nada que no sean líneas de artículos.
 - Los límites de multer (5 MB en cgsshoppings, 15 MB en Trincaunt) y la reducción en el cliente evitan que un fichero enorme llene la memoria del EC2.
 
 ### Pruebas
 
-- Trincaunt (`ReceiptService.test.ts`, `ExpenseController.test.ts`, `ExpenseService.test.ts`): reparto de céntimos (impar, descuentos negativos, descuadre de 2 céntimos, importe del usuario distinto del ticket); `from-receipt` con origen repetido no llama a la IA; sin `aiEnabled` → 403 con `codigo`; sin total → 422; ticket que no cuadra → gasto sin líneas; un `POST /expenses` normal no puede poner líneas; cambiar el monto borra las líneas. La IA se sustituye por un doble.
-- cgsshoppings: `classifyResponse` con los dos códigos nuevos y las líneas; tipo del fichero por sus bytes; `sendPurchase` manda multipart a `from-receipt` y JSON a `/expenses` tras «Enviar sin ticket»; foto perdida → error final; «A medias» con y sin ticket. En el cliente, la ventana (foto reducida a JPEG, PDF, fichero no válido, «A medias») y Compras (ver ticket, líneas, «Enviar sin ticket»).
+- Trincaunt (`ReceiptService.test.ts`, `ExpenseController.test.ts`, `ExpenseService.test.ts`): reparto de céntimos (impar, descuadre de 2 céntimos, importe del usuario distinto del ticket, artículo que se queda en 0); descuentos sumados al artículo de encima; un gasto por artículo con nombre, unidades, categorías y `ref#n`; `from-receipt` con origen repetido no llama a la IA; sin `aiEnabled` → 403 con `codigo`; sin total → 422; ticket que no cuadra → un gasto con el total; `findByOrigen` no confunde `ref` con otro que empiece igual; `createOrFindExpenses` valida todos antes de guardar y devuelve los del ganador de una carrera. La IA se sustituye por un doble.
+- cgsshoppings: `classifyResponse` con los dos códigos nuevos y la lista de gastos; tipo del fichero por sus bytes; `sendPurchase` manda multipart a `from-receipt` y JSON a `/expenses` tras «Enviar sin ticket»; foto perdida → error final; «A medias» con y sin ticket. En el cliente, la ventana (foto reducida a JPEG, PDF, fichero no válido, «A medias») y Compras (ver ticket, líneas, «Enviar sin ticket»).
 - E2E local (2026-11-16), con un Mongo desechable y Gemini de verdad: ticket JPEG generado de 10,01 € con 5 líneas (una de descuento), «A medias» y sin importe. `POST /purchases` respondió en 96 ms; Gemini leyó las 5 líneas; el gasto quedó en 5,01 € con `parte: 0.5` y líneas que suman 5,01; repetir el mismo `origen` contestó el mismo gasto en 45 ms, sin IA; la foto se devuelve intacta. Falta probar un ticket real fotografiado y un PDF.
 
 ### Orden de despliegue
 
-1. Trincaunt: modelo, `from-receipt`, `parseReceipt`, líneas en la fila del gasto. No cambia nada para quien no lo usa.
+1. Trincaunt: `from-receipt`, `parseReceipt`. No cambia nada para quien no lo usa. (Al pasar a un gasto por artículo, `from-receipt` contesta una lista: va primero, y la cgsshoppings anterior no lo entendería hasta desplegar la nueva; como nadie mandaba tickets todavía, no importa.)
 2. cgsshoppings: GridFS, ventana con ticket y «A medias», envío nuevo. Necesita la dependencia nueva `multer` (va en la imagen) y nada nuevo en el `.env`.
 
 Para usar el ticket, la cuenta de Trincaunt tiene que tener la IA activada (o ser admin).
 
 ### Criterios de aceptación
 
-- Con ticket y sin importe, aparece en Trincaunt un único gasto con el total del ticket y sus líneas.
-- Con «A medias», el gasto es la mitad (con el céntimo suelto hacia arriba) y las líneas suman exactamente eso.
+- Con ticket y sin importe, aparece en Trincaunt un gasto por artículo, con su nombre y su categoría, y entre todos suman el total del ticket.
+- Con «A medias», cada artículo es la mitad, y entre todos suman exactamente la mitad del ticket (con el céntimo suelto hacia arriba).
 - Reintentar una compra que ya llegó no vuelve a llamar a la IA ni duplica el gasto.
 - Sin IA o con un ticket ilegible, la compra lo dice y se puede enviar sin ticket.
 - La foto se puede volver a ver en Compras y no queda guardada en Trincaunt.
@@ -183,7 +173,7 @@ Para usar el ticket, la cuenta de Trincaunt tiene que tener la IA activada (o se
 ### Preguntas abiertas
 
 - **Vista previa de las líneas** antes de guardar, para corregir lo que la IA lea mal. Obligaría a esperar a la IA dentro de la ventana; se deja para cuando se vea cuánto se equivoca.
-- **Categoría por línea** (alimentación, limpieza, droguería) para que el presupuesto por categoría se reparta solo. Hoy el gasto tiene una categoría; necesitaría que `BudgetService` sume líneas en vez de gastos.
+- **Agrupar los artículos de un ticket** en la lista de gastos (plegados bajo «Compra en Mercadona»), si 25 filas sueltas resultan demasiadas. El `ref#n` ya permite saber cuáles van juntos.
 - **«A medias» con otra persona**: enviar el ticket completo a un grupo compartido en vez de solo tu mitad.
 
 ## B. Precios desde los tickets
