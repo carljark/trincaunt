@@ -177,14 +177,18 @@ describe('ExpenseController (TDD)', () => {
     };
     const receipt = {
       tienda: 'Mercadona', total: 10.01,
-      lineas: [{ texto: 'A', importe: 3.33 }, { texto: 'B', importe: 3.33 }, { texto: 'C', importe: 3.35 }],
+      lineas: [
+        { texto: 'LCH', nombre: 'Leche', categoria: 'Comida', importe: 3.33 },
+        { texto: 'B', categoria: 'supermercado', importe: 3.33 },
+        { texto: 'C', importe: 3.35 },
+      ],
     };
 
     const setup = async (extra: Record<string, unknown> = {}, user: Record<string, unknown> = {}) => {
       const { ExpenseService } = await import('../../src/services/ExpenseService');
-      const findByOrigen = vi.spyOn(ExpenseService.prototype, 'findByOrigen').mockResolvedValue(null);
-      const createOrFind = vi.spyOn(ExpenseService.prototype, 'createOrFindExpense')
-        .mockImplementation(async (data: any, _userId, extraFields) => ({ expense: { ...data, ...extraFields } as any, duplicado: false }));
+      const findByOrigen = vi.spyOn(ExpenseService.prototype, 'findByOrigen').mockResolvedValue([]);
+      const createOrFind = vi.spyOn(ExpenseService.prototype, 'createOrFindExpenses')
+        .mockImplementation(async (datas: any[]) => ({ expenses: datas as any, duplicado: false }));
       const req = mockRequest(ticket);
       Object.assign((req as any).user, { nombre: 'Carlos' }, user);
       req.body = { ...body, ...extra };
@@ -205,43 +209,60 @@ describe('ExpenseController (TDD)', () => {
       expect(next).toHaveBeenLastCalledWith(expect.objectContaining({ statusCode: 400 }));
     });
 
-    it('creates one expense with the lines and returns the full ticket', async () => {
+    it('creates one expense per article and returns the full ticket', async () => {
       vi.mocked(AiService.parseReceipt).mockResolvedValue(receipt);
       const { req, res, createOrFind } = await setup();
 
       await ExpenseController.createExpenseFromReceipt(req, res, mockNext());
 
-      expect(createOrFind).toHaveBeenCalledWith(
-        expect.objectContaining({ monto: 10.01, localization: 'Mercadona', origen: { app: 'cgsshoppings', ref: 'p1' }, assumeExpense: true }),
-        'user123',
-        { lineas: [{ texto: 'A', importe: 3.33 }, { texto: 'B', importe: 3.33 }, { texto: 'C', importe: 3.35 }], parte: undefined }
-      );
+      const [gastos, userId, origen] = createOrFind.mock.calls[0];
+      expect(userId).toBe('user123');
+      expect(origen).toEqual({ app: 'cgsshoppings', ref: 'p1' });
+      expect(gastos.map(g => [g.descripcion, g.monto, g.categoria, g.origen?.ref])).toEqual([
+        ['Leche', 3.33, ['Comida', 'Supermercado'], 'p1#1'],
+        ['B', 3.33, ['supermercado'], 'p1#2'],
+        ['C', 3.35, ['Supermercado'], 'p1#3'],
+      ]);
+      expect(gastos[0]).toEqual(expect.objectContaining({ localization: 'Mercadona', assumeExpense: true, grupo_id: 'group123' }));
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ticket: receipt, lineasDescartadas: false }));
-      expect(BudgetAlertService.checkAfterExpenseChange).toHaveBeenCalledWith(['group123']);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ data: gastos, ticket: receipt, lineasDescartadas: false }));
+      // Un solo aviso para todo el ticket
+      expect(BudgetAlertService.checkAfterExpenseChange).toHaveBeenCalledTimes(1);
     });
 
-    it('half records half of the ticket', async () => {
+    it('half records half of each article', async () => {
       vi.mocked(AiService.parseReceipt).mockResolvedValue(receipt);
       const { req, res, createOrFind } = await setup({ parte: 0.5 });
 
       await ExpenseController.createExpenseFromReceipt(req, res, mockNext());
 
-      const [data, , extra] = createOrFind.mock.calls[0];
-      expect(data.monto).toBe(5.01);
-      expect(extra!.parte).toBe(0.5);
-      expect(Math.round(extra!.lineas!.reduce((a, l) => a + l.importe * 100, 0))).toBe(501);
+      const [gastos] = createOrFind.mock.calls[0];
+      expect(gastos.map(g => g.monto)).toEqual([1.67, 1.66, 1.68]);
+      expect(gastos[0].descripcion).toBe('Leche · a medias');
+    });
+
+    it('one expense with the purchase description when the lines do not add up', async () => {
+      vi.mocked(AiService.parseReceipt).mockResolvedValue({ ...receipt, total: 20 });
+      const { req, res, createOrFind } = await setup();
+
+      await ExpenseController.createExpenseFromReceipt(req, res, mockNext());
+
+      const [gastos] = createOrFind.mock.calls[0];
+      expect(gastos).toEqual([expect.objectContaining({
+        descripcion: 'Compra en Mercadona (3 artículos)', monto: 20, categoria: ['Supermercado'], origen: { app: 'cgsshoppings', ref: 'p1' },
+      })]);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ lineasDescartadas: true }));
     });
 
     it('a repeated origin answers 200 without calling the AI', async () => {
       const { req, res, findByOrigen } = await setup();
-      findByOrigen.mockResolvedValue({ _id: 'e1' } as any);
+      findByOrigen.mockResolvedValue([{ _id: 'e1' }, { _id: 'e2' }] as any);
 
       await ExpenseController.createExpenseFromReceipt(req, res, mockNext());
 
       expect(AiService.parseReceipt).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({ status: 'success', data: { _id: 'e1' }, duplicado: true });
+      expect(res.json).toHaveBeenCalledWith({ status: 'success', data: [{ _id: 'e1' }, { _id: 'e2' }], duplicado: true });
     });
 
     it('without AI it is a 403 with its own code', async () => {

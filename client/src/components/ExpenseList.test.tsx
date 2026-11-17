@@ -109,28 +109,3 @@ describe('ExpenseList', () => {
     expect(screen.queryByRole('button', { name: /Editar/ })).not.toBeInTheDocument();
   });
 });
-
-describe('ticket lines', () => {
-  it('shows the articles of a ticket when asked', () => {
-    renderList({
-      expenses: [expense('9', '2026-11-16T12:00:00', 5.01, {
-        parte: 0.5,
-        lineas: [{ texto: 'LECHE ENTERA', cantidad: 6, importe: 2.67 }, { texto: 'PAN', importe: 2.34 }]
-      })]
-    });
-    const toggle = screen.getByRole('button', { name: /Ticket · 2 artículos · a medias/ });
-    expect(screen.queryByText('LECHE ENTERA')).not.toBeInTheDocument();
-
-    fireEvent.click(toggle);
-
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText(/de cada artículo se apunta la mitad/)).toBeInTheDocument();
-    const leche = screen.getByText('LECHE ENTERA').closest('li')!;
-    expect(normalize(leche.textContent)).toBe('6 × LECHE ENTERA2,67 €');
-  });
-
-  it('an expense without lines has no ticket button', () => {
-    renderList();
-    expect(screen.queryByRole('button', { name: /Ticket/ })).not.toBeInTheDocument();
-  });
-});

@@ -189,8 +189,8 @@ export const getChartExpenses = async (req: Request, res: Response, next: NextFu
 
 import AiService, { GroupMemberRef, ParsedExpense } from '../services/AiService';
 import { AppError } from '../utils/AppError';
-import { parseOrigen } from '../services/ExpenseService';
-import { buildReceiptExpense, IA_DESACTIVADA, parseParte, TICKET_ILEGIBLE } from '../services/ReceiptService';
+import { itemRef, parseOrigen } from '../services/ExpenseService';
+import { buildReceiptItems, IA_DESACTIVADA, parseParte, TICKET_ILEGIBLE } from '../services/ReceiptService';
 import User from '../models/User';
 
 const MAX_AI_TEXT_LENGTH = 2000;
@@ -319,9 +319,16 @@ export const parseReceiptForm = (req: Request, _res: Response, next: NextFunctio
   }
 };
 
+/** Las categorías de un artículo: la que le puso la IA y las de la compra, sin repetir. */
+const itemCategories = (categoria: string | undefined, deLaCompra: string[]) => {
+  const todas = categoria ? [categoria, ...deLaCompra] : deLaCompra;
+  return todas.filter((c, i) => todas.findIndex(o => o.toLowerCase() === c.toLowerCase()) === i);
+};
+
 /**
- * Crea un gasto a partir de la foto o el PDF de un ticket: la IA lee el total y las líneas, y el
- * gasto se guarda con ellas (multiplicadas por `parte` si es a medias). La foto no se guarda.
+ * Apunta la foto o el PDF de un ticket: la IA lee el total y los artículos, y cada artículo se
+ * guarda como un gasto propio (con la parte aplicada si es a medias). Si los artículos no cuadran
+ * con el total, se guarda un único gasto con `descripcion`. La foto no se guarda.
  * Con `origen` es idempotente, y un reintento de algo que ya existe no vuelve a llamar a la IA.
  */
 export const createExpenseFromReceipt = async (req: Request, res: Response, next: NextFunction) => {
@@ -345,7 +352,7 @@ export const createExpenseFromReceipt = async (req: Request, res: Response, next
 
     if (origen) {
       const existing = await expenseService.findByOrigen(body.grupo_id, origen);
-      if (existing) {
+      if (existing.length) {
         res.status(200).json({ status: 'success', data: existing, duplicado: true });
         return;
       }
@@ -356,27 +363,36 @@ export const createExpenseFromReceipt = async (req: Request, res: Response, next
 
     const receipt = await AiService.parseReceipt(req.file.buffer, req.file.mimetype);
     if (receipt.total <= 0) throw new AppError('No se ha podido leer el ticket', 422, TICKET_ILEGIBLE);
-    const { monto, lineas, lineasDescartadas } = buildReceiptExpense(receipt, parte, montoUsuario);
+    const { monto, articulos, lineasDescartadas } = buildReceiptItems(receipt, parte, montoUsuario);
 
-    const { expense, duplicado } = await expenseService.createOrFindExpense({
+    const categoria: string[] = Array.isArray(body.categoria) ? body.categoria.filter((c: unknown) => typeof c === 'string' && c) : [];
+    const comun = {
       grupo_id: body.grupo_id,
-      descripcion,
-      monto,
       fecha: isIsoDay(body.fecha) ? new Date(body.fecha.slice(0, 10))
         : isIsoDay(receipt.fecha) ? new Date(receipt.fecha.slice(0, 10)) : new Date(todayInSpain()),
-      categoria: Array.isArray(body.categoria) ? body.categoria.filter((c: unknown) => typeof c === 'string' && c) : [],
       localization: typeof body.localization === 'string' && body.localization ? body.localization : receipt.tienda ?? '',
       assumeExpense: body.assumeExpense === true,
-      origen,
-    } as any, userId, { lineas, parte: parte === 1 ? undefined : parte });
+    };
+    const gastos = articulos
+      ? articulos.map((articulo, i) => ({
+        ...comun,
+        descripcion: articulo.descripcion,
+        monto: articulo.importe,
+        categoria: itemCategories(articulo.categoria, categoria),
+        origen: origen && { app: origen.app, ref: itemRef(origen.ref, i + 1) },
+      }))
+      : [{ ...comun, descripcion, monto, categoria, origen }];
+
+    const { expenses, duplicado } = await expenseService.createOrFindExpenses(gastos as any[], userId, origen);
     if (duplicado) {
-      res.status(200).json({ status: 'success', data: expense, duplicado: true });
+      res.status(200).json({ status: 'success', data: expenses, duplicado: true });
       return;
     }
 
+    // Un solo aviso por ticket, con el total
     announceNewExpense(req, body.grupo_id, descripcion, monto);
     // `ticket` son las líneas completas, sin la parte aplicada: lo que costó cada artículo
-    res.status(201).json({ status: 'success', data: expense, ticket: receipt, lineasDescartadas });
+    res.status(201).json({ status: 'success', data: expenses, ticket: receipt, lineasDescartadas });
   } catch (error) {
     next(error);
   }

@@ -75,12 +75,15 @@ Devuelve ESTRICTAMENTE un objeto JSON, sin texto adicional ni markdown, con esta
   "fecha": "YYYY-MM-DD, si aparece",
   "total": 0.00,
   "lineas": [
-    { "texto": "Texto de la línea tal como aparece en el ticket", "cantidad": 1, "importe": 0.00 }
+    { "texto": "Texto de la línea tal como aparece en el ticket", "nombre": "Nombre claro del artículo", "categoria": "Comida", "cantidad": 1, "importe": 0.00 }
   ]
 }
 Reglas:
 - "total" es el importe total pagado que figura en el ticket, en euros.
 - Una entrada en "lineas" por cada artículo del ticket, en el mismo orden. "importe" es el importe de esa línea (precio × cantidad), en euros.
+- "nombre" es el artículo escrito como lo diría una persona, sin abreviaturas ni códigos y con la marca y el tamaño si aparecen (por ejemplo, "LECHE ENT. HACEND. 1L" es "Leche entera Hacendado 1 L"). Si no sabes qué es, repite el texto.
+- "categoria" es una sola palabra o dos en castellano para el tipo de artículo: Comida, Bebidas, Alcohol, Limpieza, Higiene, Hogar, Mascotas, Bebé, Farmacia... Usa siempre el mismo nombre para el mismo tipo.
+- En los descuentos, "nombre" y "categoria" se pueden omitir.
 - "cantidad" son las unidades o los kilos/litros de la línea si el ticket los indica; si no, omítela.
 - Los descuentos, cupones y promociones van como líneas con importe negativo.
 - No incluyas como líneas el subtotal, el IVA, el total, la forma de pago ni el cambio.

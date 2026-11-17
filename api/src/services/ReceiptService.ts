@@ -3,17 +3,30 @@ import { AppError } from '../utils/AppError';
 export const TICKET_ILEGIBLE = 'ticket_ilegible';
 export const IA_DESACTIVADA = 'ia_desactivada';
 
-/** Lo que la IA lee de un ticket. Importes en euros, tal como salen (descuentos en negativo). */
+/**
+ * Una línea del ticket tal como la lee la IA: `texto` como sale impreso, `nombre` legible y
+ * `categoria` del artículo si los da. Importe en euros (los descuentos en negativo).
+ */
+export interface ReceiptLine {
+  texto: string;
+  nombre?: string;
+  categoria?: string;
+  cantidad?: number;
+  importe: number;
+}
+
+/** Lo que la IA lee de un ticket. */
 export interface ParsedReceipt {
   tienda?: string;
   fecha?: string;
   total: number;
-  lineas: { texto: string; cantidad?: number; importe: number }[];
+  lineas: ReceiptLine[];
 }
 
-export interface ReceiptLine {
-  texto: string;
-  cantidad?: number;
+/** Un artículo que se apunta como gasto propio: `importe` en euros, con la parte ya aplicada. */
+export interface ReceiptItem {
+  descripcion: string;
+  categoria?: string;
   importe: number;
 }
 
@@ -21,6 +34,9 @@ export interface ReceiptLine {
 const MAX_DESCUADRE_CENTS = 2;
 const MAX_LINEAS = 200;
 const MAX_TEXTO = 100;
+const MAX_CATEGORIA = 40;
+
+export const SUFIJO_A_MEDIAS = ' · a medias';
 
 export const PARTES = [1, 0.5];
 
@@ -52,6 +68,9 @@ export const splitCents = (total: number, pesos: number[]): number[] => {
   return partes;
 };
 
+const optionalText = (value: unknown, max: number) =>
+  typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined;
+
 /**
  * Limpia la respuesta de la IA. Si no es un objeto lanza (respuesta rota: se reintenta); si no trae
  * un total válido, `total` queda en 0 y quien llama decide que el ticket es ilegible.
@@ -71,6 +90,8 @@ export const validateReceipt = (data: unknown): ParsedReceipt => {
         !!l && typeof l === 'object' && typeof (l as any).texto === 'string' && typeof (l as any).importe === 'number' && Number.isFinite((l as any).importe))
       .map(l => ({
         texto: String(l.texto).trim().slice(0, MAX_TEXTO),
+        ...(optionalText(l.nombre, MAX_TEXTO) ? { nombre: optionalText(l.nombre, MAX_TEXTO) } : {}),
+        ...(optionalText(l.categoria, MAX_CATEGORIA) ? { categoria: optionalText(l.categoria, MAX_CATEGORIA) } : {}),
         ...(typeof l.cantidad === 'number' && Number.isFinite(l.cantidad) && l.cantidad > 0 ? { cantidad: l.cantidad } : {}),
         importe: l.importe as number,
       }))
@@ -86,32 +107,63 @@ export const parseParte = (value: unknown): number => {
 };
 
 /**
- * Lo que se apunta de un ticket: `monto` en euros (ya con la parte aplicada) y sus líneas, que
- * suman exactamente `monto`. Si el usuario dio el importe se usa ése; si las líneas no cuadran con
- * el total (la IA se saltó o inventó algo) o el importe del usuario no es el del ticket, el gasto
- * va sin líneas.
+ * Junta cada descuento con el artículo de antes (en los tickets el descuento va debajo de lo que
+ * rebaja); uno que vaya al principio se suma al primer artículo. Devuelve los artículos con su
+ * importe neto en céntimos.
  */
-export const buildReceiptExpense = (receipt: ParsedReceipt, parte: number, montoUsuario?: number) => {
+export const foldDiscounts = (lineas: ReceiptLine[]) => {
+  const articulos: { linea: ReceiptLine; cents: number }[] = [];
+  let pendiente = 0;
+  for (const linea of lineas) {
+    const cents = toCents(linea.importe);
+    if (cents < 0 && articulos.length > 0) articulos[articulos.length - 1].cents += cents;
+    else if (cents < 0) pendiente += cents;
+    else {
+      articulos.push({ linea, cents: cents + pendiente });
+      pendiente = 0;
+    }
+  }
+  return articulos;
+};
+
+/** Nombre del gasto de un artículo: el legible si la IA lo dio, con las unidades delante si son varias. */
+const itemDescription = (linea: ReceiptLine, parte: number) => {
+  const nombre = linea.nombre ?? linea.texto;
+  const unidades = linea.cantidad !== undefined && Number.isInteger(linea.cantidad) && linea.cantidad > 1 ? `${linea.cantidad} ` : '';
+  return `${unidades}${nombre}${parte === 1 ? '' : SUFIJO_A_MEDIAS}`;
+};
+
+/**
+ * Lo que se apunta de un ticket: un gasto por artículo (`articulos`), que entre todos suman
+ * exactamente `monto` (en euros, ya con la parte aplicada). Si el usuario dio el importe se usa
+ * ése. Si las líneas no cuadran con el total (la IA se saltó o inventó algo), el importe del
+ * usuario no es el del ticket o un descuento deja un artículo a 0 o menos, no hay `articulos` y
+ * se apunta un solo gasto por `monto`.
+ */
+export const buildReceiptItems = (receipt: ParsedReceipt, parte: number, montoUsuario?: number) => {
   const totalTicket = toCents(receipt.total);
   const total = montoUsuario !== undefined ? toCents(montoUsuario) : totalTicket;
   const monto = shareCents(total, parte);
 
-  const lineCents = receipt.lineas.map(l => toCents(l.importe));
-  const sumaLineas = lineCents.reduce((a, b) => a + b, 0);
-  const cuadra = receipt.lineas.length > 0
+  const sumaLineas = receipt.lineas.reduce((suma, l) => suma + toCents(l.importe), 0);
+  const articulos = foldDiscounts(receipt.lineas);
+  const cuadra = articulos.length > 0
     && receipt.lineas.length <= MAX_LINEAS
-    && sumaLineas > 0
+    && articulos.every(a => a.cents > 0)
     && Math.abs(sumaLineas - totalTicket) <= MAX_DESCUADRE_CENTS
     && Math.abs(total - totalTicket) <= MAX_DESCUADRE_CENTS;
 
   if (!cuadra) {
-    return { monto: monto / 100, lineas: undefined, lineasDescartadas: receipt.lineas.length > 0 };
+    return { monto: monto / 100, articulos: undefined, lineasDescartadas: receipt.lineas.length > 0 };
   }
-  const importes = splitCents(monto, lineCents);
-  const lineas: ReceiptLine[] = receipt.lineas.map((l, i) => ({
-    texto: l.texto,
-    ...(l.cantidad !== undefined ? { cantidad: l.cantidad } : {}),
-    importe: importes[i] / 100,
-  }));
-  return { monto: monto / 100, lineas, lineasDescartadas: false };
+  const importes = splitCents(monto, articulos.map(a => a.cents));
+  const items: ReceiptItem[] = articulos
+    .map(({ linea }, i) => ({
+      descripcion: itemDescription(linea, parte),
+      ...(linea.categoria ? { categoria: linea.categoria } : {}),
+      importe: importes[i] / 100,
+    }))
+    // Un artículo de 1 céntimo a medias puede quedarse en 0: sin él el resto sigue sumando `monto`
+    .filter(item => item.importe > 0);
+  return { monto: monto / 100, articulos: items, lineasDescartadas: false };
 };

@@ -14,10 +14,6 @@ export interface IExpense extends Document {
   // Gasto creado por otra aplicación: cuál y con qué id suyo (p. ej. una compra de cgsshoppings).
   // Es único por grupo, así repetir la petición no lo duplica.
   origen?: { app: string; ref: string };
-  // Gasto leído de un ticket: cada artículo con lo que se apunta de él. Suman exactamente `monto`.
-  lineas?: { texto: string; cantidad?: number; importe: number }[];
-  // Parte del ticket que se apunta (0.5 si es a medias). `monto` y `lineas` ya la llevan aplicada.
-  parte?: number;
 }
 
 const ExpenseSchema: Schema = new Schema({
@@ -34,16 +30,7 @@ const ExpenseSchema: Schema = new Schema({
   origen: {
     type: new Schema({ app: { type: String, required: true }, ref: { type: String, required: true } }, { _id: false }),
     required: false
-  },
-  lineas: {
-    type: [new Schema({
-      texto: { type: String, required: true },
-      cantidad: { type: Number, required: false },
-      importe: { type: Number, required: true }
-    }, { _id: false })],
-    default: undefined
-  },
-  parte: { type: Number, required: false, min: 0.01, max: 1 }
+  }
 });
 
 ExpenseSchema.index({ grupo_id: 1, fecha: 1 });

@@ -65,64 +65,6 @@
     color: $color-text-muted;
   }
 
-  // Artículos del ticket (gastos que vienen de cgsshoppings)
-  &__ticket-toggle {
-    align-self: flex-start;
-    padding: 0;
-    font-size: map.get($font-sizes, sm);
-    color: $color-primary;
-    background: none;
-    border: none;
-    cursor: pointer;
-
-    &:focus-visible {
-      outline: 2px solid $color-primary;
-      outline-offset: 1px;
-    }
-  }
-
-  &__ticket {
-    position: relative;
-    z-index: 1;
-    padding: 0 map.get($spacing-scale, 4) map.get($spacing-scale, 3);
-    background: $color-surface;
-  }
-
-  &__ticket-note {
-    margin: 0 0 map.get($spacing-scale, 1);
-    font-size: map.get($font-sizes, sm);
-    color: $color-text-muted;
-  }
-
-  &__ticket-lines {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  &__ticket-line {
-    display: flex;
-    justify-content: space-between;
-    gap: map.get($spacing-scale, 3);
-    padding: 2px 0;
-    font-size: map.get($font-sizes, sm);
-    color: $color-gray-900;
-  }
-
-  &__ticket-text {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  &__ticket-qty {
-    color: $color-text-muted;
-  }
-
-  &__ticket-amount {
-    @include money;
-    flex-shrink: 0;
-  }
-
   &__amount {
     @include money;
     font-size: map.get($font-sizes, base);
