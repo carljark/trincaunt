@@ -40,8 +40,6 @@ interface Expense {
   participantes: (string | Member)[];
   asume_gasto?: boolean;
   recurrente_id?: string;
-  lineas?: { texto: string; cantidad?: number; importe: number }[];
-  parte?: number;
 }
 
 // ---------- Utilidades ----------
@@ -93,10 +91,7 @@ const summarizeExpense = (e: Expense, names: Map<string, string>) => {
     pagado_por: e.pagado_por.map(person),
     participantes: e.participantes.map(person),
     ...(e.asume_gasto ? { asume_gasto: true } : {}),
-    ...(e.recurrente_id ? { factura_recurrente: true } : {}),
-    // Artículos del ticket (cgsshoppings); con parte 0.5 se apuntó la mitad de cada uno
-    ...(e.lineas?.length ? { lineas: e.lineas } : {}),
-    ...(e.parte && e.parte !== 1 ? { parte: e.parte } : {})
+    ...(e.recurrente_id ? { factura_recurrente: true } : {})
   };
 };
 
@@ -205,7 +200,7 @@ export const tools: ToolDef[] = [
       desde: ymd.optional().describe('Desde esta fecha, incluida (AAAA-MM-DD)'),
       hasta: ymd.optional().describe('Hasta esta fecha, incluida (AAAA-MM-DD)'),
       categoria: z.string().optional().describe('Solo esta categoría (o sus alias)'),
-      texto: z.string().optional().describe('Busca en la descripción, el lugar y los artículos del ticket, sin distinguir tildes ni mayúsculas'),
+      texto: z.string().optional().describe('Busca en la descripción y el lugar, sin distinguir tildes ni mayúsculas'),
       limite: z.number().int().min(1).max(500).default(50).describe('Máximo de gastos a devolver (por defecto 50)')
     },
     kind: 'read',
@@ -218,7 +213,7 @@ export const tools: ToolDef[] = [
       const needle = texto ? normalize(texto) : null;
       const filtered = expenses
         .filter(e => (!desde || day(e.fecha) >= desde) && (!hasta || day(e.fecha) <= hasta))
-        .filter(e => !needle || normalize(`${e.descripcion} ${e.localization ?? ''} ${(e.lineas ?? []).map(l => l.texto).join(' ')}`).includes(needle))
+        .filter(e => !needle || normalize(`${e.descripcion} ${e.localization ?? ''}`).includes(needle))
         .sort((a, b) => b.fecha.localeCompare(a.fecha));
       const names = memberNames(group);
       return {

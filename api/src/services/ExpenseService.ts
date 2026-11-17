@@ -23,20 +23,19 @@ export const parseOrigen = (origen: unknown): { app: string; ref: string } | und
   return { app, ref };
 };
 
-// Líneas de un ticket y parte que se apunta: solo las pone POST /expenses/from-receipt, que
-// garantiza que las líneas suman el monto. Lo que llegue con esos nombres en otro cuerpo se ignora.
-export type ReceiptFields = Pick<IExpense, 'lineas' | 'parte'>;
+/** Ref de cada artículo de un ticket: el de la compra con su número (`<ref>#1`, `<ref>#2`...). */
+export const itemRef = (ref: string, n: number) => `${ref}#${n}`;
+
+const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+type NewExpense = Partial<IExpense> & { assumeExpense?: boolean };
+
+const isDuplicateKey = (error: unknown) => (error as { code?: number }).code === 11000;
 
 export class ExpenseService {
-  async createExpense(
-    { lineas: _lineas, parte: _parte, ...data }: Partial<IExpense> & { assumeExpense?: boolean },
-    userId: string,
-    receipt?: ReceiptFields
-  ): Promise<IExpense> {
+  /** Valida un gasto nuevo contra su grupo y devuelve el documento que se guarda. */
+  private buildExpense(data: NewExpense, userId: string, group: { miembros: mongoose.Types.ObjectId[] }) {
     const origen = parseOrigen(data.origen);
-    const group = await Group.findById(data.grupo_id);
-    if (!group) throw new AppError('Grupo no encontrado', 404);
-
     const payerIds = data.pagado_por || [userId];
     if (!Array.isArray(payerIds) || payerIds.length === 0) {
       throw new AppError('El campo pagado_por debe ser un array de IDs de usuario y no puede estar vacío.', 400);
@@ -63,16 +62,24 @@ export class ExpenseService {
       participantes = group.miembros;
     }
 
-    const expense = await Expense.create({
+    return {
       ...data,
       pagado_por: payerIds,
       participantes,
       asume_gasto: data.assumeExpense || false,
-      origen,
-      ...receipt
-    });
+      origen
+    };
+  }
 
-    return expense;
+  private async findGroup(grupoId: unknown) {
+    const group = await Group.findById(grupoId);
+    if (!group) throw new AppError('Grupo no encontrado', 404);
+    return group;
+  }
+
+  async createExpense(data: NewExpense, userId: string): Promise<IExpense> {
+    const group = await this.findGroup(data.grupo_id);
+    return Expense.create(this.buildExpense(data, userId, group));
   }
 
   /**
@@ -80,21 +87,20 @@ export class ExpenseService {
    * otra aplicación puede reintentar la misma petición sin duplicarlo. La primera versión gana.
    */
   async createOrFindExpense(
-    data: Partial<IExpense> & { assumeExpense?: boolean },
-    userId: string,
-    receipt?: ReceiptFields
+    data: NewExpense,
+    userId: string
   ): Promise<{ expense: IExpense; duplicado: boolean }> {
     const origen = parseOrigen(data.origen);
-    if (!origen) return { expense: await this.createExpense(data, userId, receipt), duplicado: false };
+    if (!origen) return { expense: await this.createExpense(data, userId), duplicado: false };
 
     const filter = { grupo_id: data.grupo_id, 'origen.app': origen.app, 'origen.ref': origen.ref };
     const existing = await Expense.findOne(filter);
     if (existing) return { expense: existing, duplicado: true };
     try {
-      return { expense: await this.createExpense(data, userId, receipt), duplicado: false };
+      return { expense: await this.createExpense(data, userId), duplicado: false };
     } catch (error) {
       // Dos peticiones iguales a la vez: el índice único deja pasar una y se devuelve esa
-      if ((error as { code?: number }).code === 11000) {
+      if (isDuplicateKey(error)) {
         const winner = await Expense.findOne(filter);
         if (winner) return { expense: winner, duplicado: true };
       }
@@ -102,9 +108,45 @@ export class ExpenseService {
     }
   }
 
-  /** El gasto que otra aplicación ya creó con ese `origen` en el grupo, si existe. */
-  async findByOrigen(grupoId: IExpense['grupo_id'] | string, origen: { app: string; ref: string }): Promise<IExpense | null> {
-    return Expense.findOne({ grupo_id: grupoId, 'origen.app': origen.app, 'origen.ref': origen.ref });
+  /**
+   * Los gastos que otra aplicación ya creó con ese `origen` en el grupo: el gasto con ese `ref` o
+   * los artículos de un ticket (`<ref>#n`), en el orden en que se crearon.
+   */
+  async findByOrigen(grupoId: IExpense['grupo_id'] | string, origen: { app: string; ref: string }): Promise<IExpense[]> {
+    return Expense.find({
+      grupo_id: grupoId,
+      'origen.app': origen.app,
+      $or: [{ 'origen.ref': origen.ref }, { 'origen.ref': new RegExp(`^${escapeRegex(origen.ref)}#\\d+$`) }]
+    }).sort({ _id: 1 });
+  }
+
+  /**
+   * Crea de una vez varios gastos del mismo grupo (los artículos de un ticket). Con `origen`, si
+   * ya hay gastos suyos en el grupo los devuelve (`duplicado`) sin crear nada.
+   */
+  async createOrFindExpenses(
+    datas: NewExpense[],
+    userId: string,
+    origen?: { app: string; ref: string }
+  ): Promise<{ expenses: IExpense[]; duplicado: boolean }> {
+    const grupoId = datas[0]?.grupo_id;
+    if (!grupoId) throw new AppError('Falta el grupo', 400);
+    if (origen) {
+      const existing = await this.findByOrigen(grupoId, origen);
+      if (existing.length) return { expenses: existing, duplicado: true };
+    }
+    const group = await this.findGroup(grupoId);
+    const docs = datas.map(data => this.buildExpense(data, userId, group));
+    try {
+      // En orden: si otra petición igual ganó la carrera, falla el primero y no se guarda ninguno
+      return { expenses: await Expense.insertMany(docs, { ordered: true }) as unknown as IExpense[], duplicado: false };
+    } catch (error) {
+      if (origen && isDuplicateKey(error)) {
+        const winners = await this.findByOrigen(grupoId, origen);
+        if (winners.length) return { expenses: winners, duplicado: true };
+      }
+      throw error;
+    }
   }
 
   async getExpensesByGroup(groupId: string, categories?: string[]): Promise<IExpense[]> {
@@ -372,11 +414,6 @@ export class ExpenseService {
     }
     if (data.monto !== undefined) {
       if (data.monto <= 0) throw new AppError('El monto debe ser mayor a 0', 400);
-      // Las líneas del ticket dejarían de sumar el monto
-      if (expense.lineas?.length && Number(data.monto) !== expense.monto) {
-        expense.lineas = undefined;
-        expense.parte = undefined;
-      }
       expense.monto = data.monto;
     }
     if (data.categoria !== undefined) { // Check for undefined to allow empty array

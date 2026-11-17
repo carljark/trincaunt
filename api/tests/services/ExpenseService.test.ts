@@ -275,36 +275,58 @@ describe('ExpenseService Filtering', () => {
       }
       expect(ExpenseMock.create).not.toHaveBeenCalled();
     });
-  });
 
-  describe('líneas de un ticket', () => {
-    const groupId = new mongoose.Types.ObjectId().toString();
-    const userId = new mongoose.Types.ObjectId().toString();
-    const lineas = [{ texto: 'LECHE', importe: 2.5 }, { texto: 'PAN', importe: 2.5 }];
+    describe('articles of a ticket', () => {
+      const origen = { app: 'cgsshoppings', ref: 'compra-1' };
+      const items = [
+        { grupo_id: groupId, descripcion: 'Leche', monto: 1.5, assumeExpense: true, origen: { ...origen, ref: 'compra-1#1' } },
+        { grupo_id: groupId, descripcion: 'Pan', monto: 0.9, assumeExpense: true, origen: { ...origen, ref: 'compra-1#2' } },
+      ] as any[];
+      const found = (result: unknown) => ExpenseMock.find.mockReturnValue({ sort: vi.fn().mockResolvedValue(result) } as any);
 
-    beforeEach(() => {
-      GroupMock.findById.mockResolvedValue({ miembros: [userId] } as any);
-      ExpenseMock.create.mockImplementation(async (doc: any) => doc);
-    });
+      it('findByOrigen matches the expense itself and its numbered articles only', async () => {
+        found([]);
+        await expenseService.findByOrigen(groupId, { app: 'cgsshoppings', ref: 'a.b' });
+        const { $or } = ExpenseMock.find.mock.calls[0][0] as any;
+        expect($or[0]).toEqual({ 'origen.ref': 'a.b' });
+        const re: RegExp = $or[1]['origen.ref'];
+        expect(['a.b#1', 'a.b#12'].every(ref => re.test(ref))).toBe(true);
+        expect(['axb#1', 'a.b#', 'a.b#1x', 'a.b2#1'].some(ref => re.test(ref))).toBe(false);
+      });
 
-    it('only from-receipt sets lines and share; a normal body cannot', async () => {
-      const data = { grupo_id: groupId, descripcion: 'Compra', monto: 5 } as any;
-      const fromBody = await expenseService.createExpense({ ...data, lineas, parte: 0.5 }, userId);
-      expect(fromBody).not.toHaveProperty('lineas');
-      expect(fromBody).not.toHaveProperty('parte');
+      it('creates them all at once, in order', async () => {
+        found([]);
+        ExpenseMock.insertMany.mockImplementation(async (docs: any) => docs);
+        const { expenses, duplicado } = await expenseService.createOrFindExpenses(items, userId, origen);
+        expect(duplicado).toBe(false);
+        expect(ExpenseMock.insertMany).toHaveBeenCalledWith(
+          [expect.objectContaining({ descripcion: 'Leche', participantes: [userId], asume_gasto: true }), expect.objectContaining({ descripcion: 'Pan' })],
+          { ordered: true }
+        );
+        expect(expenses.map((e: any) => e.origen.ref)).toEqual(['compra-1#1', 'compra-1#2']);
+      });
 
-      const fromReceipt = await expenseService.createExpense(data, userId, { lineas, parte: 0.5 });
-      expect(fromReceipt).toMatchObject({ lineas, parte: 0.5 });
-    });
+      it('returns the existing ones without creating anything when the ticket comes again', async () => {
+        found([{ _id: 'e1' }]);
+        const result = await expenseService.createOrFindExpenses(items, userId, origen);
+        expect(result).toEqual({ expenses: [{ _id: 'e1' }], duplicado: true });
+        expect(ExpenseMock.insertMany).not.toHaveBeenCalled();
+      });
 
-    it('changing the amount drops the lines, which would no longer add up', async () => {
-      const expense: any = { monto: 5, lineas, parte: 0.5, save: vi.fn().mockImplementation(async function (this: any) { return this; }) };
-      ExpenseMock.findById.mockResolvedValue(expense);
-      await expenseService.updateExpense('e1', { monto: 5 } as any);
-      expect(expense.lineas).toEqual(lineas);
-      await expenseService.updateExpense('e1', { monto: 6 } as any);
-      expect(expense.lineas).toBeUndefined();
-      expect(expense.monto).toBe(6);
+      it('returns the winner of a race caught by the unique index', async () => {
+        ExpenseMock.find
+          .mockReturnValueOnce({ sort: vi.fn().mockResolvedValue([]) } as any)
+          .mockReturnValueOnce({ sort: vi.fn().mockResolvedValue([{ _id: 'w1' }, { _id: 'w2' }]) } as any);
+        ExpenseMock.insertMany.mockRejectedValue(Object.assign(new Error('E11000 duplicate key'), { code: 11000 }));
+        const result = await expenseService.createOrFindExpenses(items, userId, origen);
+        expect(result).toEqual({ expenses: [{ _id: 'w1' }, { _id: 'w2' }], duplicado: true });
+      });
+
+      it('validates every article before saving any', async () => {
+        found([]);
+        await expect(expenseService.createOrFindExpenses([items[0], { ...items[1], monto: 0 }], userId, origen)).rejects.toMatchObject({ statusCode: 400 });
+        expect(ExpenseMock.insertMany).not.toHaveBeenCalled();
+      });
     });
   });
 });

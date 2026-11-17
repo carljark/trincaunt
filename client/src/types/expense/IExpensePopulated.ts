@@ -1,4 +1,3 @@
-import { IExpenseLine } from './IExpense';
 import { IUserPopulated } from '../user';
 
 export interface IExpensePopulated {
@@ -12,7 +11,4 @@ export interface IExpensePopulated {
   asume_gasto: boolean;
   categoria?: string[];
   localization?: string;
-  // Artículos de un ticket (cgsshoppings): suman `monto`. Con parte 0.5 se apuntó la mitad.
-  lineas?: IExpenseLine[];
-  parte?: number;
 }

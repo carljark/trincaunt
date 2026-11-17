@@ -15,8 +15,7 @@ const group = {
 };
 const expenses = [
   { _id: E1, grupo_id: G, descripcion: 'Súper Mercadona', monto: 45.5, fecha: '2026-11-03T00:00:00.000Z', categoria: ['Comida'], pagado_por: [ME], participantes: [ME, ANA] },
-  { _id: 'e'.repeat(24), grupo_id: G, descripcion: 'Luz', monto: 60, fecha: '2026-10-20T00:00:00.000Z', categoria: ['Hogar'], pagado_por: [ANA], participantes: [ME, ANA],
-    lineas: [{ texto: 'BOMBILLA LED', cantidad: 2, importe: 10 }, { texto: 'Factura', importe: 50 }], parte: 0.5 },
+  { _id: 'e'.repeat(24), grupo_id: G, descripcion: 'Luz', monto: 60, fecha: '2026-10-20T00:00:00.000Z', categoria: ['Hogar'], pagado_por: [ANA], participantes: [ME, ANA] },
   { _id: 'f'.repeat(24), grupo_id: G, descripcion: 'Cena', monto: 30, fecha: '2026-11-05T19:00:00.000Z', categoria: ['Ocio'], localization: 'Café Mercado', pagado_por: [ME], participantes: [ME], asume_gasto: true }
 ];
 
@@ -87,10 +86,6 @@ describe('Trincaunt MCP server', () => {
     const filtered = (await call('list_expenses', { groupId: G, desde: '2026-11-01', texto: 'MERCADO', limite: 1 })).json();
     expect(filtered).toMatchObject({ total: 2, suma: 75.5, mostrados: 1 });
     expect(filtered.gastos[0].descripcion).toBe('Cena');
-
-    const byLine = (await call('list_expenses', { groupId: G, texto: 'bombilla' })).json();
-    expect(byLine.gastos).toHaveLength(1);
-    expect(byLine.gastos[0]).toMatchObject({ parte: 0.5, lineas: [{ texto: 'BOMBILLA LED', cantidad: 2, importe: 10 }, { texto: 'Factura', importe: 50 }] });
 
     await call('list_expenses', { groupId: G, categoria: 'Comida y bebida' });
     expect(calls.at(-1)!.url).toMatch(/\/expenses\?category=Comida%20y%20bebida$/);
