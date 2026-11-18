@@ -12,6 +12,8 @@ export interface IApiToken {
   nombre: string;
   prefijo: string;
   admin?: boolean;
+  // Lo que permite, si es un token con permisos (p. ej. el de cgsshoppings); vacío es todo
+  permisos?: string[];
   ultimoUso: string | null;
   createdAt: string;
 }
@@ -173,6 +175,9 @@ const ApiTokens: React.FC<ApiTokensProps> = ({ token, isAdmin = false }) => {
                   {t.prefijo}… · creado el {formatShortDate(t.createdAt)} ·{' '}
                   {t.ultimoUso ? `usado el ${formatShortDate(t.ultimoUso)}` : 'sin usar'}
                 </span>
+                {t.permisos && t.permisos.length > 0 && (
+                  <span className="api-tokens__scopes">Solo puede: {t.permisos.join(' · ')}</span>
+                )}
               </span>
               <button
                 type="button"

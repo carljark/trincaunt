@@ -6,8 +6,12 @@ import ApiTokens from './ApiTokens';
 
 const existing = [
   { _id: 't1', nombre: 'Portátil', prefijo: 'trc_AbCdEf', ultimoUso: '2026-11-05T10:00:00.000Z', createdAt: '2026-11-01T10:00:00.000Z' },
-  { _id: 't2', nombre: 'Sobremesa', prefijo: 'trc_ZyXwVu', ultimoUso: null, createdAt: '2026-11-02T10:00:00.000Z' }
-];
+  { _id: 't2', nombre: 'Sobremesa', prefijo: 'trc_ZyXwVu', ultimoUso: null, createdAt: '2026-11-02T10:00:00.000Z' },
+  {
+    _id: 't4', nombre: 'Conector: cgsshoppings', prefijo: 'trc_CgsCgs', ultimoUso: '2026-11-04T10:00:00.000Z', createdAt: '2026-11-03T10:00:00.000Z',
+    permisos: ['Apuntar gastos en tus grupos', 'Ver tu presupuesto personal']
+  }
+] as { _id: string; nombre: string; prefijo: string; ultimoUso: string | null; createdAt: string; permisos?: string[] }[];
 
 const reply = (status: number, data?: unknown) =>
   Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(status < 400 ? { data } : { message: data }) });
@@ -40,6 +44,12 @@ describe('ApiTokens', () => {
     expect(screen.getByText(/trc_AbCdEf… · creado el 1 nov · usado el 5 nov/)).toBeInTheDocument();
     expect(screen.getByText(/sin usar/)).toBeInTheDocument();
     expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer session');
+  });
+
+  it('says what a token with permissions can do', async () => {
+    render(<ApiTokens token="session" />);
+    expect(await screen.findByText('Solo puede: Apuntar gastos en tus grupos · Ver tu presupuesto personal')).toBeInTheDocument();
+    expect(screen.getAllByText(/^Solo puede/)).toHaveLength(1);
   });
 
   it('creates a token and shows it once to copy', async () => {

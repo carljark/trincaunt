@@ -1,6 +1,8 @@
-import { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
+import http from 'http';
+import type { AddressInfo } from 'net';
 import jwt from 'jsonwebtoken';
-import { protect, sessionOnly, requireAdmin, hasAdminAccess } from '../../src/middlewares/authMiddleware';
+import { protect, sessionOnly, requireAdmin, hasAdminAccess, requireScope } from '../../src/middlewares/authMiddleware';
 import ApiTokenService from '../../src/services/ApiTokenService';
 import User from '../../src/models/User';
 
@@ -32,7 +34,7 @@ describe('protect', () => {
 
   it('accepts an API token and marks the request', async () => {
     const user = { _id: 'u1' };
-    (ApiTokenService.authenticate as vi.Mock).mockResolvedValue({ user, tokenId: 't1', admin: true });
+    (ApiTokenService.authenticate as vi.Mock).mockResolvedValue({ user, tokenId: 't1', admin: true, scopes: [] });
     const r = req('Bearer trc_secret');
     const next = vi.fn();
     await protect(r, res, next);
@@ -84,5 +86,71 @@ describe('requireAdmin', () => {
     expect(error).toMatchObject({ statusCode: 403 });
     expect(error.message).toMatch(/Permite administración/);
     expect(hasAdminAccess({ user: admin, apiTokenId: 't1' } as Request)).toBe(false);
+  });
+});
+
+describe('scopes', () => {
+  const scoped = { user: { _id: 'u1' }, tokenId: 't1', admin: false, scopes: ['gastos:crear'] };
+  // Una petición que llega a una ruta con estos middlewares (como la ve `protect` en req.route)
+  const routed = (...handles: unknown[]) => {
+    const r = req('Bearer trc_app');
+    (r as any).route = { stack: handles.map(handle => ({ handle })) };
+    return r;
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it('a scoped token only enters routes that declare a scope', async () => {
+    (ApiTokenService.authenticate as vi.Mock).mockResolvedValue(scoped);
+    const next = vi.fn();
+    await protect(routed(protect, () => undefined), res, next);
+    expect(next.mock.calls[0][0]).toMatchObject({ statusCode: 403, codigo: 'scope_insuficiente' });
+
+    const ok = vi.fn();
+    await protect(routed(protect, requireScope('grupos:leer'), () => undefined), res, ok);
+    expect(ok).toHaveBeenCalledWith();
+  });
+
+  it('a token without scopes goes anywhere, as before', async () => {
+    (ApiTokenService.authenticate as vi.Mock).mockResolvedValue({ ...scoped, scopes: [] });
+    const next = vi.fn();
+    await protect(routed(protect, () => undefined), res, next);
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('requireScope lets through the session, unscoped tokens and the right scope', () => {
+    const check = (apiTokenScopes?: string[]) => {
+      const next = vi.fn();
+      requireScope('gastos:crear')({ apiTokenScopes } as Request, res, next);
+      return next.mock.calls[0][0];
+    };
+    expect(check(undefined)).toBeUndefined();
+    expect(check([])).toBeUndefined();
+    expect(check(['grupos:leer', 'gastos:crear'])).toBeUndefined();
+    expect(check(['grupos:leer'])).toMatchObject({ statusCode: 403, codigo: 'scope_insuficiente' });
+  });
+});
+
+describe('scopes on a real Express router', () => {
+  it('protect sees the route it guards', async () => {
+    const app = express();
+    const router = express.Router();
+    router.get('/abierta', protect, (_req, res) => { res.json({ ok: true }); });
+    router.get('/con-permiso', protect, requireScope('grupos:leer'), (_req, res) => { res.json({ ok: true }); });
+    app.use(router);
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => { res.status(err.statusCode ?? 500).json({ codigo: err.codigo }); });
+    const server = http.createServer(app);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const get = (path: string) => fetch(base + path, { headers: { authorization: 'Bearer trc_app' } }).then(r => r.status);
+    try {
+      (ApiTokenService.authenticate as vi.Mock).mockResolvedValue({ user: { _id: 'u1' }, tokenId: 't1', admin: false, scopes: ['grupos:leer'] });
+      expect(await get('/abierta')).toBe(403);
+      expect(await get('/con-permiso')).toBe(200);
+      (ApiTokenService.authenticate as vi.Mock).mockResolvedValue({ user: { _id: 'u1' }, tokenId: 't1', admin: false, scopes: [] });
+      expect(await get('/abierta')).toBe(200);
+    } finally {
+      server.close();
+    }
   });
 });

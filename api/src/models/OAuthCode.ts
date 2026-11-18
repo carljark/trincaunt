@@ -7,6 +7,7 @@ export interface IOAuthCode extends Document {
   usuario: mongoose.Types.ObjectId;
   redirectUri: string;
   codeChallenge: string; // PKCE S256
+  scopes?: string[];     // permisos que aceptó el usuario; vacío es acceso completo
   expiresAt: Date;
 }
 
@@ -16,6 +17,7 @@ const OAuthCodeSchema: Schema = new Schema({
   usuario: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   redirectUri: { type: String, required: true },
   codeChallenge: { type: String, required: true },
+  scopes: { type: [String], default: undefined },
   // MongoDB borra los caducados
   expiresAt: { type: Date, required: true, index: { expires: 0 } }
 });

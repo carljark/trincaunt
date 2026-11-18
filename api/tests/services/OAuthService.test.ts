@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import crypto from 'crypto';
 import { OAuthService } from '../../src/services/OAuthService';
 import OAuthClient from '../../src/models/OAuthClient';
@@ -7,7 +7,7 @@ import ApiTokenService from '../../src/services/ApiTokenService';
 
 vi.mock('../../src/models/OAuthClient', () => ({ default: { create: vi.fn(), findOne: vi.fn() } }));
 vi.mock('../../src/models/OAuthCode', () => ({ default: { create: vi.fn(), findOneAndDelete: vi.fn() } }));
-vi.mock('../../src/services/ApiTokenService', () => ({ default: { create: vi.fn() } }));
+vi.mock('../../src/services/ApiTokenService', () => ({ default: { create: vi.fn(), revokeClientTokens: vi.fn(), revokeByToken: vi.fn() } }));
 
 const REDIRECT = 'https://claude.ai/api/mcp/auth_callback';
 const verifier = 'v'.repeat(50);
@@ -74,7 +74,8 @@ describe('OAuthService', () => {
 
     const body = { grant_type: 'authorization_code', code, code_verifier: verifier, client_id: 'c1', redirect_uri: REDIRECT };
     expect(await service.token(body, async () => user as any)).toEqual({ access_token: 'trc_nuevo', token_type: 'Bearer', scope: 'trincaunt' });
-    expect(ApiTokenService.create).toHaveBeenCalledWith({ id: 'u1', role: 'user' }, 'Conector: Claude');
+    expect(ApiTokenService.create).toHaveBeenCalledWith({ id: 'u1', role: 'user' }, 'Conector: Claude', false, { scopes: [], cliente: 'c1' });
+    expect(ApiTokenService.revokeClientTokens).not.toHaveBeenCalled();
 
     await expect(service.token(body, async () => user as any)).rejects.toMatchObject({ error: 'invalid_grant' });
   });
@@ -94,5 +95,69 @@ describe('OAuthService', () => {
     expect(denied.searchParams.get('code')).toBeNull();
 
     await expect(service.token({ grant_type: 'password' }, async () => user as any)).rejects.toMatchObject({ error: 'unsupported_grant_type' });
+  });
+
+  describe('scopes and the confidential client', () => {
+    const CGS = 'https://cgs.example';
+    const CALLBACK = `${CGS}/api/integrations/trincaunt/callback`;
+    const cgsParams = { ...params, client_id: 'cgsshoppings', redirect_uri: CALLBACK };
+    const basic = (secret: string) => `Basic ${Buffer.from(`cgsshoppings:${secret}`).toString('base64')}`;
+
+    beforeEach(() => {
+      process.env.CGSSHOPPINGS_URL = `${CGS}/`;
+      process.env.CGSSHOPPINGS_CLIENT_SECRET = 'secreto-del-servidor';
+    });
+    afterEach(() => {
+      delete process.env.CGSSHOPPINGS_URL;
+      delete process.env.CGSSHOPPINGS_CLIENT_SECRET;
+    });
+
+    it('a public client gets the scopes it asks for, or full access', async () => {
+      expect((await service.checkAuthorize({ ...params, scope: 'grupos:leer gastos:crear' })).scopes).toEqual(['grupos:leer', 'gastos:crear']);
+      expect((await service.checkAuthorize({ ...params, scope: 'trincaunt' })).scopes).toEqual([]);
+      expect((await service.checkAuthorize(params)).scopes).toEqual([]);
+      expect((await service.checkAuthorize({ ...params, scope: 'borrar:todo' })).error).toBe('invalid_scope');
+    });
+
+    it('cgsshoppings exists only when configured, with its fixed callback and scopes', async () => {
+      const { client, scopes, error } = await service.checkAuthorize(cgsParams);
+      expect(client.nombre).toBe('cgsshoppings');
+      expect(error).toBeUndefined();
+      expect(scopes).toEqual(['grupos:leer', 'gastos:crear', 'presupuesto:leer']);
+      expect((await service.checkAuthorize({ ...cgsParams, scope: 'gastos:crear' })).scopes).toEqual(['gastos:crear']);
+      // Ni acceso completo ni permisos que no son suyos
+      expect((await service.checkAuthorize({ ...cgsParams, scope: 'trincaunt' })).scopes).toEqual(['grupos:leer', 'gastos:crear', 'presupuesto:leer']);
+      await expect(service.checkAuthorize({ ...cgsParams, redirect_uri: 'https://evil.example/cb' })).rejects.toMatchObject({ statusCode: 400 });
+
+      delete process.env.CGSSHOPPINGS_CLIENT_SECRET;
+      await expect(service.checkAuthorize(cgsParams)).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it('the code carries the scopes and the confidential client must show its secret', async () => {
+      const code = new URL(await service.decide(user, { ...cgsParams, scope: 'grupos:leer gastos:crear' }, true)).searchParams.get('code')!;
+      const body = { grant_type: 'authorization_code', code, code_verifier: verifier, redirect_uri: CALLBACK };
+      await expect(service.token(body, async () => user as any, basic('otro'))).rejects.toMatchObject({ error: 'invalid_client', status: 401 });
+
+      const code2 = new URL(await service.decide(user, { ...cgsParams, scope: 'grupos:leer gastos:crear' }, true)).searchParams.get('code')!;
+      const result = await service.token({ ...body, code: code2 }, async () => user as any, basic('secreto-del-servidor'));
+      expect(result).toEqual({ access_token: 'trc_nuevo', token_type: 'Bearer', scope: 'grupos:leer gastos:crear' });
+      // Reconectar sustituye el token anterior de esa aplicación
+      expect(ApiTokenService.revokeClientTokens).toHaveBeenCalledWith('u1', 'cgsshoppings');
+      expect(ApiTokenService.create).toHaveBeenCalledWith({ id: 'u1', role: 'user' }, 'Conector: cgsshoppings', false,
+        { scopes: ['grupos:leer', 'gastos:crear'], cliente: 'cgsshoppings' });
+    });
+
+    it('client_secret_post works too', async () => {
+      const code = new URL(await service.decide(user, cgsParams, true)).searchParams.get('code')!;
+      const body = { grant_type: 'authorization_code', code, code_verifier: verifier, client_id: 'cgsshoppings', client_secret: 'secreto-del-servidor' };
+      expect((await service.token(body, async () => user as any)).scope).toBe('grupos:leer gastos:crear presupuesto:leer');
+    });
+
+    it('revokes only with the secret, and only its own tokens', async () => {
+      await expect(service.revoke({ token: 'trc_x' }, basic('otro'))).rejects.toMatchObject({ error: 'invalid_client' });
+      await expect(service.revoke({ token: 'trc_x', client_id: 'c1' })).rejects.toMatchObject({ error: 'invalid_client' });
+      await service.revoke({ token: 'trc_x' }, basic('secreto-del-servidor'));
+      expect(ApiTokenService.revokeByToken).toHaveBeenCalledWith('trc_x', 'cgsshoppings');
+    });
   });
 });
