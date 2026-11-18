@@ -1,6 +1,6 @@
 # Fase 4: el ticket en la compra y precios desde los tickets
 
-**Estado:** parte A desplegada el 2026-11-16 ([trincaunt#74](https://github.com/carljark/trincaunt/pull/74), [cgsshoppings#2](https://github.com/carljark/cgsshoppings/pull/2)) con un gasto con líneas; el 2026-11-17 se cambia a **un gasto por artículo** (sin desplegar). Parte B esbozo.
+**Estado:** parte A desplegada el 2026-11-16 ([trincaunt#74](https://github.com/carljark/trincaunt/pull/74), [cgsshoppings#2](https://github.com/carljark/cgsshoppings/pull/2)) con un gasto con líneas; el 2026-11-17 se cambia a **un gasto por artículo** ([trincaunt#75](https://github.com/carljark/trincaunt/pull/75), [cgsshoppings#3](https://github.com/carljark/cgsshoppings/pull/3), desplegado). Parte B implementada el 2026-11-18, sin probar con la IA de verdad (Gemini daba 503).
 
 La fase tiene dos partes que se pueden desplegar por separado:
 
@@ -174,29 +174,52 @@ Para usar el ticket, la cuenta de Trincaunt tiene que tener la IA activada (o se
 
 - **Vista previa de las líneas** antes de guardar, para corregir lo que la IA lea mal. Obligaría a esperar a la IA dentro de la ventana; se deja para cuando se vea cuánto se equivoca.
 - **Agrupar los artículos de un ticket** en la lista de gastos (plegados bajo «Compra en Mercadona»), si 25 filas sueltas resultan demasiadas. El `ref#n` ya permite saber cuáles van juntos.
-- **«A medias» con otra persona**: enviar el ticket completo a un grupo compartido en vez de solo tu mitad.
+- **«A medias» con otra persona**: envi## B. Precios desde los tickets
 
-## B. Precios desde los tickets
+**Objetivo:** que cgsshoppings sepa cuánto cuesta cada artículo para estimar la lista antes de ir a comprar: «Esta lista: unos 42,00 € · te quedarían 6,00 €».
 
-**Objetivo:** que cgsshoppings sepa cuánto cuesta cada artículo para estimar el precio de la lista antes de ir a comprar. Se apoya en las líneas que devuelve la parte A.
+### Decisiones
 
-### Idea
+| Tema | Decisión | Alternativas descartadas |
+|---|---|---|
+| Quién empareja cada línea con un artículo de la lista | **La IA de Trincaunt, en la misma lectura del ticket**: cgsshoppings manda la lista (`datos.articulos`) y cada línea vuelve con `articulo`, que solo puede ser uno de la lista tal cual | Emparejar en cgsshoppings por nombre: «LECHE ENT. HACEND.» no se parece a «leche». Una segunda llamada a la IA: más cara y más lenta. Confirmar los dudosos a mano: más pantallas; si la IA duda, la línea se queda sin artículo |
+| Qué se guarda en cgsshoppings | **Solo el precio por artículo** (`prices`: artículo, tienda, céntimos por unidad, fecha, compra) | Las líneas del ticket: dicen mucho de los hábitos y ya están como gastos en Trincaunt |
+| Unidades | **El precio de la línea entre sus unidades** si son unidades enteras; una línea pesada (kilos) cuenta como una unidad de la lista. Sin convertir a gramos | Convertir kilos y litros: la lista cuenta unidades, no pesos |
+| El precio estimado | **La mediana de las últimas 5 veces** (del último año), por unidad, × las unidades de la lista | La media: una oferta o un error de la IA la mueve mucho. El último precio: igual |
+| «A medias» | Se guarda el precio **del ticket entero** | La mitad: el artículo cuesta lo que cuesta |
+| Webhooks firmados | **No se hacen todavía** | Solo hacen falta si un ticket se lee en Trincaunt sin pasar por cgsshoppings, y hoy no pasa |
 
-1. Tras la parte A, cgsshoppings recibe las líneas en la respuesta de `from-receipt`.
-2. Empareja cada línea con un artículo de la compra (`items` de `purchases`). Primero por nombre normalizado, luego con ayuda de IA, y al final confirmando con el usuario las dudosas.
-3. Guarda un historial de precios por artículo (`prices`: `{ userName, article, store, unitPriceCents, unit, date }`). El precio estimado es la mediana de los últimos. Se guarda el precio **del ticket completo**, aunque la compra sea a medias.
+### Cambios en Trincaunt
 
-### Webhooks firmados
+- `datos.articulos` (opcional) en `POST /expenses/from-receipt`: los artículos de la compra, sin repetir, hasta 100 de 60 caracteres (`parseArticulos`).
+- `AiService.parseReceipt(buffer, mimeType, articulos)`: con lista, el prompt pide `articulo` en cada línea, exactamente como está en la lista y solo si es seguro.
+- `validateReceipt(data, articulos)`: un `articulo` que no esté en la lista se descarta (la IA no puede inventarse otro).
+- La respuesta `201` ya devolvía `ticket` entero; ahora sus líneas llevan `articulo`.
 
-Para cuando un ticket se procese en Trincaunt sin pasar por cgsshoppings (por ejemplo, desde el botón de foto de Trincaunt) y haya que avisar:
+### Cambios en cgsshoppings
 
-- cgsshoppings expone `POST /api/webhooks/trincaunt` (sin sesión).
-- Trincaunt firma el cuerpo con un secreto compartido. Cabecera `X-Trincaunt-Signature: t=<timestamp>,v1=<hmac-sha256(secreto, t + '.' + cuerpo)>`.
-- cgsshoppings comprueba la firma con comparación en tiempo constante, rechaza timestamps de más de 5 minutos (repeticiones) y responde rápido con `2xx`. El trabajo pesado va después.
-- Eventos con `id` único, `tipo` y `version`: `{ id, tipo: 'ticket.leido', version: 1, datos: {...} }`. El receptor guarda los `id` procesados (idempotencia otra vez).
-- Trincaunt reintenta los avisos que fallan con la misma espera creciente de la fase 1.
+- `receiptBody` manda `articulos` (los `items` de la compra).
+- `classifyResponse` guarda el `ticket` de la respuesta; `sendPurchase` llama a `recordPrices` **antes** de avisar por el socket, para que la estimación ya los tenga. Un fallo al guardar precios no cambia el estado de la compra.
+- `src/prices.ts`:
+  - `pricesFromReceipt`: junta los descuentos con la línea de encima (como `foldDiscounts`), suma las líneas del mismo artículo y divide entre sus unidades. Las líneas sin artículo o que quedan a 0 no enseñan nada.
+  - `recordPrices`: `upsert` por compra y artículo (idempotente). Colección `prices` con índices `{userName, date}` y único `{purchaseId, key}`.
+  - `priceTable`: mediana de las últimas 5 por artículo. `articleKey` compara sin mayúsculas, tildes ni espacios de más.
+- `GET /api/prices` → `{ prices: [{ key, cents, samples, date }] }`.
+- Cliente: la barra de la fase 3 recibe la lista (`[items]`) y añade una línea «Esta lista: unos 7,90 € · te quedarían 40,10 € (1 sin precio)», o «te pasarías…». Sin Trincaunt sale solo la estimación; sin ningún precio, nada. Los precios se recargan con el presupuesto (tras «Compra hecha» y al llegar una compra a Trincaunt).
 
-### Preguntas abiertas
+### Límites
 
-- Unidades: los artículos de cgsshoppings van en gramos, los tickets en unidades, kilos o litros. Hará falta guardar la unidad del precio.
-- Privacidad: las líneas del ticket dicen mucho de los hábitos. Con la parte A ya se guardan en Trincaunt; ¿también en cgsshoppings o solo los precios?
+- Si la respuesta de `from-receipt` se pierde, el reintento recibe `duplicado: true` sin `ticket`: esa compra no deja precios.
+- Una compra enviada sin ticket no deja precios.
+
+### Pruebas
+
+- Trincaunt: `parseArticulos`; `validateReceipt` solo acepta artículos de la lista; el controlador pasa la lista a la IA.
+- cgsshoppings, servidor: precio por unidad con descuentos, varias líneas del mismo artículo, líneas pesadas, línea a 0, mediana de las últimas 5; `receiptBody` manda `articulos`; `sendPurchase` guarda los precios antes de avisar.
+- cgsshoppings, cliente: la estimación con y sin presupuesto, «te pasarías», artículos sin precio, sin precios.
+- **Sin E2E con la IA de verdad:** el 2026-11-18 Gemini contestaba 503. Queda por comprobar con el primer ticket real que la IA rellena `articulo` bien.
+
+### Para más adelante
+
+- Webhooks firmados (HMAC con timestamp, eventos con `id` para la idempotencia) si Trincaunt llega a leer tickets que no vienen de cgsshoppings.
+- Ver el precio de cada artículo en la lista, o el historial por tienda.
