@@ -53,7 +53,15 @@ router.get(['/api/oauth/authorize', '/oauth/authorize'], async (req, res, next) 
 router.post('/oauth/token', express.urlencoded({ extended: false }), async (req, res, next) => {
   try {
     res.set('Cache-Control', 'no-store');
-    res.json(await OAuthService.token(req.body ?? {}, id => User.findById(id)));
+    res.json(await OAuthService.token(req.body ?? {}, id => User.findById(id), req.get('authorization')));
+  } catch (error) { oauthError(res, next, error); }
+});
+
+// Revocación (RFC 7009), para clientes confidenciales: responde 200 aunque el token no exista
+router.post('/oauth/revoke', express.urlencoded({ extended: false }), async (req, res, next) => {
+  try {
+    await OAuthService.revoke(req.body ?? {}, req.get('authorization'));
+    res.status(200).json({});
   } catch (error) { oauthError(res, next, error); }
 });
 

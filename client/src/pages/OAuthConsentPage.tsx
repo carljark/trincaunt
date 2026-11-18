@@ -8,8 +8,9 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 type State =
   | { kind: 'loading' }
-  | { kind: 'ready'; cliente: string }
-  | { kind: 'sending' ; cliente: string }
+  // permisos: lo que podrá hacer el token, o null si es acceso completo
+  | { kind: 'ready'; cliente: string; permisos: string[] | null }
+  | { kind: 'sending'; cliente: string; permisos: string[] | null }
   | { kind: 'error'; message: string };
 
 /**
@@ -30,7 +31,7 @@ const OAuthConsentPage: React.FC = () => {
         const body = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (!res.ok) setState({ kind: 'error', message: body.message || 'No se ha podido leer la petición.' });
-        else setState({ kind: 'ready', cliente: body.data.cliente });
+        else setState({ kind: 'ready', cliente: body.data.cliente, permisos: body.data.permisos ?? null });
       })
       .catch(() => { if (!cancelled) setState({ kind: 'error', message: 'Error de red. Inténtalo de nuevo.' }); });
     return () => { cancelled = true; };
@@ -38,7 +39,7 @@ const OAuthConsentPage: React.FC = () => {
 
   const decide = async (permitir: boolean) => {
     if (state.kind !== 'ready') return;
-    setState({ kind: 'sending', cliente: state.cliente });
+    setState({ ...state, kind: 'sending' });
     try {
       const res = await fetch(`${apiHost}${apiBaseUrl}/oauth/authorize`, {
         method: 'POST',
@@ -61,10 +62,21 @@ const OAuthConsentPage: React.FC = () => {
         {state.kind === 'error' && <p className="oauth-consent__error" role="alert">{state.message}</p>}
         {(state.kind === 'ready' || state.kind === 'sending') && (
           <>
-            <p className="oauth-consent__text">
-              <strong>{state.cliente}</strong> quiere acceder a tu cuenta{user?.nombre ? ` (${user.nombre})` : ''}: ver y cambiar
-              tus gastos, grupos y presupuesto, como desde la app.
-            </p>
+            {state.permisos ? (
+              <>
+                <p className="oauth-consent__text">
+                  <strong>{state.cliente}</strong> quiere acceder a tu cuenta{user?.nombre ? ` (${user.nombre})` : ''} solo para:
+                </p>
+                <ul className="oauth-consent__permissions">
+                  {state.permisos.map(permiso => <li key={permiso} className="oauth-consent__permission">{permiso}</li>)}
+                </ul>
+              </>
+            ) : (
+              <p className="oauth-consent__text">
+                <strong>{state.cliente}</strong> quiere acceder a tu cuenta{user?.nombre ? ` (${user.nombre})` : ''}: ver y cambiar
+                tus gastos, grupos y presupuesto, como desde la app.
+              </p>
+            )}
             <p className="oauth-consent__hint">
               Se creará un token de acceso que puedes borrar cuando quieras en Preferencias → Acceso para asistentes.
             </p>

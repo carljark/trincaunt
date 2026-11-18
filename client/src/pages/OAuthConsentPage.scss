@@ -36,6 +36,17 @@
     color: $color-text;
   }
 
+  &__permissions {
+    margin: 0;
+    padding-left: map.get($spacing-scale, 4);
+  }
+
+  &__permission {
+    font-size: map.get($font-sizes, base);
+    line-height: $line-height-base;
+    color: $color-text;
+  }
+
   &__hint {
     margin: 0;
     font-size: map.get($font-sizes, sm);

@@ -31,6 +31,10 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
       - MAIL_FROM=${MAIL_FROM:-}
+      # «Conectar con Trincaunt» desde cgsshoppings (cliente OAuth confidencial). Sin el secreto
+      # no existe el cliente; el mismo secreto va en el .env de cgsshoppings
+      - CGSSHOPPINGS_URL=${CGSSHOPPINGS_URL:-https://cgsshoppings.duckdns.org}
+      - CGSSHOPPINGS_CLIENT_SECRET=${CGSSHOPPINGS_CLIENT_SECRET:-}
       # nginx llega al contenedor por la red de Docker: se confía en X-Forwarded-For
       # también desde direcciones privadas (el puerto solo está en 127.0.0.1)
       - TRUST_PROXY=loopback,uniquelocal

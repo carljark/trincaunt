@@ -14,7 +14,7 @@ vi.mock('../../src/services/ApiTokenService', () => ({
 vi.mock('../../src/services/RemoteMcp', () => ({ loadMcpHandler: vi.fn() }));
 vi.mock('../../src/services/OAuthService', async (original) => {
   const actual: any = await original();
-  return { ...actual, default: Object.assign(new actual.OAuthService(), { checkAuthorize: vi.fn(), token: vi.fn() }) };
+  return { ...actual, default: Object.assign(new actual.OAuthService(), { checkAuthorize: vi.fn(), token: vi.fn(), revoke: vi.fn() }) };
 });
 
 describe('OAuth and remote MCP routes', () => {
@@ -89,5 +89,22 @@ describe('OAuth and remote MCP routes', () => {
     expect(res.headers.get('cache-control')).toBe('no-store');
     expect(await res.json()).toEqual({ access_token: 'trc_x', token_type: 'Bearer' });
     expect((OAuthService.token as any).mock.calls[0][0]).toMatchObject({ grant_type: 'authorization_code', code: 'abc' });
+  });
+
+  it('passes the client credentials of the Basic header to the token and revoke endpoints', async () => {
+    (OAuthService.token as any).mockResolvedValue({ access_token: 'trc_x', token_type: 'Bearer' });
+    const form = { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: 'Basic Y2dzOnM=' };
+    await fetch(`${base}/oauth/token`, { method: 'POST', headers: form, body: 'grant_type=authorization_code' });
+    expect((OAuthService.token as any).mock.calls[0][2]).toBe('Basic Y2dzOnM=');
+
+    const res = await fetch(`${base}/oauth/revoke`, { method: 'POST', headers: form, body: 'token=trc_x' });
+    expect(res.status).toBe(200);
+    expect(OAuthService.revoke).toHaveBeenCalledWith({ token: 'trc_x' }, 'Basic Y2dzOnM=');
+
+    const { OAuthError } = await import('../../src/services/OAuthError');
+    (OAuthService.revoke as any).mockRejectedValue(new OAuthError('invalid_client', 'No', 401));
+    const denied = await fetch(`${base}/oauth/revoke`, { method: 'POST', headers: form, body: 'token=trc_x' });
+    expect(denied.status).toBe(401);
+    expect(await denied.json()).toEqual({ error: 'invalid_client', error_description: 'No' });
   });
 });

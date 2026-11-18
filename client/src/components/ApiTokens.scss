@@ -146,6 +146,11 @@
     color: $color-text-muted;
   }
 
+  &__scopes {
+    font-size: map.get($font-sizes, xs);
+    color: $color-gray-700;
+  }
+
   &__icon-button {
     @include icon-button;
     flex-shrink: 0;
