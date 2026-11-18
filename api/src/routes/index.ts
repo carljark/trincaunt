@@ -13,7 +13,7 @@ import * as AssistantController from '../controllers/AssistantController';
 import * as OAuthController from '../controllers/OAuthController';
 import * as ApiTokenController from '../controllers/ApiTokenController';
 import * as AdminController from '../controllers/AdminController';
-import { protect, sessionOnly, requireAdmin } from '../middlewares/authMiddleware';
+import { protect, sessionOnly, requireAdmin, requireScope } from '../middlewares/authMiddleware';
 import {
   requireGroupMember,
   requireMemberOfDoc,
@@ -40,7 +40,7 @@ router.post('/users/register', UserController.register);
 router.post('/users/login', UserController.login);
 router.post('/users/forgot-password', UserController.forgotPassword);
 router.post('/users/reset-password', UserController.resetPassword);
-router.get('/users/me', protect, UserController.getMe);
+router.get('/users/me', protect, requireScope('grupos:leer'), UserController.getMe);
 router.put('/users/me/password', protect, sessionOnly, UserController.changePassword);
 
 // Admin Routes: rol de administrador y, con un token de API, que se creara con permiso de administración
@@ -63,7 +63,7 @@ router.delete('/category-aliases/:aliasId', protect, requireAliasAccess('change'
 
 // Group Routes (Protected)
 router.post('/groups', protect, GroupController.createGroup);
-router.get('/groups', protect, GroupController.getMyGroups);
+router.get('/groups', protect, requireScope('grupos:leer'), GroupController.getMyGroups);
 router.get('/groups/:groupId', protect, groupMemberOrAdmin, GroupController.getGroupById);
 router.put('/groups/:groupId', protect, groupMember, GroupController.updateGroup); // Solo el creador (lo comprueba el servicio)
 router.post('/groups/:groupId/members', protect, groupMemberOrAdmin, GroupController.addMember);
@@ -86,14 +86,14 @@ router.post('/groups/:groupId/assistant/apply', protect, groupMember, AssistantC
 router.get('/oauth/authorize', protect, sessionOnly, OAuthController.describeAuthorization);
 router.post('/oauth/authorize', protect, sessionOnly, OAuthController.decideAuthorization);
 // Gasto desde la foto o el PDF de un ticket (cgsshoppings): fichero `ticket` + JSON en `datos`
-router.post('/expenses/from-receipt', protect, uploadMedia.single('ticket'), ExpenseController.parseReceiptForm, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpenseFromReceipt);
+router.post('/expenses/from-receipt', protect, requireScope('gastos:crear'), uploadMedia.single('ticket'), ExpenseController.parseReceiptForm, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpenseFromReceipt);
 router.post('/expenses/batch', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpensesBatch);
-router.post('/expenses', protect, requireGroupMember('body', 'grupo_id'), ExpenseController.createExpense);
+router.post('/expenses', protect, requireScope('gastos:crear'), requireGroupMember('body', 'grupo_id'), ExpenseController.createExpense);
 router.patch('/expenses/bulk-update', protect, requireMemberOfExpenses, ExpenseController.bulkUpdate);
 router.put('/expenses/:expenseId', protect, expenseMember, ExpenseController.updateExpense);
 router.delete('/expenses/:expenseId', protect, expenseMember, ExpenseController.deleteExpense);
 // Sin groupId: categorías y lugares de todos tus grupos (no de toda la base de datos)
-router.get('/expenses/categories', protect, requireGroupMember('query', 'groupId', { optional: true }), ExpenseController.getExpenseCategories);
+router.get('/expenses/categories', protect, requireScope('grupos:leer'), requireGroupMember('query', 'groupId', { optional: true }), ExpenseController.getExpenseCategories);
 router.get('/expenses/locations', protect, ExpenseController.getExpenseLocations);
 router.get('/expenses/global', protect, ExpenseController.getGlobalExpenses);
 router.get('/groups/:groupId/expenses', protect, groupMember, ExpenseController.getGroupExpenses);
@@ -120,7 +120,7 @@ router.put('/notes/:noteId', protect, NoteController.updateNote);
 router.delete('/notes/:noteId', protect, NoteController.deleteNote);
 
 // Budget Routes (Protected, solo grupos personales)
-router.get('/groups/:groupId/budget', protect, BudgetController.getBudget);
+router.get('/groups/:groupId/budget', protect, requireScope('presupuesto:leer'), BudgetController.getBudget);
 router.get('/groups/:groupId/budget/history', protect, BudgetController.getBudgetHistory);
 router.get('/groups/:groupId/budget/forecast', protect, BudgetController.getBudgetForecast);
 router.post('/groups/:groupId/budget/forecast/simulate', protect, BudgetController.simulateBudgetForecast);

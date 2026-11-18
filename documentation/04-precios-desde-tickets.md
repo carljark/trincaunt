@@ -1,6 +1,6 @@
 # Fase 4: el ticket en la compra y precios desde los tickets
 
-**Estado:** parte A desplegada el 2026-11-16 ([trincaunt#74](https://github.com/carljark/trincaunt/pull/74), [cgsshoppings#2](https://github.com/carljark/cgsshoppings/pull/2)) con un gasto con líneas; el 2026-11-17 se cambia a **un gasto por artículo** ([trincaunt#75](https://github.com/carljark/trincaunt/pull/75), [cgsshoppings#3](https://github.com/carljark/cgsshoppings/pull/3), desplegado). Parte B implementada el 2026-11-18, sin probar con la IA de verdad (Gemini daba 503).
+**Estado:** parte A desplegada el 2026-11-16 ([trincaunt#74](https://github.com/carljark/trincaunt/pull/74), [cgsshoppings#2](https://github.com/carljark/cgsshoppings/pull/2)) con un gasto con líneas; el 2026-11-17 se cambia a **un gasto por artículo** ([trincaunt#75](https://github.com/carljark/trincaunt/pull/75), [cgsshoppings#3](https://github.com/carljark/cgsshoppings/pull/3), desplegado). Parte B desplegada el 2026-11-18 ([trincaunt#77](https://github.com/carljark/trincaunt/pull/77), [cgsshoppings#6](https://github.com/carljark/cgsshoppings/pull/6)), sin probar con la IA de verdad (Gemini daba 503).
 
 La fase tiene dos partes que se pueden desplegar por separado:
 

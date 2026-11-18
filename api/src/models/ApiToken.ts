@@ -8,6 +8,10 @@ export interface IApiToken extends Document {
   hash: string;    // sha256 del token
   prefijo: string; // primeros caracteres, para reconocerlo en la lista
   admin: boolean;  // permite las operaciones de administración (solo si el usuario es administrador)
+  // Permisos del token (services/scopes.ts). Vacío o ausente: todo lo que puede hacer su dueño
+  scopes?: string[];
+  // Aplicación OAuth que lo pidió (client_id), si vino de un cliente confidencial
+  cliente?: string;
   ultimoUso?: Date;
   createdAt: Date;
 }
@@ -18,6 +22,8 @@ const ApiTokenSchema: Schema = new Schema({
   hash: { type: String, required: true, unique: true },
   prefijo: { type: String, required: true },
   admin: { type: Boolean, default: false },
+  scopes: { type: [String], default: undefined },
+  cliente: { type: String },
   ultimoUso: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });

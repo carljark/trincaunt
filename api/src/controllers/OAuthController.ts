@@ -1,13 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import OAuthService from '../services/OAuthService';
+import { describeScopes } from '../services/scopes';
 
 // Pantalla de permiso de la app (/oauth/consent): solo con la sesión de la app, no con un token de API
 
-/** Qué aplicación pide acceso, para enseñárselo al usuario. */
+/** Qué aplicación pide acceso y para qué, para enseñárselo al usuario. `permisos` null es acceso completo. */
 export const describeAuthorization = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { client, error } = await OAuthService.checkAuthorize(req.query);
-    res.status(200).json({ status: 'success', data: { cliente: client.nombre, error: error ?? null } });
+    const { client, scopes, error } = await OAuthService.checkAuthorize(req.query);
+    res.status(200).json({
+      status: 'success',
+      data: { cliente: client.nombre, permisos: scopes.length ? describeScopes(scopes) : null, error: error ?? null }
+    });
   } catch (error) { next(error); }
 };
 

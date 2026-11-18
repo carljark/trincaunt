@@ -53,4 +53,15 @@ describe('OAuthConsentPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Aplicación desconocida');
     expect(screen.queryByRole('button', { name: 'Permitir' })).not.toBeInTheDocument();
   });
+
+  it('lists what a token with permissions will be able to do', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: { cliente: 'cgsshoppings', permisos: ['Apuntar gastos en tus grupos', 'Ver tu presupuesto personal'], error: null } })
+    });
+    renderPage();
+    expect(await screen.findByText(/solo para:/)).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem').map(li => li.textContent)).toEqual(['Apuntar gastos en tus grupos', 'Ver tu presupuesto personal']);
+    expect(screen.queryByText(/ver y cambiar/)).not.toBeInTheDocument();
+  });
 });

@@ -28,7 +28,7 @@ describe('ApiTokenService', () => {
     const stored = (ApiToken.create as vi.Mock).mock.calls[0][0];
     expect(stored).toEqual({ usuario: userId, nombre: 'MCP portátil', hash: sha(token), prefijo: token.slice(0, 10), admin: false });
     expect(JSON.stringify(stored)).not.toContain(token);
-    expect(apiToken).toEqual({ _id: 't1', nombre: 'MCP portátil', prefijo: token.slice(0, 10), admin: false, ultimoUso: null, createdAt: new Date('2026-11-06') });
+    expect(apiToken).toEqual({ _id: 't1', nombre: 'MCP portátil', prefijo: token.slice(0, 10), admin: false, scopes: [], permisos: [], ultimoUso: null, createdAt: new Date('2026-11-06') });
   });
 
   it('validates the name and the limit', async () => {
@@ -52,7 +52,7 @@ describe('ApiTokenService', () => {
     const now = new Date('2026-11-06T10:00:00Z');
 
     (ApiToken.findOne as vi.Mock).mockResolvedValue({ _id: 't1', usuario: userId, ultimoUso: new Date('2026-11-06T09:30:00Z') });
-    await expect(service.authenticate('trc_abc', now)).resolves.toEqual({ user: owner, tokenId: 't1', admin: false });
+    await expect(service.authenticate('trc_abc', now)).resolves.toEqual({ user: owner, tokenId: 't1', admin: false, scopes: [] });
     expect(ApiToken.findOne).toHaveBeenCalledWith({ hash: sha('trc_abc') });
     expect(ApiToken.updateOne).not.toHaveBeenCalled();
 
@@ -61,7 +61,18 @@ describe('ApiTokenService', () => {
     expect(ApiToken.updateOne).toHaveBeenCalledWith({ _id: 't1' }, { $set: { ultimoUso: now } });
 
     (ApiToken.findOne as vi.Mock).mockResolvedValue({ _id: 't2', usuario: userId, admin: true, ultimoUso: now });
-    await expect(service.authenticate('trc_adm', now)).resolves.toEqual({ user: owner, tokenId: 't2', admin: true });
+    await expect(service.authenticate('trc_adm', now)).resolves.toEqual({ user: owner, tokenId: 't2', admin: true, scopes: [] });
+
+    (ApiToken.findOne as vi.Mock).mockResolvedValue({ _id: 't3', usuario: userId, scopes: ['gastos:crear'], ultimoUso: now });
+    await expect(service.authenticate('trc_app', now)).resolves.toMatchObject({ tokenId: 't3', scopes: ['gastos:crear'] });
+  });
+
+  it('stores the scopes and the OAuth client only when given', async () => {
+    await service.create(user, 'Conector: cgsshoppings', false, { scopes: ['grupos:leer', 'gastos:crear'], cliente: 'cgsshoppings' });
+    expect((ApiToken.create as vi.Mock).mock.calls[0][0]).toMatchObject({ scopes: ['grupos:leer', 'gastos:crear'], cliente: 'cgsshoppings' });
+    await service.create(user, 'otro');
+    expect((ApiToken.create as vi.Mock).mock.calls[1][0]).not.toHaveProperty('scopes');
+    expect((ApiToken.create as vi.Mock).mock.calls[1][0]).not.toHaveProperty('cliente');
   });
 
   it('rejects unknown tokens and tokens of deleted users', async () => {

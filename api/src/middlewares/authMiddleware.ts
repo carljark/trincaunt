@@ -4,6 +4,7 @@ import { AppError } from '../utils/AppError';
 import User from '../models/User';
 import { IUser } from '../models/User';
 import ApiTokenService, { isApiToken } from '../services/ApiTokenService';
+import { Scope } from '../services/scopes';
 
 declare global {
   namespace Express {
@@ -13,9 +14,35 @@ declare global {
       apiTokenId?: string;
       // El token de API se creó con permiso de administración
       apiTokenAdmin?: boolean;
+      // Permisos del token de API; vacío es todo lo que puede hacer el usuario
+      apiTokenScopes?: string[];
     }
   }
 }
+
+export const SCOPE_INSUFICIENTE = 'scope_insuficiente';
+
+// Marca de los middlewares que crea `requireScope`, para que `protect` los encuentre en la ruta
+const DECLARED_SCOPE = Symbol('scope');
+
+// `protect` va en cada ruta (no en un router.use), así que `req.route` es la ruta que se va a ejecutar
+const routeDeclaresScope = (req: Request) =>
+  (req.route?.stack ?? []).some((layer: { handle?: Record<symbol, unknown> }) => layer.handle?.[DECLARED_SCOPE] !== undefined);
+
+/**
+ * Permiso que pide la ruta a los tokens de API con permisos (documentation/02-conectar-con-oauth.md).
+ * Va después de `protect`. La sesión de la app y los tokens sin permisos pasan siempre.
+ */
+export const requireScope = (scope: Scope) => {
+  const middleware = (req: Request, _res: Response, next: NextFunction) => {
+    const scopes = req.apiTokenScopes ?? [];
+    if (scopes.length && !scopes.includes(scope)) {
+      return next(new AppError('Este token no permite esta operación.', 403, SCOPE_INSUFICIENTE));
+    }
+    next();
+  };
+  return Object.assign(middleware, { [DECLARED_SCOPE]: scope });
+};
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
   let token;
@@ -34,6 +61,11 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
       req.user = auth.user;
       req.apiTokenId = auth.tokenId;
       req.apiTokenAdmin = auth.admin;
+      req.apiTokenScopes = auth.scopes;
+      // Cerrado por defecto: un token con permisos solo entra en las rutas que declaran uno
+      if (auth.scopes.length && !routeDeclaresScope(req)) {
+        return next(new AppError('Este token no permite esta operación.', 403, SCOPE_INSUFICIENTE));
+      }
       return next();
     } catch (error) {
       return next(error);

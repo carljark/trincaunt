@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import ApiToken from '../models/ApiToken';
 import User, { IUser } from '../models/User';
 import { AppError } from '../utils/AppError';
+import { describeScopes, Scope } from './scopes';
 
 export const TOKEN_PREFIX = 'trc_';
 export const MAX_TOKENS_POR_USUARIO = 20;
@@ -19,15 +20,19 @@ export interface ApiTokenView {
   nombre: string;
   prefijo: string;
   admin: boolean;
+  scopes: string[];
+  permisos: string[]; // los permisos en castellano
   ultimoUso: Date | null;
   createdAt: Date;
 }
 
-const view = (doc: { _id: unknown; nombre: string; prefijo: string; admin?: boolean; ultimoUso?: Date; createdAt: Date }): ApiTokenView => ({
+const view = (doc: { _id: unknown; nombre: string; prefijo: string; admin?: boolean; scopes?: string[]; ultimoUso?: Date; createdAt: Date }): ApiTokenView => ({
   _id: String(doc._id),
   nombre: doc.nombre,
   prefijo: doc.prefijo,
   admin: doc.admin === true,
+  scopes: doc.scopes ?? [],
+  permisos: describeScopes(doc.scopes ?? []),
   ultimoUso: doc.ultimoUso ?? null,
   createdAt: doc.createdAt
 });
@@ -41,8 +46,14 @@ export class ApiTokenService {
   /**
    * Crea un token y lo devuelve completo: es la única vez que se puede ver.
    * `admin` solo lo puede pedir un administrador; sin él, el token no administra aunque el usuario sea admin.
+   * `scopes` limita lo que puede hacer (sin ellos, todo) y `cliente` es la aplicación OAuth que lo pidió.
    */
-  async create(user: { id: unknown; role?: IUser['role'] }, nombre: unknown, admin: unknown = false): Promise<{ token: string; apiToken: ApiTokenView }> {
+  async create(
+    user: { id: unknown; role?: IUser['role'] },
+    nombre: unknown,
+    admin: unknown = false,
+    { scopes = [], cliente }: { scopes?: Scope[]; cliente?: string } = {}
+  ): Promise<{ token: string; apiToken: ApiTokenView }> {
     const userId = String(user.id);
     if (typeof nombre !== 'string' || !nombre.trim()) throw new AppError('Ponle un nombre al token', 400);
     if (typeof admin !== 'boolean') throw new AppError('admin debe ser verdadero o falso', 400);
@@ -57,7 +68,9 @@ export class ApiTokenService {
       nombre: nombre.trim(),
       hash: hashOf(token),
       prefijo: token.slice(0, TOKEN_PREFIX.length + 6),
-      admin
+      admin,
+      ...(scopes.length ? { scopes } : {}),
+      ...(cliente ? { cliente } : {})
     });
     return { token, apiToken: view(doc) };
   }
@@ -68,8 +81,18 @@ export class ApiTokenService {
     if (result.deletedCount === 0) throw new AppError('Token no encontrado', 404);
   }
 
-  /** Usuario dueño del token, o null si no existe (o se borró). */
-  async authenticate(token: string, now = new Date()): Promise<{ user: IUser; tokenId: string; admin: boolean } | null> {
+  /** Borra los tokens que una aplicación OAuth le dio a un usuario (al darle uno nuevo). */
+  async revokeClientTokens(userId: string, cliente: string): Promise<void> {
+    await ApiToken.deleteMany({ usuario: userId, cliente });
+  }
+
+  /** Borra un token, solo si lo pidió esa aplicación OAuth. */
+  async revokeByToken(token: string, cliente: string): Promise<void> {
+    await ApiToken.deleteOne({ hash: hashOf(token), cliente });
+  }
+
+  /** Usuario dueño del token y sus permisos (vacío es todo), o null si no existe (o se borró). */
+  async authenticate(token: string, now = new Date()): Promise<{ user: IUser; tokenId: string; admin: boolean; scopes: string[] } | null> {
     const doc = await ApiToken.findOne({ hash: hashOf(token) });
     if (!doc) return null;
     const user = await User.findById(doc.usuario);
@@ -79,7 +102,7 @@ export class ApiTokenService {
         // No impide la petición
       });
     }
-    return { user, tokenId: String(doc._id), admin: doc.admin === true };
+    return { user, tokenId: String(doc._id), admin: doc.admin === true, scopes: doc.scopes ?? [] };
   }
 }
 
