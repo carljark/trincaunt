@@ -230,6 +230,16 @@ describe('ExpenseController (TDD)', () => {
       expect(BudgetAlertService.checkAfterExpenseChange).toHaveBeenCalledTimes(1);
     });
 
+    it('passes the list articles to the AI', async () => {
+      vi.mocked(AiService.parseReceipt).mockResolvedValue(receipt);
+      const { req, res } = await setup({ articulos: ['leche', 'pan'] });
+
+      await ExpenseController.createExpenseFromReceipt(req, res, mockNext());
+
+      expect(AiService.parseReceipt).toHaveBeenLastCalledWith(ticket.buffer, 'image/jpeg', ['leche', 'pan']);
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
     it('half records half of each article', async () => {
       vi.mocked(AiService.parseReceipt).mockResolvedValue(receipt);
       const { req, res, createOrFind } = await setup({ parte: 0.5 });

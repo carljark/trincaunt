@@ -190,7 +190,7 @@ export const getChartExpenses = async (req: Request, res: Response, next: NextFu
 import AiService, { GroupMemberRef, ParsedExpense } from '../services/AiService';
 import { AppError } from '../utils/AppError';
 import { itemRef, parseOrigen } from '../services/ExpenseService';
-import { buildReceiptItems, IA_DESACTIVADA, parseParte, TICKET_ILEGIBLE } from '../services/ReceiptService';
+import { buildReceiptItems, IA_DESACTIVADA, parseArticulos, parseParte, TICKET_ILEGIBLE } from '../services/ReceiptService';
 import User from '../models/User';
 
 const MAX_AI_TEXT_LENGTH = 2000;
@@ -338,6 +338,7 @@ export const createExpenseFromReceipt = async (req: Request, res: Response, next
     const body = req.body ?? {};
     const origen = parseOrigen(body.origen);
     const parte = parseParte(body.parte);
+    const articulosLista = parseArticulos(body.articulos);
     const descripcion = typeof body.descripcion === 'string' ? body.descripcion.trim() : '';
     if (!descripcion) throw new AppError('Falta la descripción', 400);
     let montoUsuario: number | undefined;
@@ -361,7 +362,7 @@ export const createExpenseFromReceipt = async (req: Request, res: Response, next
       throw new AppError('Tu cuenta de Trincaunt no tiene la IA activada', 403, IA_DESACTIVADA);
     }
 
-    const receipt = await AiService.parseReceipt(req.file.buffer, req.file.mimetype);
+    const receipt = await AiService.parseReceipt(req.file.buffer, req.file.mimetype, articulosLista);
     if (receipt.total <= 0) throw new AppError('No se ha podido leer el ticket', 422, TICKET_ILEGIBLE);
     const { monto, articulos, lineasDescartadas } = buildReceiptItems(receipt, parte, montoUsuario);
 

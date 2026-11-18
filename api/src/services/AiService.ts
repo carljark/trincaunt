@@ -58,14 +58,17 @@ class AiService {
 
   /**
    * Lee las líneas de un ticket de compra (foto o PDF). Lanza un error si no se puede leer un
-   * total; las líneas que no tengan texto e importe se descartan.
+   * total; las líneas que no tengan texto e importe se descartan. Con `articulos` (la lista de la
+   * compra), cada línea dice a cuál de ellos corresponde.
    */
-  public async parseReceipt(buffer: Buffer, mimeType: string): Promise<ParsedReceipt> {
-    return this.askWithFallback(this.buildReceiptPrompt(), { kind: 'media', buffer, mimeType },
-      text => validateReceipt(this.parseJson(text)));
+  public async parseReceipt(buffer: Buffer, mimeType: string, articulos: string[] = []): Promise<ParsedReceipt> {
+    return this.askWithFallback(this.buildReceiptPrompt(articulos), { kind: 'media', buffer, mimeType },
+      text => validateReceipt(this.parseJson(text), articulos));
   }
 
-  private buildReceiptPrompt(): string {
+  private buildReceiptPrompt(articulos: string[]): string {
+    const lista = articulos.length ? `
+- La lista de la compra era: ${JSON.stringify(articulos)}. Si una línea es uno de esos artículos (aunque el ticket lo escriba de otra forma o con la marca), pon en "articulo" ese nombre exactamente como está en la lista. Si no estás seguro o no está en la lista, omite "articulo". Varias líneas pueden ser el mismo artículo.` : '';
     return `Eres un asistente que transcribe tickets de compra con total precisión.
 Te voy a pasar la foto o el PDF de un ticket de supermercado o tienda.
 Hoy es ${this.today()}. Úsalo para completar el año si el ticket no lo indica.
@@ -75,7 +78,7 @@ Devuelve ESTRICTAMENTE un objeto JSON, sin texto adicional ni markdown, con esta
   "fecha": "YYYY-MM-DD, si aparece",
   "total": 0.00,
   "lineas": [
-    { "texto": "Texto de la línea tal como aparece en el ticket", "nombre": "Nombre claro del artículo", "categoria": "Comida", "cantidad": 1, "importe": 0.00 }
+    { "texto": "Texto de la línea tal como aparece en el ticket", "nombre": "Nombre claro del artículo", "categoria": "Comida", ${articulos.length ? '"articulo": "Artículo de la lista", ' : ''}"cantidad": 1, "importe": 0.00 }
   ]
 }
 Reglas:
@@ -83,7 +86,7 @@ Reglas:
 - Una entrada en "lineas" por cada artículo del ticket, en el mismo orden. "importe" es el importe de esa línea (precio × cantidad), en euros.
 - "nombre" es el artículo escrito como lo diría una persona, sin abreviaturas ni códigos y con la marca y el tamaño si aparecen (por ejemplo, "LECHE ENT. HACEND. 1L" es "Leche entera Hacendado 1 L"). Si no sabes qué es, repite el texto.
 - "categoria" es una sola palabra o dos en castellano para el tipo de artículo: Comida, Bebidas, Alcohol, Limpieza, Higiene, Hogar, Mascotas, Bebé, Farmacia... Usa siempre el mismo nombre para el mismo tipo.
-- En los descuentos, "nombre" y "categoria" se pueden omitir.
+- En los descuentos, "nombre", "categoria" y "articulo" se pueden omitir.${lista}
 - "cantidad" son las unidades o los kilos/litros de la línea si el ticket los indica; si no, omítela.
 - Los descuentos, cupones y promociones van como líneas con importe negativo.
 - No incluyas como líneas el subtotal, el IVA, el total, la forma de pago ni el cambio.

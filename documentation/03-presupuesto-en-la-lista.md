@@ -1,6 +1,6 @@
 # Fase 3: presupuesto en la lista
 
-**Estado:** implementada, sin desplegar (2026-11-18).
+**Estado:** desplegada el 2026-11-18 ([cgsshoppings#5](https://github.com/carljark/cgsshoppings/pull/5)).
 
 **Objetivo:** mientras se hace la lista, cgsshoppings enseña cuánto queda del presupuesto de compra de este ciclo: «Supermercado: te quedan 48,00 € · 13 días».
 

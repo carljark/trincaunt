@@ -1,6 +1,6 @@
 # Fase 2: conectar con OAuth
 
-**Estado:** implementada, sin desplegar (2026-11-18).
+**Estado:** desplegada el 2026-11-18 ([trincaunt#76](https://github.com/carljark/trincaunt/pull/76), [cgsshoppings#4](https://github.com/carljark/cgsshoppings/pull/4)).
 
 **Objetivo:** cambiar «pega aquí un token» por un botón «Conectar con Trincaunt», y que el token que recibe cgsshoppings solo pueda hacer lo que necesita.
 

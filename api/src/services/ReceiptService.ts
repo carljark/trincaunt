@@ -5,12 +5,14 @@ export const IA_DESACTIVADA = 'ia_desactivada';
 
 /**
  * Una línea del ticket tal como la lee la IA: `texto` como sale impreso, `nombre` legible y
- * `categoria` del artículo si los da. Importe en euros (los descuentos en negativo).
+ * `categoria` del artículo si los da. Importe en euros (los descuentos en negativo). `articulo` es
+ * el artículo de la lista de la compra al que corresponde, si se mandó la lista y la IA lo encontró.
  */
 export interface ReceiptLine {
   texto: string;
   nombre?: string;
   categoria?: string;
+  articulo?: string;
   cantidad?: number;
   importe: number;
 }
@@ -35,6 +37,8 @@ const MAX_DESCUADRE_CENTS = 2;
 const MAX_LINEAS = 200;
 const MAX_TEXTO = 100;
 const MAX_CATEGORIA = 40;
+const MAX_ARTICULOS = 100;
+const MAX_ARTICULO = 60;
 
 export const SUFIJO_A_MEDIAS = ' · a medias';
 
@@ -72,10 +76,21 @@ const optionalText = (value: unknown, max: number) =>
   typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined;
 
 /**
+ * Los artículos de la lista de la compra que manda cgsshoppings (`datos.articulos`), para que la IA
+ * diga a cuál corresponde cada línea. Sin repetir; lo que no es texto se ignora.
+ */
+export const parseArticulos = (value: unknown): string[] => {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) throw new AppError('articulos debe ser una lista', 400);
+  const articulos = value.map(a => optionalText(a, MAX_ARTICULO)).filter((a): a is string => !!a);
+  return [...new Set(articulos)].slice(0, MAX_ARTICULOS);
+};
+
+/**
  * Limpia la respuesta de la IA. Si no es un objeto lanza (respuesta rota: se reintenta); si no trae
  * un total válido, `total` queda en 0 y quien llama decide que el ticket es ilegible.
  */
-export const validateReceipt = (data: unknown): ParsedReceipt => {
+export const validateReceipt = (data: unknown, articulos: string[] = []): ParsedReceipt => {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     throw new Error('Formato JSON inválido devuelto por la IA (no es un objeto)');
   }
@@ -92,6 +107,8 @@ export const validateReceipt = (data: unknown): ParsedReceipt => {
         texto: String(l.texto).trim().slice(0, MAX_TEXTO),
         ...(optionalText(l.nombre, MAX_TEXTO) ? { nombre: optionalText(l.nombre, MAX_TEXTO) } : {}),
         ...(optionalText(l.categoria, MAX_CATEGORIA) ? { categoria: optionalText(l.categoria, MAX_CATEGORIA) } : {}),
+        // Solo un artículo de la lista, tal cual: la IA no puede inventarse otro
+        ...(typeof l.articulo === 'string' && articulos.includes(l.articulo) ? { articulo: l.articulo } : {}),
         ...(typeof l.cantidad === 'number' && Number.isFinite(l.cantidad) && l.cantidad > 0 ? { cantidad: l.cantidad } : {}),
         importe: l.importe as number,
       }))

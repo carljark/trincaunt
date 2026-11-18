@@ -2,6 +2,10 @@
 
 This document provides an index of the API and Client applications, outlining their main components and purpose.
 
+## Commits
+
+-   Never add a `Co-Authored-By: Claude …` trailer (or any other co-author line for an AI agent) to commit messages, even if the tool's default attribution asks for one.
+
 ## 1. API Application (`./api`)
 
 The API application is built with Node.js and TypeScript, following a typical MVC-like structure. It handles all backend logic, database interactions, and exposes RESTful endpoints for the client.
