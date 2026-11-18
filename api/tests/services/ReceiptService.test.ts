@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildReceiptItems, foldDiscounts, parseParte, shareCents, splitCents, validateReceipt } from '../../src/services/ReceiptService';
+import { buildReceiptItems, foldDiscounts, parseArticulos, parseParte, shareCents, splitCents, validateReceipt } from '../../src/services/ReceiptService';
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 const sumEuros = (lineas: { importe: number }[]) => Math.round(sum(lineas.map(l => l.importe * 100)));
@@ -59,11 +59,34 @@ describe('ReceiptService', () => {
       ]);
     });
 
+    it('keeps the list article of a line only if it is one of the list', () => {
+      const receipt = validateReceipt({
+        total: 3,
+        lineas: [
+          { texto: 'LECHE', articulo: 'leche', importe: 1 },
+          { texto: 'PAN', articulo: 'pan de molde', importe: 1 },
+          { texto: 'X', articulo: 3, importe: 1 },
+        ],
+      }, ['leche', 'pan']);
+      expect(receipt.lineas.map(l => l.articulo)).toEqual(['leche', undefined, undefined]);
+      // Sin lista no hay artículos, diga lo que diga la IA
+      expect(validateReceipt({ total: 1, lineas: [{ texto: 'L', articulo: 'leche', importe: 1 }] }).lineas[0].articulo).toBeUndefined();
+    });
+
     it('leaves the total at 0 when there is none, and throws on a broken answer', () => {
       expect(validateReceipt({ total: 0, lineas: [] }).total).toBe(0);
       expect(validateReceipt({ lineas: [] }).total).toBe(0);
       expect(() => validateReceipt([])).toThrow();
       expect(() => validateReceipt(null)).toThrow();
+    });
+  });
+
+  describe('parseArticulos', () => {
+    it('trims, drops repeats and what is not text, and rejects a non-list', () => {
+      expect(parseArticulos(undefined)).toEqual([]);
+      expect(parseArticulos([' leche ', 'leche', '', 3, 'x'.repeat(80)])).toEqual(['leche', 'x'.repeat(60)]);
+      expect(parseArticulos(Array.from({ length: 150 }, (_, i) => `a${i}`))).toHaveLength(100);
+      expect(() => parseArticulos('leche')).toThrow();
     });
   });
 
