@@ -102,7 +102,7 @@ describe('ApiTokens', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Crear token' }));
 
     await screen.findByText('trc_NewTokenSecret');
-    expect(JSON.parse(fetchMock.mock.calls.find(c => c[1]?.method === 'POST')[1].body)).toEqual({ nombre: 'Admin portátil', admin: true });
+    expect(JSON.parse(fetchMock.mock.calls.find(c => c[1]?.method === 'POST')![1].body)).toEqual({ nombre: 'Admin portátil', admin: true });
     expect(await screen.findByText('Administración')).toBeInTheDocument();
     expect(screen.getByRole('checkbox')).not.toBeChecked();
   });

@@ -61,12 +61,14 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          chart: ['chart.js', 'react-chartjs-2'],
-          xlsx: ['xlsx-js-style']
+        codeSplitting: {
+          groups: [
+            { name: 'vendor', test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/ },
+            { name: 'chart', test: /node_modules[\\/](chart\.js|react-chartjs-2|@kurkle)[\\/]/ },
+            { name: 'xlsx', test: /node_modules[\\/]xlsx-js-style[\\/]/ }
+          ]
         }
       }
     }

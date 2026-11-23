@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
 
 // Mock HTMLCanvasElement.prototype.getContext to prevent JSDOM errors with Chart.js

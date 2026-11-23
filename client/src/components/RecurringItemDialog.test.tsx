@@ -22,7 +22,7 @@ describe('RecurringItemDialog special payments', () => {
   const save = () => fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
 
   it('shows the stored special payments and saves them with a new one', async () => {
-    const onSave = vi.fn<[RecurringItemInput], Promise<void>>(async () => {});
+    const onSave = vi.fn<(data: RecurringItemInput) => Promise<void>>(async () => {});
     render(<RecurringItemDialog token="tok" item={prestamo} onSave={onSave} onClose={vi.fn()} />);
 
     expect(screen.getByRole('checkbox', { name: /Pagos especiales/ })).toBeChecked();
@@ -46,7 +46,7 @@ describe('RecurringItemDialog special payments', () => {
   });
 
   it('saves a skipped payment without amount nor reminder', async () => {
-    const onSave = vi.fn<[RecurringItemInput], Promise<void>>(async () => {});
+    const onSave = vi.fn<(data: RecurringItemInput) => Promise<void>>(async () => {});
     render(<RecurringItemDialog token="tok" item={prestamo} onSave={onSave} onClose={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: /Añadir pago especial/ }));
@@ -62,7 +62,7 @@ describe('RecurringItemDialog special payments', () => {
   });
 
   it('removes them all when the switch is turned off', async () => {
-    const onSave = vi.fn<[RecurringItemInput], Promise<void>>(async () => {});
+    const onSave = vi.fn<(data: RecurringItemInput) => Promise<void>>(async () => {});
     render(<RecurringItemDialog token="tok" item={prestamo} onSave={onSave} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('checkbox', { name: /Pagos especiales/ }));
     save();
@@ -71,7 +71,7 @@ describe('RecurringItemDialog special payments', () => {
   });
 
   it('does not save a special payment without amount', () => {
-    const onSave = vi.fn<[RecurringItemInput], Promise<void>>(async () => {});
+    const onSave = vi.fn<(data: RecurringItemInput) => Promise<void>>(async () => {});
     render(<RecurringItemDialog token="tok" onSave={onSave} onClose={vi.fn()} />);
     fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Visa' } });
     fireEvent.change(screen.getByLabelText(/^Importe/), { target: { value: '43' } });

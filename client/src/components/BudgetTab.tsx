@@ -228,7 +228,7 @@ const BudgetTab: React.FC<BudgetTabProps> = ({ groupId, token, refreshKey = 0, o
               onClick={() => setOpened(prev => ({ ...prev, [id]: !open }))}
             >
               <span className="budget__toggle-text">
-                <span className="budget__toggle-title">{title}</span>
+                <span className="budget__toggle-title">{title}</span>{' '}
                 <span className={`budget__toggle-summary ${tono ? `budget__toggle-summary--${tono}` : ''}`}>{resumen}</span>
               </span>
               <ChevronRightIcon className={`budget__toggle-chevron ${open ? 'budget__toggle-chevron--open' : ''}`} />
